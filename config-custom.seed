@@ -1,5 +1,7 @@
 # iStoreOS 裁剪版配置种子 (2026-10-05)
-# 用法: cp config-custom.seed .config && make defconfig && make download -j8 && make -j$(nproc)
+# 用法: ./scripts/feeds update -a && ./scripts/feeds install -a   (必须先装 feeds!)
+#       cp config-custom.seed .config && make defconfig && make download -j8 && make -j$(nproc)
+#       defconfig 早于 feeds 会静默丢弃所有 feed 包的 =y 行(luci/*/curl/attr 等), 装配期才报 cannot find dependency
 # 基准: 官方 istoreos-24.10 x86_64 镜像实际安装清单 (opkg list-installed, 1122包) 做减法
 # 目标机器: J4125 四口 2.5G (i226-V) 软路由
 # 删除: Docker全家桶/Samba/DDNS(3套)/UPnP/linkease/ddnsto/unishare 及其 i18n
@@ -54,6 +56,9 @@ CONFIG_PACKAGE_coreutils=y
 CONFIG_PACKAGE_curl=y
 CONFIG_PACKAGE_dbus=y
 CONFIG_PACKAGE_dkml=y
+# dnsmasq 是 profile 默认包(include/target.mk: DEVICE_TYPE?=router → DEFAULT_PACKAGES.router)，
+# defconfig 会把它加回 =y，与 dnsmasq-full 抢同一批文件导致 rootfs 装配失败，必须显式钉为关闭
+# CONFIG_PACKAGE_dnsmasq is not set
 CONFIG_PACKAGE_dnsmasq-full=y
 CONFIG_PACKAGE_dropbear=y
 CONFIG_PACKAGE_ds-lite=y

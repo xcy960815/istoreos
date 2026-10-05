@@ -40,16 +40,30 @@ jobs:
           key: istoreos-cache-${{ github.run_id }}
           restore-keys: istoreos-cache-
 
-      - name: Apply custom config
-        run: |
-          cp config-custom.seed .config
-          make defconfig
-          grep -c "=y" .config
-
       - name: Update and install feeds
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+
+      - name: Apply custom config
+        shell: bash
+        run: |
+          cp config-custom.seed .config
+          make defconfig
+          # defconfig 会丢弃"符号不存在"的行：feeds 未安装时所有 feed 包(attr/curl/
+          # libgcrypt/luci-theme-argon 等)的 =y 都被静默吞掉，rootfs 装配才报 cannot find dependency
+          dropped=$(comm -23 <(grep -oE '^CONFIG_[A-Za-z0-9_.-]+=[ym]' config-custom.seed | sort -u) \
+                             <(grep -oE '^CONFIG_[A-Za-z0-9_.-]+=[ym]' .config | sort -u))
+          if [ -n "$dropped" ]; then
+            echo "::error::seed 里这些行被 defconfig 丢弃了（符号不可见：改名/依赖不满足/feeds 缺失）"
+            echo "$dropped"
+          fi
+          if grep -q '^CONFIG_PACKAGE_dnsmasq=y$' .config; then
+            echo "::error::dnsmasq(非 full)又被加回，会与 dnsmasq-full 抢文件；说明有保留包 select 了默认变体"
+            exit 1
+          fi
+          [ -z "$dropped" ]
+          echo "seed 包数: $(grep -c '^CONFIG_PACKAGE_' config-custom.seed)  defconfig 后包数: $(grep -c '^CONFIG_PACKAGE_.*=y$' .config)"
 
       - name: Download sources
         run: make download -j$(nproc)

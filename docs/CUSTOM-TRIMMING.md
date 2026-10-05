@@ -104,6 +104,26 @@ argon 主题、zram、smartd+lm-sensors（温控）、wireguard、dnsmasq-full�
 
 ### 安全网（为什么敢删）
 
-1. `make defconfig` 会把"仍被保留包硬依赖"的项自动加回 `=y`——刷前 diff 展开的 `.config` 与 seed，多出的行即被拉回的依赖（已知候选：libiwinfo 被 rpcd-mod-iwinfo 拉回、mdadm 可能被 luci-app-diskman 拉回，均无害）
+1. `make defconfig` 会把"仍被保留包硬依赖"的项自动加回 `=y`——刷前 diff 展开的 `.config` 与 seed，多出的行即被拉回的依赖（已知候选：libiwinfo 被 rpcd-mod-iwinfo 拉回、mdadm 可能被 luci-app-diskman 拉回，均无害）。**但不止这些**：它还会加回 **profile 默认包**（`DEFAULT_PACKAGES`），这类可能与有意替换的实现冲突，见 §七
+2. **`make defconfig` 必须在 `./scripts/feeds install -a` 之后跑**，否则所有 feed 包的 `CONFIG_PACKAGE_*=y` 行被静默丢弃（符号还不存在），后果见 §七 原因 1
 2. **软依赖**（脚本 shell 调用而非包依赖）不会被自动拉回——QEMU 启动验证 + 刷机后核对 LuCI 各页（重点：quickstart、磁盘管理、iStore 商店）照 BUILD-CUSTOM.md 流程走
 3. `dkml`（iStoreOS 动态内核模块加载器，package/diy/dkml）**保留**：iStore 商店装内核模块类应用的基础设施
+
+## 七、CI 首次构建失败复盘（2026-10-05，run 37324148570）
+
+失败点不在编译而在 **rootfs 装配**：`make[2]: *** [package/Makefile:99: package/install] Error 255`，
+opkg 报 `Collected errors`。跑的是**首轮 seed**（HEAD=eea07ec0f3，早于二次裁剪），二次裁剪的 697 行至今没构建过。
+两条互相独立的原因：
+
+| # | 日志现象 | 根因 | 修法 |
+|---|---|---|---|
+| 1 | `cannot find dependency attr for base-files`、`curl for opkg`、`libgcrypt for ntfsprogs`、`luci-theme-argon for istoreos-files` | workflow 把 `make defconfig` 排在 `feeds update/install` **之前**。此刻 feed 符号尚不存在，kconfig `--defconfig` 把这些行**静默丢弃**（`CONFIG_LUCI_LANG_zh_Hans` 等信息类行同样被丢）。attr/curl/libgcrypt/luci-theme-argon 四个依赖全是 feed 包，核心树里没有；`base-files`(Makefile:45)、`opkg`(:41)、`package/diy/ntfsprogs`(:51)、`package/istoreos-files`(:20) 对它们的 `+xxx` 依赖在符号不可见时 select 落空 → 既没 `=y` 也没构建候选 | workflow 改为先装 feeds 再 `cp seed .config && make defconfig`；seed 头部"用法"行补上 feeds 步骤（原来漏写，正是它带偏了 CI） |
+| 2 | `check_data_file_clashes: dnsmasq-full wants to install .../usr/sbin/dnsmasq`（等 10 个文件）`already provided by dnsmasq` | seed 只要 `dnsmasq-full`；`dnsmasq`(非 full) 是 **profile 默认包**——`include/target.mk:13` `DEVICE_TYPE?=router` → `DEFAULT_PACKAGES.router` 含 dnsmasq → 生成的 kconfig `default y if DEFAULT_dnsmasq` 把它加回 `=y`，两个变体装同一批文件 | seed 在 `dnsmasq-full` 前钉 `# CONFIG_PACKAGE_dnsmasq is not set` |
+
+**kconfig 语义实测**（用本仓库 `scripts/config/conf` 复现生成规则，不是推断）：
+
+- `# CONFIG_X is not set` 扛得住 `default y if DEFAULT_X`（defconfig 尊重显式关闭）→ 原因 2 的修法成立
+- 扛不住其他包的 `select PACKAGE_X`（会被强制回 `=y`）→ 若某个保留包硬依赖非 full 变体，冲突会复发
+- 符号不存在时 `CONFIG_...=y` 行被无警告删除 → 原因 1 只能靠步骤顺序防，CI 已加审计：defconfig 后 diff seed 与被丢弃的行，非空即红；同时硬断言 `CONFIG_PACKAGE_dnsmasq=y` 出现即红（这次 14:22 触发、14:30 就该发现问题，而不是 16:34 装配阶段才炸）
+
+**功能视角**：本次**没有增删任何功能**，只修构建正确性。设备能做的事仍与 §六「仍然完好、一个没动的功能」清单一致；`dnsmasq` 非 full 变体从来不在路由器实装清单里，钉死它不改变行为（dnsmasq-full 以 `PROVIDES:=dnsmasq` 满足依赖）。
