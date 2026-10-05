@@ -124,8 +124,19 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 - `# CONFIG_X is not set` 扛得住 `default y if DEFAULT_X`（defconfig 尊重显式关闭）→ 原因 2 的修法成立
 - 扛不住其他包的 `select PACKAGE_X`（会被强制回 `=y`）→ 若某个保留包硬依赖非 full 变体，冲突会复发
-- 符号不存在时 `CONFIG_...=y` 行被无警告删除 → 原因 1 只能靠步骤顺序防，CI 已加审计：defconfig 后 diff seed 与被丢弃的行，非空即红；同时硬断言 `CONFIG_PACKAGE_dnsmasq=y` 出现即红（这次 14:22 触发、14:30 就该发现问题，而不是 16:34 装配阶段才炸）
+- 符号不存在时 `CONFIG_...=y` 行被无警告删除 → 原因 1 只能靠步骤顺序防。CI 现已在 defconfig 后做审计：按 `tmp/.config-package.in` 把未生效的 seed 行分成「符号不存在」与「符号存在但没开成」两类，报告连同展开的 `.config` 一起作 artifact 上传；**审计本身不阻断构建**（要让它同时回答"能不能出镜像"），只有 `CONFIG_PACKAGE_dnsmasq=y` 复现时才硬失败
 
 **功能视角**：本次**没有增删任何功能**，只修构建正确性。设备能做的事仍与 §六「仍然完好、一个没动的功能」清单一致；`dnsmasq` 非 full 变体从来不在路由器实装清单里，钉死它不改变行为（dnsmasq-full 以 `PROVIDES:=dnsmasq` 满足依赖）。
 
 **查构建状态的坑**：本目录配了 `upstream=istoreos/istoreos`，`gh run list` 不带 `--repo` 会解析到**上游仓库并返回空数组**，看着像"从没跑过"。必须 `gh run list --repo xcy960815/istoreos --workflow "Build iStoreOS trimmed"`。
+
+### 修复后复查（run 37345712561，17:04Z）
+
+顺序修好 + dnsmasq 钉死后，构建停在新增的审计步骤（几分钟，不再烧 2 小时）。已验证生效的部分：`attr`/`curl`/`libgcrypt`/`luci-theme-argon` 不再出现在丢失列表，`CONFIG_PACKAGE_dnsmasq` 也没被加回。
+
+审计同时打出 **105 行 `CONFIG_PACKAGE_*=y` 未生效**，workflow 现在按 `tmp/.config-package.in` 把它们自动分成两类并上传 `.config`+报告为 artifact：
+
+- **符号本就不存在**：绝大多数是 `libcurl4` `libgcc1` `libubus20250102` 这类**带 ABI 后缀的 opkg 二进制包名**。kconfig 符号是无后缀的 `libcurl`/`libgcc`/`libubus`，后缀只出现在打包出的包名上。这些行自写进 seed 起就是死行（历次构建都丢），不影响功能——库会作为依赖自动进镜像，但"清单"是假的，待清
+- **符号存在却没开成**（依赖不满足/被隐藏）：待 artifact 分类结果确认，重点盯 `luci-app-openclash`、`luci-app-tailscale-community`、`quickstart`、`app-meta-*`、`luci-app-{oaf,eqos,cpufreq,fan,diskman}` 这些 §三 保留项
+
+**顺序错误的真实代价比原判断严重**（对 14:22Z 那次日志的实测计数，非推断）：全文 `openclash|tailscale` 出现 **0** 次、`Installing luci*` **0** 条、`Configuring luci-base` **0** 次——也就是说那次构建的产物根本没有 LuCI 和任何商店应用，是台裸路由；先前只看到 4 条 `cannot find dependency` 是因为核心包（base-files/opkg/istoreos-files/ntfsprogs）硬依赖 feed 包，是这批缺失里**最早撞墙**的一部分，不是全部。

@@ -50,20 +50,40 @@ jobs:
         run: |
           cp config-custom.seed .config
           make defconfig
-          # defconfig 会丢弃"符号不存在"的行：feeds 未安装时所有 feed 包(attr/curl/
-          # libgcrypt/luci-theme-argon 等)的 =y 都被静默吞掉，rootfs 装配才报 cannot find dependency
-          dropped=$(comm -23 <(grep -oE '^CONFIG_[A-Za-z0-9_.-]+=[ym]' config-custom.seed | sort -u) \
-                             <(grep -oE '^CONFIG_[A-Za-z0-9_.-]+=[ym]' .config | sort -u))
-          if [ -n "$dropped" ]; then
-            echo "::error::seed 里这些行被 defconfig 丢弃了（符号不可见：改名/依赖不满足/feeds 缺失）"
-            echo "$dropped"
-          fi
+          # 审计：defconfig 会无警告删掉"符号不存在"的行，也要靠 tmp/.config-package.in 区分
+          # "名字写错/包没了"与"符号存在但依赖不满足"，否则要到 rootfs 装配才暴露
+          grep -oE '(menu)?config PACKAGE_[A-Za-z0-9_.+-]+' tmp/.config-package.in | sed 's/.*config //' | sort -u > ksyms.txt
+          grep -oE '^CONFIG_PACKAGE_[A-Za-z0-9_.+-]+=y' config-custom.seed | sed 's/^CONFIG_//; s/=y$//' | sort -u > want.txt
+          grep -oE '^CONFIG_PACKAGE_[A-Za-z0-9_.+-]+=[ym]' .config | sed 's/^CONFIG_//; s/=[ym]$//' | sort -u > on.txt
+          comm -23 want.txt on.txt > lost.txt
+          grep -Fxf ksyms.txt lost.txt > lost_hidden.txt || true
+          comm -23 lost.txt lost_hidden.txt > lost_dead.txt
+          {
+            echo "seed 想要: $(wc -l < want.txt)  defconfig 后开启: $(wc -l < on.txt)  丢失: $(wc -l < lost.txt)"
+            echo; echo "== 符号不存在（seed 写的是 opkg 二元包名/改名/包已消失），这些行一直是死行 =="
+            cat lost_dead.txt
+            echo; echo "== 符号存在但没能开启（依赖不满足或被隐藏）——这些是真的缺包 =="
+            cat lost_hidden.txt
+          } | tee seed-audit.txt
+          echo "::warning::seed 有 $(wc -l < lost.txt) 行未生效，详见 seed-audit.txt"
           if grep -q '^CONFIG_PACKAGE_dnsmasq=y$' .config; then
             echo "::error::dnsmasq(非 full)又被加回，会与 dnsmasq-full 抢文件；说明有保留包 select 了默认变体"
             exit 1
           fi
-          [ -z "$dropped" ]
-          echo "seed 包数: $(grep -c '^CONFIG_PACKAGE_' config-custom.seed)  defconfig 后包数: $(grep -c '^CONFIG_PACKAGE_.*=y$' .config)"
+          echo "kconfig 包符号总数: $(wc -l < ksyms.txt)"
+
+      - name: Upload config audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-audit-r${{ github.run_number }}
+          path: |
+            .config
+            seed-audit.txt
+            ksyms.txt
+            lost.txt
+          retention-days: 14
+          compression-level: 0
 
       - name: Download sources
         run: make download -j$(nproc)
