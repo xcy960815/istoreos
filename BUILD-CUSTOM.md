@@ -39,7 +39,7 @@ cd istoreos
 
 # 4. 应用裁剪配置
 cp config-custom.seed .config
-make defconfig            # 展开成完整 .config（~1077 个包）
+make defconfig            # 展开成完整 .config（实际包数以首次构建日志为准）
 
 # 5. 下载源码包 + 编译
 make download -j8
@@ -78,6 +78,6 @@ git push origin custom-24.10
 
 ## 备注
 
-- 当前 seed 基准取自 2026-10-05 路由器实际安装清单（1122 包 → 首轮裁至 1077 包 → 同日二次裁剪 seed 包配置行 1078 → 700；`make defconfig` 展开后的实际包数以 CI 构建为准）
+- seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字只有 seed 自身的 `CONFIG_PACKAGE_*` 行数：首轮 1078 → 同日二次裁剪后 697。`make defconfig` 展开后的**实际包数尚未实测**（Actions 至今 0 次运行），以首次构建日志为准
 - `luci-app-tailscale-community` 等 store 源包在 feeds install 后自动可用；若个别符号在新版被改名，defconfig 会丢弃该行，构建后用 `opkg list-installed | grep tailscale` 核对
 - 恢复某个删除的功能：iStore 商店装回（临时），或往 seed 加一行 `CONFIG_PACKAGE_xxx=y`（长期）
