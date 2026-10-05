@@ -9,4 +9,6 @@
 - 保留但有"看似无用"嫌疑的服务清单（openclash/tailscale/aria2 等，全部在用）
 - 改动纪律：**功能增删只改 `config-custom.seed`，不改源码**；`istoreos-24.10` 分支仅用于 ff-only 同步上游
 
+**了解整个家庭服务器改造计划（为什么这样裁剪、全家设备分工、迁移路线）：读 [`docs/HOME-SERVER-BACKGROUND.md`](docs/HOME-SERVER-BACKGROUND.md)**。
+
 构建与刷机步骤见 [`BUILD-CUSTOM.md`](BUILD-CUSTOM.md)；云端构建走 Actions（手动触发）。
