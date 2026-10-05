@@ -112,8 +112,8 @@ argon 主题、zram、smartd+lm-sensors（温控）、wireguard、dnsmasq-full�
 ## 七、CI 首次构建失败复盘（2026-10-05，run 37324148570）
 
 失败点不在编译而在 **rootfs 装配**：`make[2]: *** [package/Makefile:99: package/install] Error 255`，
-opkg 报 `Collected errors`。跑的是**首轮 seed**（HEAD=eea07ec0f3，早于二次裁剪），二次裁剪的 697 行至今没构建过。
-两条互相独立的原因：
+opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3，早于二次裁剪）；同日 15:28Z 另有一次
+基于二次裁剪 seed（706d20bfe1）的 run，步骤顺序未修，会挂在同一处。两条互相独立的原因：
 
 | # | 日志现象 | 根因 | 修法 |
 |---|---|---|---|
@@ -127,3 +127,5 @@ opkg 报 `Collected errors`。跑的是**首轮 seed**（HEAD=eea07ec0f3，早�
 - 符号不存在时 `CONFIG_...=y` 行被无警告删除 → 原因 1 只能靠步骤顺序防，CI 已加审计：defconfig 后 diff seed 与被丢弃的行，非空即红；同时硬断言 `CONFIG_PACKAGE_dnsmasq=y` 出现即红（这次 14:22 触发、14:30 就该发现问题，而不是 16:34 装配阶段才炸）
 
 **功能视角**：本次**没有增删任何功能**，只修构建正确性。设备能做的事仍与 §六「仍然完好、一个没动的功能」清单一致；`dnsmasq` 非 full 变体从来不在路由器实装清单里，钉死它不改变行为（dnsmasq-full 以 `PROVIDES:=dnsmasq` 满足依赖）。
+
+**查构建状态的坑**：本目录配了 `upstream=istoreos/istoreos`，`gh run list` 不带 `--repo` 会解析到**上游仓库并返回空数组**，看着像"从没跑过"。必须 `gh run list --repo xcy960815/istoreos --workflow "Build iStoreOS trimmed"`。

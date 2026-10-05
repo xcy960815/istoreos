@@ -78,7 +78,7 @@ git push origin custom-24.10
 
 ## 备注
 
-- seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字只有 seed 自身的 `CONFIG_PACKAGE_*` 行数：首轮 1078 → 同日二次裁剪后 697。`make defconfig` 展开后的**实际包数尚未实测**（Actions 至今 0 次运行），以首次构建日志为准
+- seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字只有 seed 自身的 `CONFIG_PACKAGE_*` 行数：首轮 1078 → 同日二次裁剪后 697。`make defconfig` 展开后的**实际包数尚未取得**（历次 Actions 构建都挂在 rootfs 装配，见 `docs/CUSTOM-TRIMMING.md` §七），以修复后的首次成功构建为准
 - `luci-app-tailscale-community` 等 store 源包在 feeds install 后自动可用；若个别符号在新版被改名，defconfig 会丢弃该行，构建后用 `opkg list-installed | grep tailscale` 核对
 - **上面第 3、4 步的顺序不能调换**：`make defconfig` 早于 `feeds install` 会静默删掉所有 feed 包的 `=y` 行（符号还不存在），要到 rootfs 装配才炸。Actions workflow 现已在 defconfig 后 diff seed 与被丢弃的行，非空即失败；复盘见 `docs/CUSTOM-TRIMMING.md` §七
 - 恢复某个删除的功能：iStore 商店装回（临时），或往 seed 加一行 `CONFIG_PACKAGE_xxx=y`（长期）
