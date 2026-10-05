@@ -30,7 +30,7 @@ sudo apt update && sudo apt install -y build-essential clang flex bison g++ gawk
   python3-distutils rsync unzip zlib1g-dev file wget curl
 
 # 2. 进入源码
-cd istoreos-src
+cd istoreos
 
 # 3. 更新 feeds（国内网络建议挂代理：export http_proxy=http://路由器IP:7893 之类）
 ./scripts/feeds update -a
