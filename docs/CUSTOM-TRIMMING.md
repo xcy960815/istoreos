@@ -53,7 +53,31 @@
 
 首轮 seed = 官方镜像清单做减法，官方清单里大量包是为**通用硬件**准备的。按目标机最终定位
 （无无线的纯网关 + Tailscale 入口 + VLAN，文件服务归 9400F/N100）做第二轮减法。
-仍在 seed 内完成，未动源码；§三保留清单**原封未动**。seed 包配置行数 1078 → 700。
+仍在 seed 内完成，未动源码；§三保留清单**原封未动**。seed 包配置行数 1078 → 697。
+
+### 功能视角：二次裁剪后这台路由器"不能再做什么"
+
+| 不能再做的功能 | 涉及（已删） | 影响 / 替代方案 |
+|---|---|---|
+| 无线 AP / 无线中继 / USB 无线网卡 | mac80211、hostapd、wpa-supplicant、全系无线驱动+固件 | 机器本来就没无线网卡；日后插 USB 无线网卡需往 seed 加回 mac80211+wpa-supplicant |
+| 3G/4G/5G 上网模组、随身 WiFi 拨号 | modemmanager、libmbim/libqmi、comgt、usb-modeswitch、mhi/qrtr | 无此硬件；**断网应急改用手机 USB 共享网络**（rndis/ipheth/cdc-ncm 已保留，插 iPhone/Android 可当 WAN） |
+| USB 转串口设备（调试线/串口模块） | kmod-usb-serial 全系 | 需要时 iStore 临时装回或往 seed 加一行 |
+| 接显示器看图形界面、GPU 工具 | i915/amdgpu/radeon 固件、DRM/fb 全系、nvtop | 无头设备无影响；GRUB 菜单和 VGA 文本控制台仍可用，QEMU 验证不受影响 |
+| 当 NFS/Samba/WebDAV 服务器；挂载别人的网络盘 | NFS 服务端全家、cifsmount、davfs2（Samba 首轮已删） | 文件服务归 9400F/N100；**gowebdav 服务端仍在用** |
+| RAID / 多盘合并 / 硬盘休眠 / iSCSI / USB over IP | mdadm+kmod-md、kmod-dm、mergerfs、hd-idle、iscsi/aoe、usbip | 单盘直用完全不受影响 |
+| L2TP/PPTP/SSTP VPN 拨号、GRE/IPIP 隧道、IPsec、链路聚合、中继 | 各协议 kmod+用户态、bonding、relayd | 远程统一走 Tailscale；**WireGuard 完整保留** |
+| 跑 KVM 虚拟机 | kvm/vfio/vhost（容器首轮已删） | 虚拟化归 9400F/N100 |
+| 识别老式/服务器级网卡（万兆、FC、古董 PCI） | 对应驱动+固件 | 常用保险已留：**igc + e1000/e1000e/igb/r8169/r8125** + 主流 USB 网卡（asix/ax88179/aqc111/rtl8152） |
+| ISDN/ATM 电话线拨号 | misdn/hfc/atm/solos | 古董功能，无影响 |
+| UPnP NAT 映射（首轮已删）的残留客户端库 | libnatpmp1 | 无影响 |
+
+### 仍然完好、一个没动的功能
+
+openclash、tailscale（路由器仍作 exit node）、aria2+ariang、transmission、openlist、gowebdav、
+vlmcsd、eqos、oaf、ttyd、wol、cpufreq、luci-app-fan、fastnet、floatip、iStore 商店+quickstart、
+argon 主题、zram、smartd+lm-sensors（温控）、wireguard、dnsmasq-full、flow offload（kmod-nf-flow）。
+
+### 包名明细（按批次）
 
 | 批次 | 删除内容 | 依据 |
 |---|---|---|
