@@ -13,6 +13,7 @@
 | ❌ 删除 | ddns-scripts 全家/ddns-go/ddnsto/luci-app-ddns* | 远程访问走 Tailscale，不需要 DDNS |
 | ❌ 删除 | miniupnpd/luci-app-upnp | 减少暴露面，无使用需求 |
 | ❌ 删除 | linkease/luci-app-linkease | 未使用 |
+| ❌ 二次裁剪(2026-10-05) | 无线全家/蜂窝modem全家/GPU固件与DRM/NFS·SMB存储/l2tp-pptp-sstp-gre-ipip-ipsec隧道/KVM宿主/Docker孤儿kmod/老式网卡驱动 | J4125 无对应硬件；文件服务归 9400F/N100；远程只走 Tailscale。明细见 docs/CUSTOM-TRIMMING.md §六 |
 | ✅ 保留 | 基础网络栈/kmod-igc/firewall4/dnsmasq/IPv6 | 路由器命根子 |
 | ✅ 保留 | tailscale + luci-app-tailscale-community | 全家远程入口 |
 | ✅ 保留 | openclash/aria2/transmission/openlist/gowebdav/vlmcsd/eqos/oaf/ttyd/wol/cpufreq/fan | 实际在用（有活跃配置） |
@@ -77,6 +78,6 @@ git push origin custom-24.10
 
 ## 备注
 
-- 当前 seed 基准取自 2026-10-05 路由器实际安装清单（1122 包 → 裁至 1077 包）
+- 当前 seed 基准取自 2026-10-05 路由器实际安装清单（1122 包 → 首轮裁至 1077 包 → 同日二次裁剪 seed 包配置行 1078 → 700；`make defconfig` 展开后的实际包数以 CI 构建为准）
 - `luci-app-tailscale-community` 等 store 源包在 feeds install 后自动可用；若个别符号在新版被改名，defconfig 会丢弃该行，构建后用 `opkg list-installed | grep tailscale` 核对
 - 恢复某个删除的功能：iStore 商店装回（临时），或往 seed 加一行 `CONFIG_PACKAGE_xxx=y`（长期）
