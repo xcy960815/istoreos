@@ -71,6 +71,8 @@ jobs:
             exit 1
           fi
           echo "kconfig 包符号总数: $(wc -l < ksyms.txt)"
+          # 产物里要能看到展开后的完整 .config；upload-artifact 不收点文件，先改名
+          cp .config config-expanded.txt
 
       - name: Upload config audit
         if: always()
@@ -78,15 +80,56 @@ jobs:
         with:
           name: seed-audit-r${{ github.run_number }}
           path: |
-            .config
+            config-expanded.txt
             seed-audit.txt
             ksyms.txt
             lost.txt
           retention-days: 14
           compression-level: 0
 
+      - name: Pre-seed sources with dead upstream URLs
+        shell: bash
+        run: |
+          # third feed 的 vlmcsd Makefile 抓 refs/tags/1113.tar.gz，可上游 tag 其实叫 svn1113 →
+          # 三个镜像全 404(run 37347586447 编译 3.8h 后才炸)。不改 feed 源码：把内容正确的包按
+          # dl/ 里的目标文件名放好，download.mk 见文件存在且 sha256 == PKG_HASH 就不下(FORCE 只在哈希不符时加)
+          set -euo pipefail
+          seed_dl() {
+            local file="$1" url="$2" makefile="$3" hash
+            hash=$(sed -n 's/^PKG_HASH:=//p' "$makefile")
+            [ -n "$hash" ] || { echo "::error::$makefile 里没有 PKG_HASH，预置无从校验"; exit 1; }
+            if [ -f "dl/$file" ] && [ "$(sha256sum < "dl/$file" | cut -d' ' -f1)" = "$hash" ]; then
+              echo "dl/$file 已就绪(哈希匹配)，跳过"
+              return
+            fi
+            curl -fSL --connect-timeout 20 --retry 3 -o "dl/$file.part" "$url"
+            ( cd dl && echo "$hash  $file.part" | sha256sum -c - )
+            mv "dl/$file.part" "dl/$file"
+            echo "dl/$file <- $url"
+          }
+          mkdir -p dl
+          seed_dl vlmcsd-1113.tar.gz \
+            https://github.com/Wind4/vlmcsd/archive/refs/tags/svn1113.tar.gz \
+            package/feeds/third/vlmcsd/Makefile
+
       - name: Download sources
-        run: make download -j$(nproc)
+        shell: bash
+        run: |
+          # make download 里失败的包只打 ERROR、不改退出码(run 37347586447 步 9 绿、编译期才炸)，
+          # 所以自己扫日志：死源码在这里几分钟就能暴露，不必等 3.8 小时
+          set -o pipefail
+          make download -j$(nproc) 2>&1 | tee download.log
+          # 每个 grep 都补 || true：GH 用 bash -e 跑，pipefail 下"没匹配"(rc=1)会把干净构建也判死
+          bad=$(grep -oE 'ERROR: package/[^ ]+ failed to build' download.log | sort -u || true)
+          if [ -n "$bad" ]; then
+            echo "::error::download 阶段有包失败（make download 仍返回 0，故必须在这里拦）"
+            echo "$bad"
+            for b in $(grep -oE '\*\*\* \[Makefile:[0-9]+: [^]]*dl/[^] ]+' download.log | sed 's|.*/dl/||' | sort -u); do
+              echo "-- $b 尝试过的 URL:"
+              grep -F "$b" download.log | grep -oE 'https?://[A-Za-z0-9./:_-]+' | sort -u | sed 's/^/     /'
+            done
+            exit 1
+          fi
 
       - name: Compile
         run: |

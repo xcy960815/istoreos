@@ -78,7 +78,7 @@ git push origin custom-24.10
 
 ## 备注
 
-- seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字只有 seed 自身的 `CONFIG_PACKAGE_*` 行数：首轮 1078 → 同日二次裁剪后 697。`make defconfig` 展开后的**实际包数尚未取得**（历次 Actions 构建都挂在 rootfs 装配，见 `docs/CUSTOM-TRIMMING.md` §七），以修复后的首次成功构建为准
-- `luci-app-tailscale-community` 等 store 源包在 feeds install 后自动可用；若个别符号在新版被改名，defconfig 会丢弃该行，构建后用 `opkg list-installed | grep tailscale` 核对
-- **上面第 3、4 步的顺序不能调换**：`make defconfig` 早于 `feeds install` 会静默删掉所有 feed 包的 `=y` 行（符号还不存在），那次构建的产物连 LuCI 都没有。Actions workflow 现已在 defconfig 后做审计并把展开的 `.config` 与报告上传为 artifact，复盘见 `docs/CUSTOM-TRIMMING.md` §七
-- 恢复某个删除的功能：iStore 商店装回（临时），或往 seed 加一行 `CONFIG_PACKAGE_xxx=y`（长期）
+- seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字：seed 自身 `CONFIG_PACKAGE_*` 行 首轮 1078 → 同日二次裁剪后 697；`make defconfig` 展开后选中 **705** 个包（run 37347586447 实测，产物 `seed-audit-r4` 里的 `config-expanded.txt`）。镜像最终包数以成功构建的 `manifest` 为准
+- **商店应用不在构建期**：`luci-app-tailscale-community`、`luci-app-openclash`、`quickstart`、`app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,…}` 这些名字在 `feeds.conf.default` 的六个 feed 里根本没有对应 kconfig 符号（实测 11910 个符号 0 命中），它们是路由器刷机后从 iStore 商店装的，seed 里那些行自写下就是死行；刷完新固件需从商店重新装回。逐条清单见 `docs/CUSTOM-TRIMMING.md` §九
+- **上面第 3、4 步的顺序不能调换**：`make defconfig` 早于 `feeds install` 会静默删掉所有 feed 包的 `=y` 行（符号还不存在），那次构建的产物连 LuCI 都没有。Actions workflow 现已在 defconfig 后做审计并把展开的配置与报告上传为 artifact（复盘见 §七）；`make download` 也会自己扫日志——它对失败包只打 ERROR、退出码仍是 0，死源码会拖到编译期 3.8 小时后才炸（复盘见 §八）
+- 恢复某个删除的功能：iStore 商店装回（临时），或往 seed 加一行 `CONFIG_PACKAGE_xxx=y`（长期，仅对该符号确实存在于 feed 时有效）

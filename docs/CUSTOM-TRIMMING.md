@@ -29,6 +29,8 @@
 
 ## 三、保留清单（有实际使用证据，后续 AI 不要当成"没用"误删）
 
+> ⚠️ 本清单是**功能**层面"别丢"，不等于"固件里已烘焙"。r4 审计实测：其中 openclash、luci-app-tailscale-community、quickstart、app-meta-*、luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,fastnet,floatip,openclawmgr} 等在 `feeds.conf.default` 的六个 feed 里**没有对应 kconfig 符号**，seed 中的行一直是死行；刷机后要经 iStore 商店装回（商店本体 `luci-app-store`+`dkml`+`tailscale` 守护进程确实在固件里）。明细与证据见 §九。
+
 - **openclash**：全家主力代理，GeoIP 数据齐全、多份配置备份（用户本机代理 7897 与之同源）
 - **tailscale + luci-app-tailscale-community**：全家远程入口，路由器是 exit node
 - **aria2 / transmission**：85 行 / 74 行实际配置，在用的下载工具
@@ -106,8 +108,8 @@ argon 主题、zram、smartd+lm-sensors（温控）、wireguard、dnsmasq-full�
 
 1. `make defconfig` 会把"仍被保留包硬依赖"的项自动加回 `=y`——刷前 diff 展开的 `.config` 与 seed，多出的行即被拉回的依赖（已知候选：libiwinfo 被 rpcd-mod-iwinfo 拉回、mdadm 可能被 luci-app-diskman 拉回，均无害）。**但不止这些**：它还会加回 **profile 默认包**（`DEFAULT_PACKAGES`），这类可能与有意替换的实现冲突，见 §七
 2. **`make defconfig` 必须在 `./scripts/feeds install -a` 之后跑**，否则所有 feed 包的 `CONFIG_PACKAGE_*=y` 行被静默丢弃（符号还不存在），后果见 §七 原因 1
-2. **软依赖**（脚本 shell 调用而非包依赖）不会被自动拉回——QEMU 启动验证 + 刷机后核对 LuCI 各页（重点：quickstart、磁盘管理、iStore 商店）照 BUILD-CUSTOM.md 流程走
-3. `dkml`（iStoreOS 动态内核模块加载器，package/diy/dkml）**保留**：iStore 商店装内核模块类应用的基础设施
+3. **软依赖**（脚本 shell 调用而非包依赖）不会被自动拉回——QEMU 启动验证 + 刷机后核对 LuCI 各页（重点：iStore 商店；quickstart、磁盘管理、openclash、tailscale UI 这些**先按 §九 从商店装回**再核对）照 BUILD-CUSTOM.md 流程走
+4. `dkml`（iStoreOS 动态内核模块加载器，package/diy/dkml）**保留**：iStore 商店装内核模块类应用的基础设施
 
 ## 七、CI 首次构建失败复盘（2026-10-05，run 37324148570）
 
@@ -137,6 +139,36 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 审计同时打出 **105 行 `CONFIG_PACKAGE_*=y` 未生效**，workflow 现在按 `tmp/.config-package.in` 把它们自动分成两类并上传 `.config`+报告为 artifact：
 
 - **符号本就不存在**：绝大多数是 `libcurl4` `libgcc1` `libubus20250102` 这类**带 ABI 后缀的 opkg 二进制包名**。kconfig 符号是无后缀的 `libcurl`/`libgcc`/`libubus`，后缀只出现在打包出的包名上。这些行自写进 seed 起就是死行（历次构建都丢），不影响功能——库会作为依赖自动进镜像，但"清单"是假的，待清
-- **符号存在却没开成**（依赖不满足/被隐藏）：待 artifact 分类结果确认，重点盯 `luci-app-openclash`、`luci-app-tailscale-community`、`quickstart`、`app-meta-*`、`luci-app-{oaf,eqos,cpufreq,fan,diskman}` 这些 §三 保留项
+- **符号存在却没开成**（依赖不满足/被隐藏）：已在 r4 定档，见下方「r4 审计定档」
 
 **顺序错误的真实代价比原判断严重**（对 14:22Z 那次日志的实测计数，非推断）：全文 `openclash|tailscale` 出现 **0** 次、`Installing luci*` **0** 条、`Configuring luci-base` **0** 次——也就是说那次构建的产物根本没有 LuCI 和任何商店应用，是台裸路由；先前只看到 4 条 `cannot find dependency` 是因为核心包（base-files/opkg/istoreos-files/ntfsprogs）硬依赖 feed 包，是这批缺失里**最早撞墙**的一部分，不是全部。
+
+## 八、第三次失败：上游源码 404（run 37347586447 = r4，17:19Z→21:08Z）
+
+前两层已确认修好：`Collected errors` **0** 条、dnsmasq 没被加回、一路跑到编译并在 3.8 小时后挂掉。唯一失败点是 `package/feeds/third/vlmcsd`：
+
+- feed 的 Makefile 用 `PKG_SOURCE_URL_FILE:=$(PKG_VERSION).tar.gz` 去抓 `…/archive/refs/tags/1113.tar.gz`，可上游 tag 实际叫 **`svn1113`**（`gh api repos/Wind4/vlmcsd/tags`）。GitHub + sources.cdn + sources.openwrt + mirror2 四路全 404 → `No more mirrors to try - giving up.`
+- **内容没变，只是远端文件名错**：实测 `https://github.com/Wind4/vlmcsd/archive/refs/tags/svn1113.tar.gz` 的 sha256 = feed 里的 `PKG_HASH`（`62f55c48…42cc`）。
+
+修法（**不改 feed 源码**，vlmcsd 是 §三 在用项也不从 seed 删）：CI 在 `make download` 前把它按 dl 目标名预放进 `dl/vlmcsd-1113.tar.gz`，哈希取自 feed 的 Makefile 现场校验。成立依据是 `include/download.mk:350` 的 `$(DL_DIR)/$(FILE)` 规则无前提——文件已在就视为最新；`include/package.mk:214` 的 `check_download_integrity` 只在**哈希不符**时才补 FORCE（:77）。离线三步验证过：首次落位、再跑跳过、内容错则 rc=1 且不留正式文件。
+
+顺带堵第二道延迟：`make download` 对失败包只打 `ERROR: package/… failed to build`、**退出码仍是 0**（r4 步 9 绿，而日志 4448 行已经有这条 ERROR），所以 Download sources 现在自己扫日志并失败退出——死源码在几分钟内暴露，不再等 3.8 小时。
+
+**功能视角**：没有增删任何功能，vlmcsd 仍在固件里。
+
+## 九、r4 审计定档：106 行未生效的真实构成
+
+`seed 想要 697 → defconfig 后开启 705 → 丢失 106`（展开 `.config` 在 artifact 里叫 `config-expanded.txt`；此前写 `.config` 上传不到，dot 文件被 glob 跳过了）。
+
+**符号不存在 104 行**，两类：
+
+1. **带 ABI 后缀的 opkg 二进制包名**约 60 行（`libcurl4` `libgcc1` `libubus20250102` `libruby3.3` …）。kconfig 符号是无后缀的 `libcurl`/`libubus`，后缀只出现在打包出的包名上。死行，库随依赖自动进镜像——待清。
+2. **iStoreOS 商店应用**（其余约 44 行）：`luci-app-openclash`、`luci-app-tailscale-community`、`quickstart`/`luci-app-quickstart`/`luci-i18n-quickstart-zh-cn`、全部 `app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,fastnet,floatip,gowebdav,openclawmgr}`、`luci-lib-mac-vendor`、`linkmount`、`fastnet`、`floatip`、`gowebdav`、`webdav2`、`appfilter`、`kmod-oaf`、`aria2-entry-deps`、`luci-js-deps`、`transmission-daemon-openssl`、`jansson4`。
+   - **证据**：`feeds.conf.default` 与上游 `istoreos/istoreos@istoreos-24.10` 逐字相同（只有 packages/luci/routing/telephony/store/third 六个 feed），而 defconfig 后 `tmp/.config-package.in` 的 **11910** 个包符号里 `quickstart|openclash|app-meta|diskman|eqos|oaf|fastnet|floatip|linkmount|appfilter` 命中 **0**。
+   - 这些应用住在**没写进 feeds.conf 的仓库**：`jjm2473/openwrt-app-meta`（`applications/app-meta-*`）、`jjm2473/openwrt-apps`（`luci-app-cpufreq`/`luci-app-fan`/`luci-lib-mac-vendor`）、`istoreos/quickstart`、`istoreos/istoreos-app-hub`（`apps/quickstart,fastnet,floatip,linkmount,webdav2,…`）。
+   - 也就是说 §六 的基准（路由器 `opkg list-installed` 1122 包）**混入了刷机后从 iStore 商店运行时安装的包**，它们从来不是本仓库的构建期候选；裁剪台账里它们的"已删/保留"都是虚账。
+   - 反面确认：商店自身在——`luci-app-store`、`dkml`、`istoreos-files`、`tailscale`（守护进程）都有符号且已开启，刷完机仍可从商店逐个装回。
+
+**符号存在却没开成 2 行**：`kmod-thermal`、`kmod-xdp-sockets-diag`——内核内建符号没开（需 `make kernel menuconfig`，或该 target 未 support），与 feed 无关。
+
+**待用户定（未定前不动 seed）**：是否往 `feeds.conf` 追加 app-meta / openwrt-apps / quickstart 等 feed，把商店应用**烤进固件**；还是维持"固件只留路由栈 + 商店，刷机后从商店装回 openclash / tailscale UI / quickstart / eqos …"。前者镜像更大但刷机即用，后者更小但需手动补装。

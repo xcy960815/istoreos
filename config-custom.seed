@@ -5,8 +5,11 @@
 # 基准: 官方 istoreos-24.10 x86_64 镜像实际安装清单 (opkg list-installed, 1122包) 做减法
 # 目标机器: J4125 四口 2.5G (i226-V) 软路由
 # 删除: Docker全家桶/Samba/DDNS(3套)/UPnP/linkease/ddnsto/unishare 及其 i18n
-# 保留: 基础路由栈 + kmod-igc + openclash + tailscale + istore/quickstart
-#       + aria2/transmission/openlist/gowebdav/vlmcsd/eqos/ttyd/wol 等在用服务
+# 保留: 基础路由栈 + kmod-igc + tailscale(守护进程) + iStore 商店(luci-app-store/dkml)
+#       + aria2/transmission/openlist/vlmcsd/ttyd/wol 等在用服务
+# 注意: openclash/quickstart/app-meta-*/luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,...} 这些 =y 行是死行——
+#       feeds.conf.default 的六个 feed 里没有对应符号(它们是路由器上从 iStore 商店运行时装的), 刷机后需重新装回
+#       逐条见 docs/CUSTOM-TRIMMING.md §九
 # 二次裁剪 (2026-10-05): 按"纯网关+Tailscale入口"定位再删——无线全家/蜂窝modem全家/GPU固件与DRM/
 #   NFS-SMB存储服务/l2tp-pptp-sstp-gre-ipip-ipsec隧道/KVM虚拟化宿主/Docker孤儿kmod/老式网卡驱动
 #   (网卡保险仅留 igc/e1000/e1000e/igb/r8169/r8125; USB网卡与手机共享网络保留)
