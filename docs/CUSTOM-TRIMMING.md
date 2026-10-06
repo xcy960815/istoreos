@@ -193,3 +193,23 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 **保留未动**：`kmod-thermal`、`kmod-xdp-sockets-diag`——这两行符号真实存在，只是内核内建项没开，属"真缺"而非"死行"，要恢复得动 `make kernel menuconfig`，不能从 seed 里一删了之。D 档（§六）里点名要查依赖的 `linkmount` 也在这批被清掉了：它根本不是构建期候选，路由器上那份是商店装的。
 
+## 十一、第四次失败：缓存死锁——每次都被自家 timeout 杀在半路（run 37422215944，2026-10-06）
+
+`conclusion: cancelled` 不是人取消的，是 workflow 自己的 `timeout-minutes: 350` 到点被 GitHub 杀掉：job 06:09:37Z 起跑、12:00:21Z 终止，正好 5h50m44s。前 10 步全绿，Compile（06:40:26 开始 `make world`）被杀时正在编 **ruby**。里程碑实测：tools/compile 1h25m → toolchain/compile 23m → target/compile 15m → package/compile 3h17m 才到 ruby 中段——**4 核托管 runner 上全量冷编译约需 7h+，350 分钟根本装不下**。
+
+真正的病是**死循环**：`actions/cache@v4` 的缓存保存在 post 步骤里，`post-if: success()`——job 不成功就不存。而这个仓库 6 次 run 无一成功（`gh cache list` 实测 0 条），于是每次都全量冷编 → 每次都超时取消 → 永远存不上缓存 → 下次还是冷编。此前 §八 修的 vlmcsd 预置在本次 run 是生效的（step 9 绿），不是本症。
+
+**GitHub Actions 取消语义实测**（本次 run 的步骤清单为证，非推断）：job 被 timeout 取消后，`if: always()` 的步骤**照常执行**（Report disk usage 在 12:00:17Z 留下了 df 输出），post 步骤里 `post-if: success()` 的被跳过（Post Cache conclusion=skipped）。所以出路是把"保存"从 post 挪到普通步骤并挂 `always()`。
+
+**修法**（借鉴 draco-china/istoreos-actions 所用 `klever1988/cachewrtbuild` 的机制，不引入第三方 action，用官方 `actions/cache` 的 restore/save 拆分实现）：
+
+- 缓存拆两对独立 restore+save，key 按用途分前缀（`istoreos-dl-<run_id>` / `istoreos-tc-<run_id>`，restore-keys 前缀滚动复用）：
+  - `dl`：Save downloads cache 紧跟 Download sources，挂 `always()`——此刻 job 还健康，上传从容，编译超时也保住这 28 分钟的下载
+  - `staging_dir`：Save toolchain cache 在 Compile 后，挂 `always()`——**被超时取消也会存**，下次 run 恢复后 tools/toolchain 靠 `staging_dir/*/stamp` 直接跳过，从 package/compile 续编（约 4.5–5h，350 分钟内可完成，死循环即破）
+- 缓存路径去掉顶层 `toolchain/`（源码目录，无缓存价值，编译产物在 `staging_dir/`）；`staging_dir` 整目录保留（含 target-* 的内核 stamp）
+- 恢复时 tools/toolchain 会逐个查 stamp 后空跑（几分钟 no-op 检查），不用 cachewrtbuild 那招 sed 改顶层 Makefile——不改源码树的文件，符合本仓库纪律
+
+**参考项目的现状警示**：draco-china/istoreos-actions 最近 20 次 run 全 failure（多为 3 分钟早夭，另有一次 360.3 分钟撞 6h 平台上限），只能借鉴机制不能照抄现状；它的 cachewrtbuild 同样 `post-if: success()`，首次成功前的 bootstrap 问题在我们这里用 `always()` save 解决。
+
+**功能视角**：没有增删任何功能、没有动 seed。构建基础设施修复，预期下一次 run 仍可能超时一次（存下 staging_dir），再下一次即可续编成功；成功一次后缓存齐备，后续构建显著缩短。
+

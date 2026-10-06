@@ -30,15 +30,25 @@ jobs:
             python3-pyelftools swig python3-dev
           sudo apt-get install -y python3-distutils || true
 
-      - name: Cache toolchain and downloads
-        uses: actions/cache@v4
+      # 缓存拆成 dl / 工具链两对独立的 restore+save：
+      # actions/cache@v4 的 post 保存只在 job 成功时跑(post-if: success())，而冷编译超过
+      # timeout → job 被取消 → post 跳过 → 缓存永远是空的 → 每次都全量重编(run 37422215944
+      # 编到 ruby 被杀，6 次 run 无一成功、仓库 0 条缓存，死循环)。拆开后 save 挂 always()，
+      # 被超时取消也会存(同 run 的 Report disk usage 以 always() 在取消后照常执行，已验证)；
+      # 工具链能续上，下次 run 就能从 package/compile 接着跑而不是从零开始。
+      - name: Restore downloads cache
+        uses: actions/cache/restore@v4
         with:
-          path: |
-            dl
-            staging_dir
-            toolchain
-          key: istoreos-cache-${{ github.run_id }}
-          restore-keys: istoreos-cache-
+          path: dl
+          key: istoreos-dl-${{ github.run_id }}
+          restore-keys: istoreos-dl-
+
+      - name: Restore toolchain cache
+        uses: actions/cache/restore@v4
+        with:
+          path: staging_dir
+          key: istoreos-tc-${{ github.run_id }}
+          restore-keys: istoreos-tc-
 
       - name: Update and install feeds
         run: |
@@ -131,10 +141,27 @@ jobs:
             exit 1
           fi
 
+      # dl 在 download 完成后立即存：此刻 job 还健康，上传从容；编译超时也不影响这份缓存
+      - name: Save downloads cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: dl
+          key: istoreos-dl-${{ github.run_id }}
+
       - name: Compile
         run: |
           make -j$(nproc) || make -j1 V=s
           df -hT
+
+      # 工具链缓存在 Compile 后存，挂 always()：即使编译超时被取消也把 staging_dir 存下来，
+      # 下次 run 恢复后 tools/toolchain 靠 stamp 跳过，从 package/compile 续编
+      - name: Save toolchain cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: staging_dir
+          key: istoreos-tc-${{ github.run_id }}
 
       - name: Upload images
         if: success()
