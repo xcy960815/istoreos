@@ -56,7 +56,7 @@ ls bin/targets/x86/64/
 2. **备份现系统**：LuCI → 系统 → 备份升级（导出 `/etc/config`）；稳妥起见把系统盘整盘 dd 备份一份
 3. **写盘**：新镜像 gz 解压后 dd 到系统盘（或 LuCI sysupgrade）
 4. **恢复配置**：`/etc/config` 里的 network/firewall/dhcp/tailscale 等恢复回去（dockerd/dpanel/samba/ddns 相关配置直接不要了）
-5. 验证 WAN 拨号、四个 2.5G 口、Tailscale 连通、openclash 可用
+5. 验证 WAN 拨号、四个 2.5G 口、Tailscale 连通；**openclash / tailscale UI / quickstart / eqos / cpufreq / fan / diskman 这些不在固件里**，先在 LuCI → iStore 商店装回再验（原因见 `docs/CUSTOM-TRIMMING.md` §九/§十）
 6. 旧盘留作回滚
 
 ## 上游同步工作流（fork 维护）
