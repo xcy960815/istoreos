@@ -176,4 +176,20 @@ jobs:
 
       - name: Report disk usage
         if: always()
-        run: df -hT
+        run: |
+          df -hT
+          # 顺手把"连 build_dir 一起缓存"到底装不装得下量出来：本机是 M1 Max，跑不了 x86 构建树，
+          # 只有这里有真实数字（r7 实测 dl 1.240GB / staging_dir 1.117GB，build_dir 一直缺测）。
+          # run 若在中途失败，build_dir 是全量体积的下限，读数时记得带上这个前提。
+          for d in dl staging_dir build_dir; do
+            if [ -d "$d" ]; then
+              printf '%s: %s\n' "$d" "$(du -sh "$d" | cut -f1)"
+            else
+              printf '%s: 目录不存在\n' "$d"
+            fi
+          done
+          # §十一 那张 stamp 落点表的现场版：恢复过缓存后 .built 仍是 0 而 *_installed 有值，
+          # 就说明 staging_dir 那份缓存确实买不到"续编"
+          printf 'stamp 落点计数 .built(build_dir 内)=%s *_installed(staging_dir 内)=%s\n' \
+            "$(find build_dir -name '.built*' 2>/dev/null | wc -l)" \
+            "$(find staging_dir -name '*_installed' 2>/dev/null | wc -l)"

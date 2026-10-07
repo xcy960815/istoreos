@@ -228,9 +228,9 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 `make` 判定是否重编看的是 `.built`，而它在没进缓存的 `build_dir/` 里；只把 `_installed` 存进缓存，恢复后 `.prepared/.configured/.built` 全缺，tools 与 toolchain 依旧从头编。所以 §十一 的"下次就能续编"不成立，缓存里唯一确定省时间的是 `dl`（省掉那次 28 分钟的 Download sources）。
 
-**判据（下次 run 一眼定性，非推断）**：恢复缓存后 `tools/compile` 若仍约 1h25m，即证明这份 staging_dir 缓存只是占配额；若接近 0，我这条更正作废。
+**判据（下次 run 一眼定性，非推断）**：恢复缓存后 `tools/compile` 若仍约 1h15m（r7 冷缓存实测 1h14m43s，此前这里写的 1h25m 是 r6 被杀时的估读），即证明这份 staging_dir 缓存只是占配额；若接近 0，我这条更正作废。
 
-**连 `build_dir` 一起缓存不可行**：一次 x86_64 全量构建的 `build_dir/` 远大于 GitHub 每仓库 10GB 缓存软上限（确切体积本机无法实测，M1 Max 跑不了 x86 构建树），且每次 run 存新 key 会互相挤掉。**待用户定的三条路**：①9400F 挂自建 runner，`build_dir` 常驻增量，彻底绕开托管 runner 的 350 分钟与配额（BUILD-CUSTOM 本来就以在 9400F 上编译为主线）；②接受"每次全量冷编"，把 dl 缓存留着、staging_dir 缓存删掉换配额；③先跑一次拿到 tools/compile 实测时长再决定。
+**`build_dir` 能不能一起缓存，唯一判据是它的体积，而这个数本机给不出**（M1 Max 跑不了 x86 构建树）——所以主构建 workflow 的 `Report disk usage` 现在顺手量 `dl`/`staging_dir`/`build_dir` 三者体积，并数 `.built`（build_dir 内）与 `*_installed`（staging_dir 内）作为上方落点表的现场版。r7 已实测 dl 1.240GB、staging_dir 1.117GB，`build_dir` 待下一次 run 出数；那次 run 若中途失败，读数只是全量体积的下限。**待用户定的三条路**：①9400F 挂自建 runner，`build_dir` 常驻增量，彻底绕开托管 runner 的 350 分钟与配额（BUILD-CUSTOM 本来就以在 9400F 上编译为主线）；②接受"每次全量冷编"，把 dl 缓存留着、staging_dir 缓存删掉换配额；③先跑一次拿到 tools/compile 实测时长再决定——r7 之后紧接着的那次 run 就是它，判据见 §十三「判据」。
 
 **参考项目的现状警示**：draco-china/istoreos-actions 最近 20 次 run 全 failure（多为 3 分钟早夭，另有一次 360.3 分钟撞 6h 平台上限），只能借鉴机制不能照抄现状；它的 cachewrtbuild 同样 `post-if: success()`，首次成功前的 bootstrap 问题在我们这里用 `always()` save 解决。
 
@@ -309,6 +309,7 @@ r7 的量级是 tools 1h15m + toolchain 21m + target 13m + package/compile（到
 
 - `dl` 缓存生效 = Download sources 从 28 分钟掉到几分钟
 - `staging_dir` 缓存有没有用，仍按 §十一「复核更正」的判据：恢复后 `tools/compile` 若还是约 1h15m 就是白占配额；接近 0 才算我那条评论作废
+- `build_dir` 到底装不装得下：同一次 run 的 `Report disk usage` 会打 `dl`/`staging_dir`/`build_dir` 三个体积与 `.built`/`*_installed` 计数。`build_dir` 若逼近 10GB 配额，"把它一起缓存"这条出局，只剩 §十一 的 ①（9400F 自建 runner）或 ②（删 `staging_dir`、只留 `dl`）
 - 出镜像的话 `bin/targets/x86/64/manifest` 的包数才是 §六 基准要的最终数，回填 BUILD-CUSTOM 备注
 
 **功能视角**：固件功能零增删，vlmcsd（§三 在用项）照旧在镜像里；改的是 CI 步骤与 feed 副本的两行笔误。刷机后需从商店装回的清单不变，见 §十。
