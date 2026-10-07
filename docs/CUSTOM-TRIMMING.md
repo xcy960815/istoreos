@@ -29,7 +29,7 @@
 
 ## 三、保留清单（有实际使用证据，后续 AI 不要当成"没用"误删）
 
-> ⚠️ 本清单是**功能**层面"别丢"，不等于"固件里已烘焙"。r4 审计实测：其中 openclash、luci-app-tailscale-community、quickstart、app-meta-*、luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,fastnet,floatip,openclawmgr} 等在 `feeds.conf.default` 的六个 feed 里**没有对应 kconfig 符号**，seed 中的行一直是死行；刷机后要经 iStore 商店装回（商店本体 `luci-app-store`+`dkml`+`tailscale` 守护进程确实在固件里）。明细与证据见 §九。
+> ⚠️ 本清单是**功能**层面"别丢"，不等于"固件里已烘焙"：其中 openclash、quickstart、`app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,…}` 等不在构建期，刷机后要经 iStore 商店装回。哪些真在固件里、哪些要装回——唯一清单见 §六「仍然完好、一个没动的功能」和 §十，证据见 §九。
 
 - **openclash**：全家主力代理，GeoIP 数据齐全、多份配置备份（用户本机代理 7897 与之同源）
 - **tailscale + luci-app-tailscale-community**：全家远程入口，路由器是 exit node
@@ -79,9 +79,13 @@
 
 ### 仍然完好、一个没动的功能
 
-openclash、tailscale（路由器仍作 exit node）、aria2+ariang、transmission、openlist、gowebdav、
-vlmcsd、eqos、oaf、ttyd、wol、cpufreq、luci-app-fan、fastnet、floatip、iStore 商店+quickstart、
-argon 主题、zram、smartd+lm-sensors（温控）、wireguard、dnsmasq-full、flow offload（kmod-nf-flow）。
+本节写于 r4 审计之前，当时把"路由器在用的功能"和"固件里已烘焙的包"混为一谈，按 §九/§十 的口径重列：
+
+- **固件里确实有**：tailscale（守护进程，路由器仍作 exit node）、aria2+ariang、transmission、openlist、
+  vlmcsd、ttyd、wol、iStore 商店本体（`luci-app-store`+`dkml`）、argon 主题、zram、smartd+lm-sensors（温控）、
+  wireguard、dnsmasq-full、flow offload（kmod-nf-flow）
+- **不在固件里、刷机后要从商店装回**：openclash、eqos、oaf、cpufreq、luci-app-fan、fastnet、floatip、
+  quickstart、gowebdav、tailscale 的 LuCI 配置页——它们从来不是构建期候选，包名与证据见 §十
 
 ### 包名明细（按批次）
 
@@ -97,7 +101,7 @@ argon 主题、zram、smartd+lm-sensors（温控）、wireguard、dnsmasq-full�
 
 ### D 档（查清依赖后另批处理，本次未动）
 
-- `ruby` 全家（libruby3.3+ruby-*×8）、`git/git-http`、`taskd/luci-lib-taskd`、`linkmount`、`sqlite3-cli`：官方镜像里某处在用，无法本地查依赖
+- `ruby` 全家（libruby3.3+ruby-*×8）、`git/git-http`、`taskd/luci-lib-taskd`、`sqlite3-cli`：官方镜像里某处在用，无法本地查依赖（`linkmount` 原也在此列，§九 证实它是商店包，已随 §十 清掉）
 - `lm-sensors-detect` + `perl` + perlbase-*×31：perl 疑似仅被 lm-sensors-detect（Perl 脚本）拉入；**lm-sensors 本体必须留**（luci-app-fan 温控）
 - 文件系统类待确认数据盘实际格式：btrfs/ntfs3/f2fs/xfs/reiserfs/jfs/hfs/hfsplus/isofs/udf/cramfs/minix/msdos + exfat/vfat（U 盘建议留）
 - 其他低价值但便宜：swconfig/switch-*、map/ds-lite/sit/siit/nat46、kmod-sctp/tpm/udptunnel/ppdev 等
@@ -106,7 +110,7 @@ argon 主题、zram、smartd+lm-sensors（温控）、wireguard、dnsmasq-full�
 
 ### 安全网（为什么敢删）
 
-1. `make defconfig` 会把"仍被保留包硬依赖"的项自动加回 `=y`——刷前 diff 展开的 `.config` 与 seed，多出的行即被拉回的依赖（已知候选：libiwinfo 被 rpcd-mod-iwinfo 拉回、mdadm 可能被 luci-app-diskman 拉回，均无害）。**但不止这些**：它还会加回 **profile 默认包**（`DEFAULT_PACKAGES`），这类可能与有意替换的实现冲突，见 §七
+1. `make defconfig` 会把"仍被保留包硬依赖"的项自动加回 `=y`——审计脚本 `.github/scripts/seed-audit.sh` 现在直接打印这份"seed 没写却开启"的清单（`seed-audit.txt` 第二段），刷前照它核对，不再靠猜候选。**但不止硬依赖**：它还会加回 **profile 默认包**（`DEFAULT_PACKAGES`），这类可能与有意替换的实现冲突，见 §七
 2. **`make defconfig` 必须在 `./scripts/feeds install -a` 之后跑**，否则所有 feed 包的 `CONFIG_PACKAGE_*=y` 行被静默丢弃（符号还不存在），后果见 §七 原因 1
 3. **软依赖**（脚本 shell 调用而非包依赖）不会被自动拉回——QEMU 启动验证 + 刷机后核对 LuCI 各页（重点：iStore 商店；quickstart、磁盘管理、openclash、tailscale UI 这些**先按 §九 从商店装回**再核对）照 BUILD-CUSTOM.md 流程走
 4. `dkml`（iStoreOS 动态内核模块加载器，package/diy/dkml）**保留**：iStore 商店装内核模块类应用的基础设施
@@ -156,6 +160,8 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 **功能视角**：没有增删任何功能，vlmcsd 仍在固件里。
 
+> ⚠️ 本节只治了下载 404，**漏了同一个 Makefile 的第二处笔误**（`PKG_BUILD_DIR` 目录名），所以 r6/r7 依旧挂在 vlmcsd。真因与最终修法见 §十二；本节的 `dl` 预置 shim 已被 §十二 的做法取代删除。
+
 ## 九、r4 审计定档：106 行未生效的真实构成
 
 `seed 想要 697 → defconfig 后开启 705 → 丢失 106`（展开 `.config` 在 artifact 里叫 `config-expanded.txt`；此前写 `.config` 上传不到，dot 文件被 glob 跳过了）。
@@ -195,7 +201,9 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 ## 十一、第四次失败：缓存死锁——每次都被自家 timeout 杀在半路（run 37422215944，2026-10-06）
 
-`conclusion: cancelled` 不是人取消的，是 workflow 自己的 `timeout-minutes: 350` 到点被 GitHub 杀掉：job 06:09:37Z 起跑、12:00:21Z 终止，正好 5h50m44s。前 10 步全绿，Compile（06:40:26 开始 `make world`）被杀时正在编 **ruby**。里程碑实测：tools/compile 1h25m → toolchain/compile 23m → target/compile 15m → package/compile 3h17m 才到 ruby 中段——**4 核托管 runner 上全量冷编译约需 7h+，350 分钟根本装不下**。
+`conclusion: cancelled` 不是人取消的，是 workflow 自己的 `timeout-minutes: 350` 到点被 GitHub 杀掉：job 06:09:37Z 起跑、12:00:21Z 终止，正好 5h50m44s。前 10 步全绿，Compile（06:40:26 开始 `make world`）被杀时正在编 **ruby**。里程碑实测：tools/compile 1h25m → toolchain/compile 23m → target/compile 15m → package/compile 3h17m 才到 ruby 中段——当时据此判断"**4 核托管 runner 上全量冷编译约需 7h+，350 分钟根本装不下**"。
+
+> ⚠️ 这条 7h+ 的推断**已被 §十二 用 r6 之后那次 run（37470180070 = r7）的实测推翻**：r6 被杀时还卡在无用的 `make -j1 V=s` 兜底里，从没测到终点；r7 冷缓存跑到自然失败，全程 5h27m 且**只剩 vlmcsd 一个包没编**，全量冷编真值约 4h15m–4h45m，350 分钟预算够用。本节下面"死循环"的诊断与缓存修法仍然有效。
 
 真正的病是**死循环**：`actions/cache@v4` 的缓存保存在 post 步骤里，`post-if: success()`——job 不成功就不存。而这个仓库 6 次 run 无一成功（`gh cache list` 实测 0 条），于是每次都全量冷编 → 每次都超时取消 → 永远存不上缓存 → 下次还是冷编。此前 §八 修的 vlmcsd 预置在本次 run 是生效的（step 9 绿），不是本症。
 
@@ -205,11 +213,103 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 - 缓存拆两对独立 restore+save，key 按用途分前缀（`istoreos-dl-<run_id>` / `istoreos-tc-<run_id>`，restore-keys 前缀滚动复用）：
   - `dl`：Save downloads cache 紧跟 Download sources，挂 `always()`——此刻 job 还健康，上传从容，编译超时也保住这 28 分钟的下载
-  - `staging_dir`：Save toolchain cache 在 Compile 后，挂 `always()`——**被超时取消也会存**，下次 run 恢复后 tools/toolchain 靠 `staging_dir/*/stamp` 直接跳过，从 package/compile 续编（约 4.5–5h，350 分钟内可完成，死循环即破）
-- 缓存路径去掉顶层 `toolchain/`（源码目录，无缓存价值，编译产物在 `staging_dir/`）；`staging_dir` 整目录保留（含 target-* 的内核 stamp）
-- 恢复时 tools/toolchain 会逐个查 stamp 后空跑（几分钟 no-op 检查），不用 cachewrtbuild 那招 sed 改顶层 Makefile——不改源码树的文件，符合本仓库纪律
+  - `staging_dir`：Save toolchain cache 在 Compile 后，挂 `always()`——**被超时取消也会存**。当时假设"下次 run 恢复后 tools/toolchain 靠 stamp 跳过、从 package/compile 续编（约 4.5–5h，350 分钟内可完成，死循环即破）"，**该假设已被 2026-10-07 复核推翻，见下**
+- 缓存路径去掉顶层 `toolchain/`（源码目录，无缓存价值，编译产物在 `staging_dir/`）；`staging_dir` 整目录保留
+- 恢复时不做 cachewrtbuild 那招 sed 改顶层 Makefile——不改源码树的文件，符合本仓库纪律
+
+### 复核更正（2026-10-07）：staging_dir 缓存不能续编
+
+读 `rules.mk:186`、`include/package.mk:114-119`、`include/host-build.mk:27-28` 得到的 stamp 落点：
+
+| stamp | 落在哪 | 本 workflow 缓存了吗 |
+|---|---|---|
+| `STAMP_PREPARED` / `STAMP_CONFIGURED` / `STAMP_BUILT`（含 host 版） | `$(PKG_BUILD_DIR)` = **build_dir/**（`STAMP_DIR:=$(BUILD_DIR)/stamp`，rules.mk:186-187） | ❌ 没缓存 |
+| `STAMP_INSTALLED` / `HOST_STAMP_INSTALLED` | **staging_dir/stamp**（package.mk:119 `$(STAGING_DIR)/stamp/.$(PKG_DIR_NAME)..._installed`；host-build.mk:28 `$(HOST_BUILD_PREFIX)/stamp`） | ✅ 缓存了 |
+
+`make` 判定是否重编看的是 `.built`，而它在没进缓存的 `build_dir/` 里；只把 `_installed` 存进缓存，恢复后 `.prepared/.configured/.built` 全缺，tools 与 toolchain 依旧从头编。所以 §十一 的"下次就能续编"不成立，缓存里唯一确定省时间的是 `dl`（省掉那次 28 分钟的 Download sources）。
+
+**判据（下次 run 一眼定性，非推断）**：恢复缓存后 `tools/compile` 若仍约 1h25m，即证明这份 staging_dir 缓存只是占配额；若接近 0，我这条更正作废。
+
+**连 `build_dir` 一起缓存不可行**：一次 x86_64 全量构建的 `build_dir/` 远大于 GitHub 每仓库 10GB 缓存软上限（确切体积本机无法实测，M1 Max 跑不了 x86 构建树），且每次 run 存新 key 会互相挤掉。**待用户定的三条路**：①9400F 挂自建 runner，`build_dir` 常驻增量，彻底绕开托管 runner 的 350 分钟与配额（BUILD-CUSTOM 本来就以在 9400F 上编译为主线）；②接受"每次全量冷编"，把 dl 缓存留着、staging_dir 缓存删掉换配额；③先跑一次拿到 tools/compile 实测时长再决定。
 
 **参考项目的现状警示**：draco-china/istoreos-actions 最近 20 次 run 全 failure（多为 3 分钟早夭，另有一次 360.3 分钟撞 6h 平台上限），只能借鉴机制不能照抄现状；它的 cachewrtbuild 同样 `post-if: success()`，首次成功前的 bootstrap 问题在我们这里用 `always()` save 解决。
 
-**功能视角**：没有增删任何功能、没有动 seed。构建基础设施修复，预期下一次 run 仍可能超时一次（存下 staging_dir），再下一次即可续编成功；成功一次后缓存齐备，后续构建显著缩短。
+**功能视角**：没有增删任何功能、没有动 seed。构建基础设施修复。当时预期"下一次 run 仍可能超时一次（存下 staging_dir），再下一次即可续编成功"——该预期已被上方「复核更正」推翻，改成：靠缓存续编不成立，下一次 run 仍是全量冷编，超时与否只取决于上面三条路选哪条。
+
+## 十二、CI 整理：审计抽成脚本、去掉重复与失效步骤（2026-10-07）
+
+**功能视角**：没有增删任何功能、没有动 seed 的任何一行 `=y`（只改 seed 头部注释里的过期表述）。设备能做的事与 §六「仍然完好、一个没动的功能」重列后的清单一致；固件产物也不变——本轮全是 CI 侧与文档侧整理。
+
+| # | 改动 | 为什么 |
+|---|---|---|
+| 1 | 审计逻辑从 workflow 的 28 行内联 shell 抽到 `.github/scripts/seed-audit.sh` | 那是全仓唯一的真逻辑，写在 YAML 里就无法本地执行。抽出后本轮用合成 fixture 验了三条路径：分类正确（死行/真缺各归各位）、`CONFIG_PACKAGE_dnsmasq=y` 复现时 rc=1、缺 `.config`/`tmp/.config-package.in` 时 rc=1 并指名前置没跑 |
+| 2 | 审计报告新增第二段「seed 没写却开启的包」 | 取代 §六 安全网 1 原先靠猜的候选清单，直接给 defconfig 自行加回的集合；这份输出也是日后 seed 瘦身的基线数据 |
+| 3 | artifact 改收 `config-expanded.txt`、`seed-audit.txt`、`lost_dead.txt`、`lost_hidden.txt`，不再收 11910 行的 `ksyms.txt` 和可推导的 `lost.txt` | 上传结论而不是原料 |
+| 4 | 依赖清单收敛为 `.github/apt-packages.txt` 一份，CI 与 BUILD-CUSTOM 都读它 | 原两份已漂移：CI 装 `wget` 却不装 `curl`，而 `scripts/download.pl:113-119` 首选 curl（wget 只是 fallback），CI 当时的 `seed_dl` 也直接调 curl（该 shim 已被 §十三 删除，但 curl 仍是 download.pl 的首选，清单照留）；BUILD-CUSTOM 反之缺 `swig`/`python3-dev` |
+| 5 | 去掉 `make -j$(nproc) || make -j1 V=s`，改为单次并行 + `compile.log` 作 `always()` artifact | 串行重跑只是把快速失败拖长、并挤掉存缓存的时间（本地没有时长预算，仍可用 `V=s` 重试，BUILD-CUSTOM 步骤 5 已注明这个差异）。本行"冷编 7h+ 必然跑不完"的前提与"完全不重跑"的做法都被 §十三 修正：改成只重跑出错的包 |
+| 6 | 删重复的 `df -hT`（Compile 里那次已被 `always()` 的 Report disk usage 覆盖）、3 处 `shell: bash`（ubuntu runner 默认即 bash）、无人消费的 `echo "kconfig 包符号总数"`（计数已进报告首行）；`Download sources` 里列 URL 的 grep 补 `|| true`，与它自己的注释保持一致 | 左手到右手；以及注释承诺与代码不一致 |
+| 7 | 缓存注释按 §十一「复核更正」改写 | 原注释断言"下次 run 从 package/compile 续编"，`rules.mk:186`/`package.mk:114-119` 不支持它 |
+| 8 | 文档去重与对账：「商店应用不在构建期」原在 6 处各列一遍包名，现收敛为 §九（证据）＋§十（清单），§三 ⚠️、§六、BUILD-CUSTOM 改为引用；§六「仍然完好」按 r4 口径拆成"固件里确实有"与"要从商店装回"两栏；seed 头部 D 档与 §六 D 档去掉 `linkmount`（§十 已清） | 同一事实写 6 遍，改一处忘五处——§六 那条当时就已经和 §九/§十 直接矛盾 |
+
+**没做的那件（要跑构建才能定）**：seed 现 593 行里估计约一半是传递闭包抄写（`lib*` 46、`kmod-crypto-*` 43、`kmod-usb-*` 43、`shadow*` 36、`kmod-nf-*` 27、`perlbase-*` 26、`kmod-fs-*` 20），硬依赖由 defconfig 自动加回，理论上能收到 ~150 行"意图清单"。但 §六 安全网 3 说得很清楚：软依赖（脚本里 shell 调用而非包依赖）不会被拉回，所以不能靠推理删，必须逐组剥离 → 跑 `make defconfig` → 与基线包集合比差集，差集为 0 的组才算纯冗余。本机是 M1 Max，跑不了 x86 构建树，这一步留到有 Linux 构建环境时做。
+
+**本轮验证方式**：`bash -n` 过；workflow 用 YAML 解析过（16 步，`shell:` 已清空）；`seed-audit.sh` 三条路径以 fixture 实跑过。CI 侧的真实验证要等下一次 run。
+
+## 十三、第六次 run（37470180070 = r7，10-06 13:21→18:49）：唯一失败点仍是 vlmcsd，这次拍到了真因
+
+r7 用的是 §十二 之前的 HEAD（`e06934e5a5`，缓存拆分那次），所以它的价值是**第一条完整的冷缓存基线**：job 自然失败（`failure` 不是 `cancelled`），前 12 步全绿，全程 5h27m38s。
+
+| 阶段 | 起 | 止 | 耗时 | 备注 |
+|---|---|---|---|---|
+| checkout→apt→restore 缓存 | 13:21:46 | 13:23:55 | 2m09s | 两条 restore 都是 `Cache not found`，即全量冷编 |
+| feeds update+install / defconfig+审计 | 13:23:55 | 13:25:25 | 1m30s | |
+| Download sources | 13:25:25 | 13:53:26 | **28m01s** | 这就是 `dl` 缓存要省掉的那 28 分钟 |
+| tools/compile | 13:53:43 | 15:08:26 | **1h14m43s** | |
+| toolchain/compile | 15:08:26 | 15:29:21 | 20m55s | |
+| target/compile | 15:29:21 | 15:42:18 | 12m57s | |
+| package/compile（-j4） | 15:42:18 | 17:40:06 | 1h57m48s | vlmcsd **15:56:07** 就挂了，`-j4` 把在飞的活儿跑完才退出 |
+| 兜底 `make -j1 V=s` | 17:40:12 | 18:48:53 | **1h08m41s** | 又走到同一个错，才第一次打印真因 |
+| Save toolchain cache | 18:48:53 | 18:49:21 | 28s | 1.117 GB，`always()` 生效；`dl` 1.240 GB 早在 13:53 存好 |
+
+全程只有 **一个** 包失败：`ERROR: package/feeds/third/vlmcsd failed to build`（出现 2 次 = 并行+串行各一次）。其余包全编过了。
+
+### 真因：feed 的两处笔误，§八 只治了第一处
+
+r7 串行那轮打出的原文（`127744` 行附近）：
+
+```
+make[4]: Entering directory '.../build_dir/target-x86_64_musl/vlmcsd-1113'
+make[4]: *** No targets specified and no makefile found.  Stop.
+time: package/feeds/third/vlmcsd/compile#0.07#0.07#0.13
+```
+
+目录**存在但是空的**。`include/unpack.mk:6,65` 只把包 `tar -C $(PKG_BUILD_DIR)/..` 解到父目录、不改名，`package-defaults.mk:64-68` 的 `Build/Prepare/Default` 也不重命名——**构建目录名必须与归档里的目录名逐字相同**。而 `jjm2473/openwrt-third` 的 vlmcsd Makefile 里 tag 叫 `1113`、上游实际叫 **`svn1113`**，归档内目录是 `vlmcsd-svn1113`：
+
+| 行 | 原值 | 改成 |
+|---|---|---|
+| `PKG_SOURCE_URL_FILE` | `$(PKG_VERSION).tar.gz` | `svn$(PKG_VERSION).tar.gz` |
+| `PKG_BUILD_DIR` | `$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)` | `$(BUILD_DIR)/$(PKG_NAME)-svn$(PKG_VERSION)` |
+
+§八 那套"往 `dl/` 预置文件"只补了下载，把第二处原样留着，所以 r6、r7 照挂。现在改成**直接补 feed 副本的这两行**：`dl` 名、URL、构建目录全由 `PKG_SOURCE_URL_FILE` 一处推导，下载与 sha256 校验交回 OpenWrt 自己的机制，curl 预置 shim 删除。
+
+改法成立与否是实测而非推断：把改后的 4 行 `PKG_*` 用 make 展开 → URL `…/archive/refs/tags/svn1113.tar.gz`、`dl` 名 `vlmcsd-svn1113.tar.gz`、构建目录 `…/vlmcsd-svn1113`；实测 `tar tzf` 归档首条正是 `vlmcsd-svn1113/`，实测该 tar 包 sha256 = feed 里的 `PKG_HASH`（`62f55c48…42cc`）。三者对齐。
+
+feed 副本是 `scripts/feeds install` 生成的、不在本仓库版本里，所以改它不违反 §一"不改源码"；**本地构建同样会踩**，命令见 BUILD-CUSTOM.md 步骤 5。
+
+### 顺带两处 CI 修正
+
+1. **去掉 `-j1 V=s` 全局兜底**（§十二 表格第 5 行的做法再收紧）：r7 里它 17:40 起跑、18:48 才又撞上同一个错，白烧 **1h08m**。现在只把 `ERROR: package/…` 点名的包用 `make <pkg>/{download,prepare,compile} -j1 V=s` 重跑，几十秒出真因。
+2. **补上 `set -eo pipefail`**：workflow 里没写 `shell:` 的步骤，runner 实际用 `/usr/bin/bash -e {0}`（r7 日志原文），**不带 pipefail**——`make | tee compile.log` 的退出码取自 tee 的 0，编译失败时步骤会**静默变绿**、job 报成功却没有镜像。桩 `make` 实测过四条路径：失败→rc=1 且只重跑被点名的包、成功→rc=0、失败但日志里没有 `ERROR: package` 行→rc=1 并提示去看 compile.log、旧写法（无 pipefail）→**rc=0**（即这个 bug）。
+
+### 更正 §十一 的"冷编 7h+"
+
+r7 的量级是 tools 1h15m + toolchain 21m + target 13m + package/compile（到终点约 2h 出头），**全量冷编约 4h15m–4h45m 而不是 7h+**；那次 7h+ 的推断来自 r6——它被 350 分钟杀掉时还处在无用的 `-j1` 兜底里，从没测到终点。叠加 `dl` 缓存省掉那 28 分钟，350 分钟预算第一次够用，`timeout-minutes` 不动。**§十一「待用户定的三条路」里 ③（先跑一次拿实测时长）已由 r7 回答，①②的取舍等 r8 出结果再定**。
+
+### 判据（下一次 run 一眼定性）
+
+- `dl` 缓存生效 = Download sources 从 28 分钟掉到几分钟
+- `staging_dir` 缓存有没有用，仍按 §十一「复核更正」的判据：恢复后 `tools/compile` 若还是约 1h15m 就是白占配额；接近 0 才算我那条评论作废
+- 出镜像的话 `bin/targets/x86/64/manifest` 的包数才是 §六 基准要的最终数，回填 BUILD-CUSTOM 备注
+
+**功能视角**：固件功能零增删，vlmcsd（§三 在用项）照旧在镜像里；改的是 CI 步骤与 feed 副本的两行笔误。刷机后需从商店装回的清单不变，见 §十。
 

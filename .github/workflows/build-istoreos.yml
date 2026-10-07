@@ -24,18 +24,22 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential clang flex bison g++ gawk \
-            gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev \
-            rsync unzip zlib1g-dev file wget python3 python3-setuptools \
-            python3-pyelftools swig python3-dev
-          sudo apt-get install -y python3-distutils || true
+          # 清单在 .github/apt-packages.txt，与 BUILD-CUSTOM.md 共用一份，两边用同一种读法。
+          # 空清单必须拦：apt-get install -y 不带包名照样返回 0，会静默装出一个啥也没有的环境
+          pkgs=$(grep -vE '^[[:space:]]*(#|$)' .github/apt-packages.txt)
+          [ -n "$pkgs" ] || { echo "::error::.github/apt-packages.txt 读不出包名（文件缺失或全被注释）"; exit 1; }
+          sudo apt-get install -y $pkgs
 
-      # 缓存拆成 dl / 工具链两对独立的 restore+save：
-      # actions/cache@v4 的 post 保存只在 job 成功时跑(post-if: success())，而冷编译超过
-      # timeout → job 被取消 → post 跳过 → 缓存永远是空的 → 每次都全量重编(run 37422215944
-      # 编到 ruby 被杀，6 次 run 无一成功、仓库 0 条缓存，死循环)。拆开后 save 挂 always()，
-      # 被超时取消也会存(同 run 的 Report disk usage 以 always() 在取消后照常执行，已验证)；
-      # 工具链能续上，下次 run 就能从 package/compile 接着跑而不是从零开始。
+      # 缓存拆成 dl / 工具链两对独立的 restore+save，只为破死循环：actions/cache@v4 的保存挂在
+      # post 步骤且 post-if: success()，而 job 一次次被自家 timeout 杀掉（§十一），结果 6 次 run
+      # 无一成功、仓库 0 条缓存、每次从零重编。拆开后 save 挂 always()，被超时取消也照存（同 run 的
+      # Report disk usage 以 always() 在取消后照常执行，已验证；r7 也已实测存进 dl 1.24GB / tc 1.12GB）。
+      #
+      # dl 的收益确定（省掉那 28 分钟下载，r7 实测）。staging_dir 这份按规则判定不能续编：
+      # .prepared/.configured/.built 都落在 PKG_BUILD_DIR（build_dir/，这里没缓存），只有
+      # *_installed 在 staging_dir/stamp（package.mk:114-119、host-build.mk:27-28）——缺 .built
+      # 就仍要重跑。下次 run 用 tools/compile 实测时长定性（仍约 1h15m 即坐实，那是 r7 的冷缓存
+      # 实测 1h14m43s；接近 0 才说明这行注释错了，见 §十一「复核更正」与 §十三）
       - name: Restore downloads cache
         uses: actions/cache/restore@v4
         with:
@@ -56,31 +60,10 @@ jobs:
           ./scripts/feeds install -a
 
       - name: Apply custom config
-        shell: bash
         run: |
           cp config-custom.seed .config
           make defconfig
-          # 审计：defconfig 会无警告删掉"符号不存在"的行，也要靠 tmp/.config-package.in 区分
-          # "名字写错/包没了"与"符号存在但依赖不满足"，否则要到 rootfs 装配才暴露
-          grep -oE '(menu)?config PACKAGE_[A-Za-z0-9_.+-]+' tmp/.config-package.in | sed 's/.*config //' | sort -u > ksyms.txt
-          grep -oE '^CONFIG_PACKAGE_[A-Za-z0-9_.+-]+=y' config-custom.seed | sed 's/^CONFIG_//; s/=y$//' | sort -u > want.txt
-          grep -oE '^CONFIG_PACKAGE_[A-Za-z0-9_.+-]+=[ym]' .config | sed 's/^CONFIG_//; s/=[ym]$//' | sort -u > on.txt
-          comm -23 want.txt on.txt > lost.txt
-          grep -Fxf ksyms.txt lost.txt > lost_hidden.txt || true
-          comm -23 lost.txt lost_hidden.txt > lost_dead.txt
-          {
-            echo "seed 想要: $(wc -l < want.txt)  defconfig 后开启: $(wc -l < on.txt)  丢失: $(wc -l < lost.txt)"
-            echo; echo "== 符号不存在（seed 写的是 opkg 二元包名/改名/包已消失），这些行一直是死行 =="
-            cat lost_dead.txt
-            echo; echo "== 符号存在但没能开启（依赖不满足或被隐藏）——这些是真的缺包 =="
-            cat lost_hidden.txt
-          } | tee seed-audit.txt
-          echo "::warning::seed 有 $(wc -l < lost.txt) 行未生效，详见 seed-audit.txt"
-          if grep -q '^CONFIG_PACKAGE_dnsmasq=y$' .config; then
-            echo "::error::dnsmasq(非 full)又被加回，会与 dnsmasq-full 抢文件；说明有保留包 select 了默认变体"
-            exit 1
-          fi
-          echo "kconfig 包符号总数: $(wc -l < ksyms.txt)"
+          bash .github/scripts/seed-audit.sh
           # 产物里要能看到展开后的完整 .config；upload-artifact 不收点文件，先改名
           cp .config config-expanded.txt
 
@@ -92,38 +75,29 @@ jobs:
           path: |
             config-expanded.txt
             seed-audit.txt
-            ksyms.txt
-            lost.txt
+            lost_dead.txt
+            lost_hidden.txt
           retention-days: 14
           compression-level: 0
 
-      - name: Pre-seed sources with dead upstream URLs
-        shell: bash
+      - name: Patch the broken vlmcsd feed Makefile
         run: |
-          # third feed 的 vlmcsd Makefile 抓 refs/tags/1113.tar.gz，可上游 tag 其实叫 svn1113 →
-          # 三个镜像全 404(run 37347586447 编译 3.8h 后才炸)。不改 feed 源码：把内容正确的包按
-          # dl/ 里的目标文件名放好，download.mk 见文件存在且 sha256 == PKG_HASH 就不下(FORCE 只在哈希不符时加)
+          # jjm2473/openwrt-third 的 vlmcsd 有两处笔误，两处都致命（run 37470180070 里唯一失败的就是它）：
+          #   ① 远端文件名 PKG_SOURCE_URL_FILE:=1113.tar.gz，可上游 tag 其实叫 svn1113 → GitHub+3 个镜像全 404
+          #   ② PKG_BUILD_DIR 少了 svn 前缀。tar 解到 build_dir/vlmcsd-svn1113，构建却 cd 进空目录
+          #      build_dir/vlmcsd-1113 → "No targets specified and no makefile found"（0.07 秒挂）
+          # feed 是 scripts/feeds install 出来的副本、不在本仓库版本里，就地改它，vlmcsd 照旧进固件。
+          # 补上 svn 前缀后 PKG_SOURCE/URL 都由这一行推导，哈希仍由 OpenWrt 自己校验（PKG_HASH 本来就对得上）
           set -euo pipefail
-          seed_dl() {
-            local file="$1" url="$2" makefile="$3" hash
-            hash=$(sed -n 's/^PKG_HASH:=//p' "$makefile")
-            [ -n "$hash" ] || { echo "::error::$makefile 里没有 PKG_HASH，预置无从校验"; exit 1; }
-            if [ -f "dl/$file" ] && [ "$(sha256sum < "dl/$file" | cut -d' ' -f1)" = "$hash" ]; then
-              echo "dl/$file 已就绪(哈希匹配)，跳过"
-              return
-            fi
-            curl -fSL --connect-timeout 20 --retry 3 -o "dl/$file.part" "$url"
-            ( cd dl && echo "$hash  $file.part" | sha256sum -c - )
-            mv "dl/$file.part" "dl/$file"
-            echo "dl/$file <- $url"
-          }
-          mkdir -p dl
-          seed_dl vlmcsd-1113.tar.gz \
-            https://github.com/Wind4/vlmcsd/archive/refs/tags/svn1113.tar.gz \
-            package/feeds/third/vlmcsd/Makefile
+          m=package/feeds/third/vlmcsd/Makefile
+          [ -f "$m" ] || { echo "::error::$m 不存在，third feed 可能改了包名"; exit 1; }
+          # 借临时文件改写而不是 sed -i：`sed -i -e ...` 只有 GNU sed 认，写成可移植的形式两边都能跑
+          sed -e 's|^PKG_SOURCE_URL_FILE:.*|PKG_SOURCE_URL_FILE:=svn$(PKG_VERSION).tar.gz|' \
+              -e 's|^PKG_BUILD_DIR:.*|PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-svn$(PKG_VERSION)|' \
+              "$m" > "$m.tmp" && mv "$m.tmp" "$m"
+          grep -E '^(PKG_SOURCE_URL_FILE|PKG_BUILD_DIR):=' "$m"
 
       - name: Download sources
-        shell: bash
         run: |
           # make download 里失败的包只打 ERROR、不改退出码(run 37347586447 步 9 绿、编译期才炸)，
           # 所以自己扫日志：死源码在这里几分钟就能暴露，不必等 3.8 小时
@@ -136,7 +110,7 @@ jobs:
             echo "$bad"
             for b in $(grep -oE '\*\*\* \[Makefile:[0-9]+: [^]]*dl/[^] ]+' download.log | sed 's|.*/dl/||' | sort -u); do
               echo "-- $b 尝试过的 URL:"
-              grep -F "$b" download.log | grep -oE 'https?://[A-Za-z0-9./:_-]+' | sort -u | sed 's/^/     /'
+              grep -F "$b" download.log | grep -oE 'https?://[A-Za-z0-9./:_-]+' | sort -u | sed 's/^/     /' || true
             done
             exit 1
           fi
@@ -151,17 +125,42 @@ jobs:
 
       - name: Compile
         run: |
-          make -j$(nproc) || make -j1 V=s
-          df -hT
+          # 两条纪律，都是 run 37470180070 教的：
+          # ① pipefail 要显式写：没标 shell: 的步骤用 `bash -e {0}`(日志里的原文)，不带 pipefail，
+          #    `make | tee` 的退出码取自 tee=0——编译炸了步骤照样绿
+          # ② 失败后不再全局 `make -j1 V=s`：那次它从 17:40 单线程重跑到 18:48 才又撞上同一个错，
+          #    白烧 1h08m。改成只把出错的那几个包重跑，几十秒就打出真实原因
+          set -eo pipefail
+          if make -j$(nproc) 2>&1 | tee compile.log; then exit 0; fi
+          pkgs=$(grep -oE 'ERROR: package/[^ ]+ failed to build' compile.log | sed -E 's|^ERROR: (package/[^ ]+) failed to build$|\1|' | sort -u || true)
+          if [ -z "$pkgs" ]; then
+            echo "::error::compile.log 里没有 ERROR: package 行（可能是 tools/kernel 挂了），原因见上传的 compile.log"
+            exit 1
+          fi
+          for p in $pkgs; do
+            echo "::group::verbose 重跑 $p"
+            make $p/{download,prepare,compile} -j1 V=s || true
+            echo "::endgroup::"
+          done
+          exit 1
 
-      # 工具链缓存在 Compile 后存，挂 always()：即使编译超时被取消也把 staging_dir 存下来，
-      # 下次 run 恢复后 tools/toolchain 靠 stamp 跳过，从 package/compile 续编
+      # 工具链缓存在 Compile 后存，挂 always()：被超时取消也把 staging_dir 存下来。
+      # 它能不能真的续编未证（*_installed 在 staging_dir，.built/.prepared/.configured 在没缓存的
+      # build_dir），定性看下次 run 的 tools/compile 耗时——见文件头那段缓存注释。
       - name: Save toolchain cache
         if: always()
         uses: actions/cache/save@v4
         with:
           path: staging_dir
           key: istoreos-tc-${{ github.run_id }}
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compile-log-r${{ github.run_number }}
+          path: compile.log
+          retention-days: 14
 
       - name: Upload images
         if: success()

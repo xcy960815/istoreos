@@ -8,16 +8,10 @@
 
 | 处理 | 内容 | 理由 |
 |---|---|---|
-| ❌ 删除 | containerd/docker/dockerd/docker-compose/runc/luci-app-dockerman/dpanel | Docker 已迁往 9400F 服务器 |
-| ❌ 删除 | samba4-server/luci-app-samba4/kmod-fs-ksmbd/unishare | 路由器不再做文件共享 |
-| ❌ 删除 | ddns-scripts 全家/ddns-go/ddnsto/luci-app-ddns* | 远程访问走 Tailscale，不需要 DDNS |
-| ❌ 删除 | miniupnpd/luci-app-upnp | 减少暴露面，无使用需求 |
-| ❌ 删除 | linkease/luci-app-linkease | 未使用 |
-| ❌ 二次裁剪(2026-10-05) | 无线全家/蜂窝modem全家/GPU固件与DRM/NFS·SMB存储/l2tp-pptp-sstp-gre-ipip-ipsec隧道/KVM宿主/Docker孤儿kmod/老式网卡驱动 | J4125 无对应硬件；文件服务归 9400F/N100；远程只走 Tailscale。明细见 docs/CUSTOM-TRIMMING.md §六 |
-| ✅ 保留 | 基础网络栈/kmod-igc/firewall4/dnsmasq/IPv6 | 路由器命根子 |
-| ✅ 保留 | tailscale + luci-app-tailscale-community | 全家远程入口 |
-| ✅ 保留 | openclash/aria2/transmission/openlist/gowebdav/vlmcsd/eqos/oaf/ttyd/wol/cpufreq/fan | 实际在用（有活跃配置） |
-| ✅ 保留 | istore/quickstart/luci-app-store/argon | 系统管理骨架与应用商店 |
+| ❌ 删除（首轮 2026-10-05） | Docker 全家桶 / Samba 文件共享 / DDNS 三套 / UPnP / Linkease 系 | Docker 已迁往 9400F，远程只走 Tailscale；包名明细见 `docs/CUSTOM-TRIMMING.md` §二 |
+| ❌ 二次裁剪(2026-10-05) | 无线全家/蜂窝modem全家/GPU固件与DRM/NFS·SMB存储/l2tp-pptp-sstp-gre-ipip-ipsec隧道/KVM宿主/Docker孤儿kmod/老式网卡驱动 | J4125 无对应硬件；文件服务归 9400F/N100；远程只走 Tailscale。明细见 `docs/CUSTOM-TRIMMING.md` §六 |
+| ✅ 保留（固件里确实有） | 基础网络栈 / kmod-igc / firewall4 / dnsmasq-full / IPv6 / tailscale 守护进程 / aria2+ariang / transmission / openlist / vlmcsd / ttyd / wol / zram / smartd+lm-sensors / wireguard / argon 主题 / iStore 商店本体（luci-app-store、dkml） | 路由器命根子 + 确实在用的服务 |
+| 📦 刷机后从 iStore 商店装回（**不在构建期**） | openclash、tailscale 的 LuCI 配置页、quickstart、eqos、oaf、cpufreq、luci-app-fan、diskman、gowebdav、fastnet、floatip | 这些名字在六个 feed 里没有 kconfig 符号，写进 seed 也进不了镜像；证据与逐条清单见 `docs/CUSTOM-TRIMMING.md` §九/§十 |
 | ➕ 新增 | irqbalance | 四张 2.5G 网卡中断分摊到 4 核 |
 
 参数与官方镜像对齐：EFI+BIOS 双引导、squashfs、root 分区 224MB、中文界面。
@@ -25,10 +19,10 @@
 ## 构建步骤（Ubuntu 22.04/24.04 x86_64，建议在 9400F 装好系统后进行）
 
 ```bash
-# 1. 依赖
-sudo apt update && sudo apt install -y build-essential clang flex bison g++ gawk \
-  gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev python3 \
-  python3-distutils rsync unzip zlib1g-dev file wget curl
+# 1. 依赖（清单与 CI 共用一份 .github/apt-packages.txt，只改那一处两边就都生效）
+sudo apt update
+sudo apt-get install -y $(grep -vE '^[[:space:]]*(#|$)' .github/apt-packages.txt)
+# Ubuntu 22.04 另需：sudo apt-get install -y python3-distutils（24.04 已移除该包，所以不在清单里）
 
 # 2. 进入源码
 cd istoreos
@@ -37,13 +31,21 @@ cd istoreos
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
+# 3b. 修 third feed 里 vlmcsd 的两处笔误（上游 tag 叫 svn1113 而 feed 写成 1113，构建目录名也少了 svn 前缀）。
+#     不修的话编到 vlmcsd 必挂："No targets specified and no makefile found"，机制见 §十三
+m=package/feeds/third/vlmcsd/Makefile
+sed -e 's|^PKG_SOURCE_URL_FILE:.*|PKG_SOURCE_URL_FILE:=svn$(PKG_VERSION).tar.gz|' \
+    -e 's|^PKG_BUILD_DIR:.*|PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-svn$(PKG_VERSION)|' \
+    "$m" > "$m.tmp" && mv "$m.tmp" "$m"
+
 # 4. 应用裁剪配置
 cp config-custom.seed .config
 make defconfig            # 展开成完整 .config（实际包数以首次构建日志为准）
 
 # 5. 下载源码包 + 编译
 make download -j8
-make -j$(nproc) V=s
+make -j$(nproc)
+# 本地失败后可以 make -j1 V=s 重跑细看；CI 里不能这么干，原因见 docs/CUSTOM-TRIMMING.md §十二
 
 # 6. 产物
 ls bin/targets/x86/64/
@@ -74,12 +76,12 @@ git push origin custom-24.10
 ```
 
 - 由于全部定制收敛在一个 seed 文件，上游 99% 的提交都与它无冲突；`make defconfig` 后如遇符号改名（罕见），构建时会提示，按提示改 seed 即可
-- 想云端编译可配 GitHub Actions（P3TERX/Actions-OpenWrt 模板），仓库里放 seed 即可，不受本地环境影响
+- 云端构建走本仓库自己的 workflow（不引 P3TERX 等第三方模板；注意它至今还没有一次成功的 run）：`.github/workflows/build-istoreos.yml` 手动触发，seed 审计逻辑在 `.github/scripts/seed-audit.sh`（装好 feeds、跑过 defconfig 后可本地执行）。取舍理由见 `docs/CUSTOM-TRIMMING.md` §十二
 
 ## 备注
 
-- seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字：seed 自身 `CONFIG_PACKAGE_*` 行 首轮 1078 → 同日二次裁剪后 697；`make defconfig` 展开后选中 **705** 个包（run 37347586447 实测，产物 `seed-audit-r4` 里的 `config-expanded.txt`）。镜像最终包数以成功构建的 `manifest` 为准
-- **商店应用不在构建期**：`luci-app-tailscale-community`、`luci-app-openclash`、`quickstart`、`app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,…}` 这些名字在 `feeds.conf.default` 的六个 feed 里根本没有对应 kconfig 符号（实测 11910 个符号 0 命中），它们是路由器刷机后从 iStore 商店装的，seed 里那些行自写下就是死行；刷完新固件需从商店重新装回。逐条清单见 `docs/CUSTOM-TRIMMING.md` §九
-- **上面第 3、4 步的顺序不能调换**：`make defconfig` 早于 `feeds install` 会静默删掉所有 feed 包的 `=y` 行（符号还不存在），那次构建的产物连 LuCI 都没有。Actions workflow 现已在 defconfig 后做审计并把展开的配置与报告上传为 artifact（复盘见 §七）；`make download` 也会自己扫日志——它对失败包只打 ERROR、退出码仍是 0，死源码会拖到编译期 3.8 小时后才炸（复盘见 §八）
-- **云构建靠缓存续命**：4 核 runner 全量冷编译约 7h+，超过 workflow 的 350 分钟上限；缓存已拆成 `dl`/`staging_dir` 两对 restore+save 且保存挂 `always()`（被超时取消也照存），第一次超时后即可续编，成功一次后显著提速（复盘见 `docs/CUSTOM-TRIMMING.md` §十一）
+- seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字：seed 自身 `CONFIG_PACKAGE_*` 行 首轮 1078 → 二次裁剪 697 → 清死行后 593（现值，`grep -c '^CONFIG_PACKAGE_' config-custom.seed` 可复核）；r4 那次 `make defconfig` 展开选中 **705**（含 defconfig 自行加回的 114 个）。镜像最终包数以成功构建的 `manifest` 为准
+- **商店应用不在构建期**：上面「📦 刷机后从 iStore 商店装回」那一行的包名，在 `feeds.conf.default` 的六个 feed 里根本没有对应 kconfig 符号，写进 seed 也是死行。证据见 `docs/CUSTOM-TRIMMING.md` §九，逐条清单见 §十——包名只在那两处维护，本文不再重列
+- **上面第 3、4 步的顺序不能调换**：`make defconfig` 早于 `feeds install` 会静默删掉所有 feed 包的 `=y` 行（符号还不存在），那次构建的产物连 LuCI 都没有。`make download` 也有坑：它对失败包只打 ERROR、退出码仍是 0。两道坑的机制与修法复盘在 §七、§八
+- **云构建现状（r7 = run 37470180070 冷缓存实测）**：tools 1h14m43s + toolchain 20m55s + target 12m57s + package/compile 约 2h，全量冷编 **约 4h15m–4h45m**（此前"7h+ 装不下 350 分钟"的推断来自被 timeout 杀掉的 r6，它从没测到终点，已更正）。`dl` 缓存收益确定（省掉实测那 28m01s 的下载）；`staging_dir` 缓存"靠 stamp 续编"已被 `rules.mk`/`package.mk` 证伪，判据是下次 run 的 `tools/compile` 时长（见 `docs/CUSTOM-TRIMMING.md` §十一「复核更正」与 §十三）
 - 恢复某个删除的功能：iStore 商店装回（临时），或往 seed 加一行 `CONFIG_PACKAGE_xxx=y`（长期，仅对该符号确实存在于 feed 时有效）
