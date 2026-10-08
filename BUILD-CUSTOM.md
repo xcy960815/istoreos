@@ -33,10 +33,11 @@ cd istoreos
 
 # 3b. 修 third feed 里 vlmcsd 的两处笔误（上游 tag 叫 svn1113 而 feed 写成 1113，构建目录名也少了 svn 前缀）。
 #     不修的话编到 vlmcsd 必挂："No targets specified and no makefile found"，机制见 §十三
+#     若 feed 已改写法（如 PKG_VERSION 自带 svn），这两条不会匹配，确认无 svnsvn 即可
 m=package/feeds/third/vlmcsd/Makefile
-sed -e 's|^PKG_SOURCE_URL_FILE:.*|PKG_SOURCE_URL_FILE:=svn$(PKG_VERSION).tar.gz|' \
-    -e 's|^PKG_BUILD_DIR:.*|PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-svn$(PKG_VERSION)|' \
-    "$m" > "$m.tmp" && mv "$m.tmp" "$m"
+sed -e 's|^PKG_SOURCE_URL_FILE:=\$(PKG_VERSION)\.tar\.gz$|PKG_SOURCE_URL_FILE:=svn$(PKG_VERSION).tar.gz|' \
+    -e 's|^PKG_BUILD_DIR:=\$(BUILD_DIR)/\$(PKG_NAME)-\$(PKG_VERSION)$|PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-svn$(PKG_VERSION)|' \
+    "$m" > "$m.tmp" && mv "$m.tmp" "$m" && grep -E '^PKG_(VERSION|SOURCE_URL_FILE|BUILD_DIR):=' "$m"
 
 # 4. 应用裁剪配置
 cp config-custom.seed .config
@@ -70,12 +71,13 @@ ls bin/targets/x86/64/
 git fetch upstream
 git checkout istoreos-24.10
 git merge --ff-only upstream/istoreos-24.10   # 本分支只做 ff，保持零冲突
+git push origin istoreos-24.10                 # fork 镜像分支也跟上（ff 推送）
 git checkout custom-24.10
 git rebase istoreos-24.10                    # 裁剪分支只有一个 seed 文件，rebase 无痛
-git push origin custom-24.10
+git push --force-with-lease origin custom-24.10  # rebase 改写了已推送历史；--force-with-lease 远端被别处改过时会拒绝覆盖
 ```
 
-- 由于全部定制收敛在一个 seed 文件，上游 99% 的提交都与它无冲突；`make defconfig` 后如遇符号改名（罕见），构建时会提示，按提示改 seed 即可
+- 由于全部定制收敛在一个 seed 文件，上游 99% 的提交都与它无冲突；符号改名（罕见）时 `make defconfig` 会静默丢掉那一行，本地不会有任何提示；CI 的 seed 审计会把"已知清单外的未生效行"判失败（几分钟内），看 artifact 里的 seed-audit.txt 按报告改 seed。本地构建后可自己跑 `bash .github/scripts/seed-audit.sh` 检查
 - 云端构建走本仓库自己的 workflow（不引 P3TERX 等第三方模板；注意它至今还没有一次成功的 run）：`.github/workflows/build-istoreos.yml` 手动触发，seed 审计逻辑在 `.github/scripts/seed-audit.sh`（装好 feeds、跑过 defconfig 后可本地执行）。取舍理由见 `docs/CUSTOM-TRIMMING.md` §十二
 
 ## 备注
@@ -83,5 +85,5 @@ git push origin custom-24.10
 - seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字：seed 自身 `CONFIG_PACKAGE_*` 行 首轮 1078 → 二次裁剪 697 → 清死行后 593（现值，`grep -c '^CONFIG_PACKAGE_' config-custom.seed` 可复核）；r4 那次 `make defconfig` 展开选中 **705**（含 defconfig 自行加回的 114 个）。镜像最终包数以成功构建的 `manifest` 为准
 - **商店应用不在构建期**：上面「📦 刷机后从 iStore 商店装回」那一行的包名，在 `feeds.conf.default` 的六个 feed 里根本没有对应 kconfig 符号，写进 seed 也是死行。证据见 `docs/CUSTOM-TRIMMING.md` §九，逐条清单见 §十——包名只在那两处维护，本文不再重列
 - **上面第 3、4 步的顺序不能调换**：`make defconfig` 早于 `feeds install` 会静默删掉所有 feed 包的 `=y` 行（符号还不存在），那次构建的产物连 LuCI 都没有。`make download` 也有坑：它对失败包只打 ERROR、退出码仍是 0。两道坑的机制与修法复盘在 §七、§八
-- **云构建现状（r7 = run 37470180070 冷缓存实测）**：tools 1h14m43s + toolchain 20m55s + target 12m57s + package/compile 约 2h，全量冷编 **约 4h15m–4h45m**（此前"7h+ 装不下 350 分钟"的推断来自被 timeout 杀掉的 r6，它从没测到终点，已更正）。`dl` 缓存收益确定（省掉实测那 28m01s 的下载）；`staging_dir` 缓存"靠 stamp 续编"已被 `rules.mk`/`package.mk` 证伪，判据是下次 run 的 `tools/compile` 时长（见 `docs/CUSTOM-TRIMMING.md` §十一「复核更正」与 §十三）
+- **云构建现状（r7 = run 37470180070 冷缓存实测）**：tools 1h14m43s + toolchain 20m55s + target 12m57s + package/compile 约 2h，全量冷编 **约 4h15m–4h45m**（此前"7h+ 装不下 350 分钟"的推断来自被 timeout 杀掉的 r6，它从没测到终点，已更正）。`dl` 缓存收益确定（省掉实测那 28m01s 的下载）；`staging_dir` 缓存"靠 stamp 续编"已被 `rules.mk`/`package.mk` 证伪（`.built` 在 `build_dir`），CI 已删掉这份缓存省配额；`build_dir` 体积仍由 Report disk usage 实测，用于决定是否上 9400F 自建 runner（见 docs/CUSTOM-TRIMMING.md §十一、§十三）
 - 恢复某个删除的功能：iStore 商店装回（临时），或往 seed 加一行 `CONFIG_PACKAGE_xxx=y`（长期，仅对该符号确实存在于 feed 时有效）

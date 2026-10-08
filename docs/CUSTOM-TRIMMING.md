@@ -130,7 +130,7 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 - `# CONFIG_X is not set` 扛得住 `default y if DEFAULT_X`（defconfig 尊重显式关闭）→ 原因 2 的修法成立
 - 扛不住其他包的 `select PACKAGE_X`（会被强制回 `=y`）→ 若某个保留包硬依赖非 full 变体，冲突会复发
-- 符号不存在时 `CONFIG_...=y` 行被无警告删除 → 原因 1 只能靠步骤顺序防。CI 现已在 defconfig 后做审计：按 `tmp/.config-package.in` 把未生效的 seed 行分成「符号不存在」与「符号存在但没开成」两类，报告连同展开的 `.config` 一起作 artifact 上传；**审计本身不阻断构建**（要让它同时回答"能不能出镜像"），只有 `CONFIG_PACKAGE_dnsmasq=y` 复现时才硬失败
+- 符号不存在时 `CONFIG_...=y` 行被无警告删除 → 原因 1 只能靠步骤顺序防。CI 现已在 defconfig 后做审计：按 `tmp/.config-package.in` 把未生效的 seed 行分成「符号不存在」与「符号存在但没开成」两类，报告连同展开的 `.config` 一起作 artifact 上传；**审计本身不阻断构建**（要让它同时回答"能不能出镜像"），只有 `CONFIG_PACKAGE_dnsmasq=y` 复现时才硬失败（已被 §十四 收紧：已知清单外的未生效行也硬失败）
 
 **功能视角**：本次**没有增删任何功能**，只修构建正确性。设备能做的事仍与 §六「仍然完好、一个没动的功能」清单一致；`dnsmasq` 非 full 变体从来不在路由器实装清单里，钉死它不改变行为（dnsmasq-full 以 `PROVIDES:=dnsmasq` 满足依赖）。
 
@@ -213,7 +213,7 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 - 缓存拆两对独立 restore+save，key 按用途分前缀（`istoreos-dl-<run_id>` / `istoreos-tc-<run_id>`，restore-keys 前缀滚动复用）：
   - `dl`：Save downloads cache 紧跟 Download sources，挂 `always()`——此刻 job 还健康，上传从容，编译超时也保住这 28 分钟的下载
-  - `staging_dir`：Save toolchain cache 在 Compile 后，挂 `always()`——**被超时取消也会存**。当时假设"下次 run 恢复后 tools/toolchain 靠 stamp 跳过、从 package/compile 续编（约 4.5–5h，350 分钟内可完成，死循环即破）"，**该假设已被 2026-10-07 复核推翻，见下**
+  - `staging_dir`：Save toolchain cache 在 Compile 后，挂 `always()`——**被超时取消也会存**。当时假设"下次 run 恢复后 tools/toolchain 靠 stamp 跳过、从 package/compile 续编（约 4.5–5h，350 分钟内可完成，死循环即破）"，**该假设已被 2026-10-07 复核推翻，见下**；这份缓存已在 §十四 删除
 - 缓存路径去掉顶层 `toolchain/`（源码目录，无缓存价值，编译产物在 `staging_dir/`）；`staging_dir` 整目录保留
 - 恢复时不做 cachewrtbuild 那招 sed 改顶层 Makefile——不改源码树的文件，符合本仓库纪律
 
@@ -228,9 +228,9 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 `make` 判定是否重编看的是 `.built`，而它在没进缓存的 `build_dir/` 里；只把 `_installed` 存进缓存，恢复后 `.prepared/.configured/.built` 全缺，tools 与 toolchain 依旧从头编。所以 §十一 的"下次就能续编"不成立，缓存里唯一确定省时间的是 `dl`（省掉那次 28 分钟的 Download sources）。
 
-**判据（下次 run 一眼定性，非推断）**：恢复缓存后 `tools/compile` 若仍约 1h15m（r7 冷缓存实测 1h14m43s，此前这里写的 1h25m 是 r6 被杀时的估读），即证明这份 staging_dir 缓存只是占配额；若接近 0，我这条更正作废。
+**判据（下次 run 一眼定性，非推断）**：恢复缓存后 `tools/compile` 若仍约 1h15m（r7 冷缓存实测 1h14m43s，此前这里写的 1h25m 是 r6 被杀时的估读），即证明这份 staging_dir 缓存只是占配额；若接近 0，我这条更正作废。（§十四 已按上面的 stamp 落点表直接删掉这份缓存，本判据不再适用）
 
-**`build_dir` 能不能一起缓存，唯一判据是它的体积，而这个数本机给不出**（M1 Max 跑不了 x86 构建树）——所以主构建 workflow 的 `Report disk usage` 现在顺手量 `dl`/`staging_dir`/`build_dir` 三者体积，并数 `.built`（build_dir 内）与 `*_installed`（staging_dir 内）作为上方落点表的现场版。r7 已实测 dl 1.240GB、staging_dir 1.117GB，`build_dir` 待下一次 run 出数；那次 run 若中途失败，读数只是全量体积的下限。**待用户定的三条路**：①9400F 挂自建 runner，`build_dir` 常驻增量，彻底绕开托管 runner 的 350 分钟与配额（BUILD-CUSTOM 本来就以在 9400F 上编译为主线）；②接受"每次全量冷编"，把 dl 缓存留着、staging_dir 缓存删掉换配额；③先跑一次拿到 tools/compile 实测时长再决定——r7 之后紧接着的那次 run 就是它，判据见 §十三「判据」。
+**`build_dir` 能不能一起缓存，唯一判据是它的体积，而这个数本机给不出**（M1 Max 跑不了 x86 构建树）——所以主构建 workflow 的 `Report disk usage` 现在顺手量 `dl`/`staging_dir`/`build_dir` 三者体积，并数 `.built`（build_dir 内）与 `*_installed`（staging_dir 内）作为上方落点表的现场版。r7 已实测 dl 1.240GB、staging_dir 1.117GB，`build_dir` 待下一次 run 出数；那次 run 若中途失败，读数只是全量体积的下限。**待用户定的三条路**：①9400F 挂自建 runner，`build_dir` 常驻增量，彻底绕开托管 runner 的 350 分钟与配额（BUILD-CUSTOM 本来就以在 9400F 上编译为主线）；②接受"每次全量冷编"，把 dl 缓存留着、staging_dir 缓存删掉换配额；③先跑一次拿到 tools/compile 实测时长再决定——r7 之后紧接着的那次 run 就是它，判据见 §十三「判据」。——② 的「删 staging_dir」已在 §十四 落地，① 仍待定；`Report disk usage` 现在只量 `dl`/`build_dir`、不再数 stamp。
 
 **参考项目的现状警示**：draco-china/istoreos-actions 最近 20 次 run 全 failure（多为 3 分钟早夭，另有一次 360.3 分钟撞 6h 平台上限），只能借鉴机制不能照抄现状；它的 cachewrtbuild 同样 `post-if: success()`，首次成功前的 bootstrap 问题在我们这里用 `always()` save 解决。
 
@@ -308,9 +308,25 @@ r7 的量级是 tools 1h15m + toolchain 21m + target 13m + package/compile（到
 ### 判据（下一次 run 一眼定性）
 
 - `dl` 缓存生效 = Download sources 从 28 分钟掉到几分钟
-- `staging_dir` 缓存有没有用，仍按 §十一「复核更正」的判据：恢复后 `tools/compile` 若还是约 1h15m 就是白占配额；接近 0 才算我那条评论作废
-- `build_dir` 到底装不装得下：同一次 run 的 `Report disk usage` 会打 `dl`/`staging_dir`/`build_dir` 三个体积与 `.built`/`*_installed` 计数。`build_dir` 若逼近 10GB 配额，"把它一起缓存"这条出局，只剩 §十一 的 ①（9400F 自建 runner）或 ②（删 `staging_dir`、只留 `dl`）
+- `staging_dir` 缓存有没有用，仍按 §十一「复核更正」的判据：恢复后 `tools/compile` 若还是约 1h15m 就是白占配额；接近 0 才算我那条评论作废——已作废，staging_dir 缓存在 §十四 删除
+- `build_dir` 到底装不装得下：同一次 run 的 `Report disk usage` 会打 `dl`/`build_dir` 体积（§十四 起不再量 staging_dir、不再数 stamp）。`build_dir` 若逼近 10GB 配额，"把它一起缓存"这条出局，只剩 §十一 的 ①（9400F 自建 runner）或 ②（§十四 已删掉 `staging_dir`、只留 `dl`，即接受每次冷编）
 - 出镜像的话 `bin/targets/x86/64/manifest` 的包数才是 §六 基准要的最终数，回填 BUILD-CUSTOM 备注
 
 **功能视角**：固件功能零增删，vlmcsd（§三 在用项）照旧在镜像里；改的是 CI 步骤与 feed 副本的两行笔误。刷机后需从商店装回的清单不变，见 §十。
 
+## 十四、同步流程与审计闭环修正（2026-10-08，code-review 8 条）
+
+**功能视角**：固件功能零增删，seed 一行没动；改的是 CI、审计脚本与两份文档。设备能做的事与 §六「仍然完好」一致，刷机后需从商店装回的清单不变（§十）。
+
+| # | 改动 | 为什么 |
+|---|---|---|
+| 1 | AGENTS.md 同步步骤补 `git checkout istoreos-24.10`，末尾推送用 `git push --force-with-lease origin custom-24.10` | 原写法的 `merge --ff-only` 落在 custom-24.10 上必失败，本地 istoreos-24.10 不前进，随后的 rebase 是空操作，上游修复一个都进不来 |
+| 2 | BUILD-CUSTOM.md 同步命令：rebase 后改用 `--force-with-lease` 推送；ff 合并后补 `git push origin istoreos-24.10` | rebase 改写了已推送历史，普通 push 必被拒；`--force-with-lease` 在远端被别处改过时拒绝覆盖，免得顺手 `--force` |
+| 3 | 更正"符号改名构建时会提示" | `make defconfig` 对不存在的符号是无警告删除（§七），本地零提示；改由 CI 审计拦截 |
+| 4 | `seed-audit.sh`：已知未生效清单（`kmod-thermal`、`kmod-xdp-sockets-diag`，即 §十 的保留项）之外的丢失行硬失败；dnsmasq 与新增丢失两项都检查完再统一退出；已知项若开成了，提示可从清单删 | 原来只发 `::warning::`，上游/feed 改名或依赖变化时 CI 照样绿、镜像悄悄少包，要到刷进主路由才发现。§七 的"审计本身不阻断构建"自此只对已知项成立；往已知清单加项须同时在本文档记账 |
+| 5 | 审计报告首行"seed 符号数"改为"feed 包符号总数" | 那是 `tmp/.config-package.in` 的全部包符号（r4 为 11910），不是 seed 行数 |
+| 6 | vlmcsd 补丁（CI 与 BUILD-CUSTOM 步骤 3b）只匹配原笔误整行；CI 里 `PKG_VERSION` 已以 svn 开头则跳过，补完后精确校验两行，不符即失败 | third feed 跟踪 `main` 没锁版本，作者自己修好后原来的 `:.*` 盲改会拼出 `svnsvn1113`，要到 Download 阶段才 404 |
+| 7 | 删 staging_dir 缓存（Restore/Save toolchain cache 两步） | §十一「复核更正」已证明续不了编（`.built` 在 build_dir）；每次白存约 1.1GB，几次 run 就挤占 10GB 配额，可能把有用的 dl 缓存淘汰掉。即 §十一 三条路里的 ②；①（9400F 自建 runner）仍待定 |
+| 8 | Report disk usage 删 `.built`/`*_installed` 计数，只量 `dl`、`build_dir` | staging_dir 缓存删了，这组对比失去意义；`build_dir` 体积仍要实测，用来判 ① |
+
+**本轮验证方式**：`bash -n` 过；workflow YAML 解析过（14 步）。`seed-audit.sh` 用合成 fixture 跑了五条路径：只丢两个已知项 rc=0、多丢一项 rc=1 并列出该项、dnsmasq 被加回 rc=1、已知项开成了 rc=0 并提示、两种错误同时出现 rc=1 且两条 error 都打印（旧脚本"多丢一项"是 rc=0，即这个漏洞）。vlmcsd 补丁用三种 Makefile 实跑：原笔误版补齐 rc=0、`PKG_VERSION:=svn1113` 跳过且无 svnsvn rc=0、改成其他写法 rc=1。CI 侧的真实验证等下一次 run；前提是清完死行后真的只剩那 2 个已知项，若冒出别的项，审计步骤几分钟内就会失败，看 artifact 里的 `seed-audit.txt`。
