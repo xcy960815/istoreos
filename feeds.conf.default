@@ -7,5 +7,6 @@ src-git store https://github.com/linkease/istore.git;main
 # argon, etc.
 src-git third https://github.com/jjm2473/openwrt-third.git;main
 # DDNS-Go（2026-10-09）：六个默认 feed 里没有这个包，不拉整个 app-hub。
-# 只加这一条才能开箱烘焙；勿把 openclash/quickstart 等商店应用跟进来。见 docs/CUSTOM-TRIMMING.md §十五
-src-git ddnsgo https://github.com/sirpdboy/luci-app-ddns-go.git;main
+# 钉 v6.12.2：main 的 6.17.1 要 Go 1.25，istoreos-24.10 的 golang 是 1.23.12（run 37875891581）。
+# 6.12.2 的 go.mod 正好是 1.23.12，也是 iStore 商店当时的版本。见 docs/CUSTOM-TRIMMING.md §十五
+src-git ddnsgo https://github.com/sirpdboy/luci-app-ddns-go.git;v6.12.2

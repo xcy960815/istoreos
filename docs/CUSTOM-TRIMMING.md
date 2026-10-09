@@ -102,12 +102,14 @@
 
 ### D 档（查清依赖后另批处理，本次未动）
 
-- `ruby` 全家（libruby3.3+ruby-*×8）、`git/git-http`、`taskd/luci-lib-taskd`、`sqlite3-cli`：官方镜像里某处在用，无法本地查依赖（`linkmount` 原也在此列，§九 证实它是商店包，已随 §十 清掉）
+候选仍在 seed 里。2026-10-09 把「能不能因只做 x86 再砍」也写进台账，见 **§十六**（未改 seed，等当前 CI 出镜像）。
+
+- `ruby` 全家、`git/git-http`、`taskd/luci-lib-taskd`、`sqlite3-cli`：官方镜像里某处在用，无法本地查依赖（`linkmount` 原也在此列，§九 证实它是商店包，已随 §十 清掉）
 - `lm-sensors-detect` + `perl` + perlbase-*×31：perl 疑似仅被 lm-sensors-detect（Perl 脚本）拉入；**lm-sensors 本体必须留**（luci-app-fan 温控）
 - 文件系统类待确认数据盘实际格式：btrfs/ntfs3/f2fs/xfs/reiserfs/jfs/hfs/hfsplus/isofs/udf/cramfs/minix/msdos + exfat/vfat（U 盘建议留）
 - 其他低价值但便宜：swconfig/switch-*、map/ds-lite/sit/siit/nat46、kmod-sctp/tpm/udptunnel/ppdev 等
 
-**验证方法（路由器上执行）**：`opkg whatdepends ruby git taskd linkmount perl lm-sensors-detect`；`df -T /mnt/sata1-4`
+**验证方法（路由器上执行）**：`opkg whatdepends ruby git taskd perl lm-sensors-detect`；`df -T /mnt/sata1-4`
 
 ### 安全网（为什么敢删）
 
@@ -180,7 +182,7 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 **已定（2026-10-06，用户选）**：**不**把整个 iStore 商店 / app-hub 追加进 `feeds.conf`，维持"固件只留路由栈 + 商店本体，刷机后从 iStore 商店装回 openclash / tailscale UI / quickstart / eqos …"。理由是镜像尺寸优先；随之把 104 行死 seed 清掉，见 §十。
 
-**修订（2026-10-09）**：公网域名是硬需求，六个默认 feed 里又没有 DDNS-Go。允许也只允许 **一条** 例外 feed：`src-git ddnsgo https://github.com/sirpdboy/luci-app-ddns-go.git;main`。这不是「商店 feed 开闸」——openclash 等仍不进构建期。见 §十五。
+**修订（2026-10-09）**：公网域名是硬需求，六个默认 feed 里又没有 DDNS-Go。允许也只允许 **一条** 例外 feed：`src-git ddnsgo https://github.com/sirpdboy/luci-app-ddns-go.git;v6.12.2`。这不是「商店 feed 开闸」——openclash 等仍不进构建期。见 §十五。
 
 ## 十、清掉 104 行"从未生效"的 seed 行（2026-10-06，697 → 593）
 
@@ -353,10 +355,55 @@ r7 的量级是 tools 1h15m + toolchain 21m + target 13m + package/compile（到
 
 | 动作 | 内容 |
 |---|---|
-| `feeds.conf.default` 新增 | `src-git ddnsgo https://github.com/sirpdboy/luci-app-ddns-go.git;main` |
+| `feeds.conf.default` 新增 | `src-git ddnsgo https://github.com/sirpdboy/luci-app-ddns-go.git;v6.12.2`（起初跟 `main`，r8 改为钉 tag） |
 | seed 新增 `=y` | `ddns-go`、`luci-app-ddns-go`、`luci-i18n-ddns-go-zh-cn`（seed `CONFIG_PACKAGE_*` 593 → 596） |
 | 不加 | `app-meta-ddnsgo`（商店元数据，无 kconfig）、`luci-app-ddns`、`ddns-scripts*`、`ddnsto*` |
 
 `ddns-go` 是 Go 包（`PKG_BUILD_DEPENDS:=golang/host`），冷编会多编一套 golang host，350 分钟预算比 r7 更紧。审计步骤应能看见这三行生效；若 `luci-i18n-ddns-go-zh-cn` 符号名与 luci.mk 生成的不一致，按 artifact 里 `seed-audit.txt` 改名（改名不改功能）。
 
-后续 AI：**不要**再根据 §二 旧表述把 DDNS-Go 删掉；**不要**把这条 feed 扩成整个商店源。
+### r8 失败（run 37875891581）：Go 版本不够
+
+seed 审计、vlmcsd、download 全绿，编了 4h21m，唯一挂掉的包是 `package/feeds/ddnsgo/ddns-go`。V=s 原文：
+
+```
+go: ../../go.mod requires go >= 1.25.0 (running go 1.23.12; GOTOOLCHAIN=local)
+```
+
+`feeds.conf.default` 当时跟 `main`，sirpdboy 把内核升到 **6.17.1**，其 `go.mod` 要 Go 1.25；`istoreos-24.10` 的 `feeds/packages/lang/golang` 是 **1.23.12**，且 `GOTOOLCHAIN=local` 不许自动下新 toolchain。其余包都编过了。
+
+修法：feed 钉死 tag **`v6.12.2`**（`c0730e9`）。该 tag 的 `PKG_VERSION:=6.12.2`，上游 `go.mod` 写的就是 `go 1.23.12`，和商店当时的 `app-meta-ddnsgo_6.12.2` 同版本。不升级官方 golang（动 packages feed 太大）。功能仍是开箱有 DDNS-Go，只是内核停在 6.12.2，不要再改回 `main` 除非 golang 先升到 ≥1.25。
+
+后续 AI：**不要**再根据 §二 旧表述把 DDNS-Go 删掉；**不要**把这条 feed 扩成整个商店源；**不要**把 `ddnsgo` 改回跟踪 `main`。
+
+## 十六、下一轮可瘦（2026-10-09 记，**未改 seed**）
+
+用户问：固件只面向 x86，能不能再去掉一部分代码。结论先记在这里，**等当前 CI（含 §十五 DDNS-Go）出镜像后再动 seed**，免得正在跑的构建作废。
+
+### 不要做的：从 git 里删其他架构源码
+
+seed 已是 `CONFIG_TARGET_x86=y` / `CONFIG_TARGET_x86_64=y` / `DEVICE_generic`。`make` 只编 x86_64 内核和选中的包；`target/linux` 下 ARM、MTK、瑞芯微等目录**不会进 squashfs**。那些是上游源码树，删了会让 `istoreos-24.10` ff-only 和 `custom-24.10` rebase 必冲突，也违反 §一「不改源码」。CI 时间花在 tools/toolchain 和 x86 包上，不在别的 target。
+
+「只做 x86」已经体现在 target 选择上，不是再删源码树。
+
+### 可以做的：再收 seed（这台 J4125，不是「所有 x86」）
+
+二次裁剪已经按盒子拿掉无线/蜂窝/老网卡/KVM。剩下是 §六 D 档——和架构无关，是「这台机器用不用」。每组必须先在路由器上 `opkg whatdepends`（或刷裁剪版后查），硬依赖为 0 才从 seed 钉 `# CONFIG_PACKAGE_xxx is not set`。软依赖（脚本里调命令）不会被 defconfig 拉回，见 §六安全网 3。
+
+#### 功能视角（候选，未执行）
+
+| 若从 seed 删掉，设备不能再做什么 | 候选（仍在 seed） | 前提 / 必须留的 |
+|---|---|---|
+| 跑 ruby 脚本 | `ruby`、`ruby-bigdecimal/date/digest/enc/pstore/psych/stringio/yaml` | `opkg whatdepends ruby` 为空才砍 |
+| 在路由器上 git clone | `git`、`git-http` | 纯网关不需要；whatdepends 为空才砍 |
+| taskd 任务框架 | `taskd`、`luci-lib-taskd` | 同上 |
+| sqlite 命令行 | `sqlite3-cli` | **库可能被别的包依赖，只砍 CLI** |
+| `sensors-detect` 探测芯片 | `lm-sensors-detect`、`perl`、全部 `perlbase-*` | **`lm-sensors` 本体留**（风扇温控） |
+| 挂冷门磁盘格式 | `kmod-fs-{hfs,hfsplus,jfs,reiserfs,minix,cramfs,isofs,udf,msdos}` 及对应用户态 | **必留**：squashfs、ext4、vfat/exfat（U 盘）、efivarfs。btrfs/xfs/ntfs3/f2fs 等 `df -T /mnt/sata1-4` 再说 |
+| 老式交换机 / DS-Lite 等过渡隧道 | `map`、`ds-lite`、`kmod-sit`、`kmod-nat46`、`kmod-sctp`、`kmod-tpm` | IPv6 本体（odhcp6c/odhcpd）留 |
+| 换一块非 Intel i226 的 PCI 网卡 | `kmod-e1000`、`kmod-e1000e`、`kmod-igb`、`kmod-igbvf`、`r8169-firmware`（及 r8169/r8125 若仍在） | **`kmod-igc` 绝对留**。USB 网卡 + 手机 RNDIS/iPhone 共享仍留。只在「这块板永远不换 PCI 网卡」时才收保险 |
+
+#### 包名明细（仍在 seed，尚未删除）
+
+执行时按上表分组从 `config-custom.seed` 去掉对应 `=y`（或钉 `is not set`），同一提交更新本节：把「候选」改成「已删」，并写清刷完机少了什么。
+
+后续 AI：**不要**把本节当成授权去删 `target/linux` 或其他架构源码；**不要**在当前 DDNS-Go 那次 CI 跑完之前改 seed。

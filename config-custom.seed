@@ -15,9 +15,10 @@
 # 二次裁剪 (2026-10-05): 按"纯网关+Tailscale入口+公网DDNS-Go"定位再删——无线全家/蜂窝modem全家/GPU固件与DRM/
 #   NFS-SMB存储服务/l2tp-pptp-sstp-gre-ipip-ipsec隧道/KVM虚拟化宿主/Docker孤儿kmod/老式网卡驱动
 #   (网卡保险仅留 igc/e1000/e1000e/igb/r8169/r8125; USB网卡与手机共享网络保留)
-# D档待查依赖后处理(本次未动): ruby/git/taskd/luci-lib-taskd/sqlite3-cli/lm-sensors-detect(perl)/数据盘文件系统类
-#   (linkmount 原在此列, 但 §九 证实它是商店包、根本不是构建期候选, 已随 §十 那批清掉)
-#   验证: opkg whatdepends ruby git taskd perl lm-sensors-detect; df -T /mnt/sata1-4  详见 docs/CUSTOM-TRIMMING.md §六
+# D档待查依赖后处理(本次未动): ruby/git/taskd/sqlite3-cli/lm-sensors-detect(perl)/冷门fs/网卡保险再收
+#   不要删 target/linux 其他架构——镜像已是 x86_64，删源码会把上游同步搞炸。台账见 docs/CUSTOM-TRIMMING.md §十六
+#   验证: opkg whatdepends ruby git taskd perl lm-sensors-detect; df -T /mnt/sata1-4
+#   等当前 CI 出镜像后再动 seed，勿与 §十五 DDNS-Go 那次构建抢 HEAD
 CONFIG_TARGET_x86=y
 CONFIG_TARGET_x86_64=y
 CONFIG_TARGET_x86_64_DEVICE_generic=y
