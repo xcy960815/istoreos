@@ -23,7 +23,7 @@
 |---|---|---|
 | Docker 全家桶 | containerd、docker、dockerd、docker-compose、runc、tini、libdevmapper、libseccomp、docker-deps、luci-app-dockerman、luci-app-dpanel、app-meta-dpanel、luci-lib-docker 及 i18n | Docker 服务已全部迁往 9400F Ubuntu 服务器（192.168.100.10），路由器不再跑容器 |
 | Samba/文件共享 | samba4-server、samba4-libs、luci-app-samba4、kmod-fs-ksmbd、unishare、luci-app-unishare 及 i18n | 路由器不再做 NAS/文件共享；文件服务归 9400F/N100 |
-| DDNS（三套） | ddns-scripts 全系列（含 cloudflare/dnspod/services/aliyun）、luci-app-ddns、ddns-go、app-meta-ddnsgo、luci-app-ddns-go、ddnsto、luci-app-ddnsto 及 i18n | 远程访问统一走 Tailscale，不需要公网 DDNS，减少暴露面 |
+| DDNS（OpenWrt 自带 + ddnsto，**仍禁止加回**） | ddns-scripts 全系列（含 cloudflare/dnspod/services/aliyun）、luci-app-ddns、ddnsto、luci-app-ddnsto 及 i18n | 用户不用自带那套，也不用 Linkease 穿透。**DDNS-Go 已于 2026-10-09 加回固件，见 §十五**；当初把三套一起删是误把「不用自带 DDNS」写成了「不用公网」 |
 | UPnP | miniupnpd-nftables、luci-app-upnp、libminiupnpc 及 i18n | 无使用需求，减少暴露面 |
 | Linkease 系 | linkease、luci-app-linkease、ddnsto 同属 Linkease 生态 | 未使用 |
 
@@ -32,7 +32,8 @@
 > ⚠️ 本清单是**功能**层面"别丢"，不等于"固件里已烘焙"：其中 openclash、quickstart、`app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,…}` 等不在构建期，刷机后要经 iStore 商店装回。哪些真在固件里、哪些要装回——唯一清单见 §六「仍然完好、一个没动的功能」和 §十，证据见 §九。
 
 - **openclash**：全家主力代理，GeoIP 数据齐全、多份配置备份（用户本机代理 7897 与之同源）
-- **tailscale + luci-app-tailscale-community**：全家远程入口，路由器是 exit node
+- **ddns-go + luci-app-ddns-go**：公网 IP + 免费域名，**开箱即有**（第七条 feed `ddnsgo`）。勿删、勿改回「刷机后商店装」、勿用 `luci-app-ddns` 顶替
+- **tailscale + luci-app-tailscale-community**：家人设备远程入口，路由器是 exit node（与公网 DDNS 并行，不是二选一）
 - **aria2 / transmission**：85 行 / 74 行实际配置，在用的下载工具
 - **openlist / gowebdav / vlmcsd / eqos / oaf / ttyd / wol(etherwake) / cpufreq / luci-fan / fastnet / floatip**：均有活跃配置
 - **istore / quickstart / luci-app-store / argon 主题**：系统管理骨架，勿动
@@ -43,7 +44,7 @@
 
 | 设备 | 角色 |
 |---|---|
-| J4125 四口 2.5G（本固件目标机） | 纯网关 + Tailscale 入口 + VLAN 分段 |
+| J4125 四口 2.5G（本固件目标机） | 纯网关 + Tailscale 入口 + 公网 DDNS-Go + VLAN 分段 |
 | 9400F + 1060（192.168.100.10） | 主服务器：原数据中台全部 Docker 服务 |
 | 零刻 N100 | 哨兵节点（备份/监控/备用入口），待 DDR5 内存降价上岗 |
 | 12600KF | 用户新主力机（与本项目无关） |
@@ -58,7 +59,7 @@
 ## 六、二次裁剪（2026-10-05，按"纯网关"定位再减法）
 
 首轮 seed = 官方镜像清单做减法，官方清单里大量包是为**通用硬件**准备的。按目标机最终定位
-（无无线的纯网关 + Tailscale 入口 + VLAN，文件服务归 9400F/N100）做第二轮减法。
+（无无线的纯网关 + Tailscale 入口 + 公网 DDNS-Go + VLAN，文件服务归 9400F/N100）做第二轮减法。
 仍在 seed 内完成，未动源码；§三保留清单**原封未动**。seed 包配置行数 1078 → 697。
 
 ### 功能视角：二次裁剪后这台路由器"不能再做什么"
@@ -71,7 +72,7 @@
 | 接显示器看图形界面、GPU 工具 | i915/amdgpu/radeon 固件、DRM/fb 全系、nvtop | 无头设备无影响；GRUB 菜单和 VGA 文本控制台仍可用，QEMU 验证不受影响 |
 | 当 NFS/Samba/WebDAV 服务器；挂载别人的网络盘 | NFS 服务端全家、cifsmount、davfs2（Samba 首轮已删） | 文件服务归 9400F/N100；**gowebdav 服务端仍在用** |
 | RAID / 多盘合并 / 硬盘休眠 / iSCSI / USB over IP | mdadm+kmod-md、kmod-dm、mergerfs、hd-idle、iscsi/aoe、usbip | 单盘直用完全不受影响 |
-| L2TP/PPTP/SSTP VPN 拨号、GRE/IPIP 隧道、IPsec、链路聚合、中继 | 各协议 kmod+用户态、bonding、relayd | 远程统一走 Tailscale；**WireGuard 完整保留** |
+| L2TP/PPTP/SSTP VPN 拨号、GRE/IPIP 隧道、IPsec、链路聚合、中继 | 各协议 kmod+用户态、bonding、relayd | 不用这些拨号协议；远程走 Tailscale 或公网端口转发。**WireGuard 完整保留** |
 | 跑 KVM 虚拟机 | kvm/vfio/vhost（容器首轮已删） | 虚拟化归 9400F/N100 |
 | 识别老式/服务器级网卡（万兆、FC、古董 PCI） | 对应驱动+固件 | 常用保险已留：**igc + e1000/e1000e/igb/r8169/r8125** + 主流 USB 网卡（asix/ax88179/aqc111/rtl8152） |
 | ISDN/ATM 电话线拨号 | misdn/hfc/atm/solos | 古董功能，无影响 |
@@ -81,7 +82,7 @@
 
 本节写于 r4 审计之前，当时把"路由器在用的功能"和"固件里已烘焙的包"混为一谈，按 §九/§十 的口径重列：
 
-- **固件里确实有**：tailscale（守护进程，路由器仍作 exit node）、aria2+ariang、transmission、openlist、
+- **固件里确实有**：tailscale（守护进程，路由器仍作 exit node）、**ddns-go + luci-app-ddns-go（2026-10-09 加回，见 §十五）**、aria2+ariang、transmission、openlist、
   vlmcsd、ttyd、wol、iStore 商店本体（`luci-app-store`+`dkml`）、argon 主题、zram、smartd+lm-sensors（温控）、
   wireguard、dnsmasq-full、flow offload（kmod-nf-flow）
 - **不在固件里、刷机后要从商店装回**：openclash、eqos、oaf、cpufreq、luci-app-fan、fastnet、floatip、
@@ -95,7 +96,7 @@
 | A 蜂窝 modem 全家 | modemmanager、libmbim/libqmi/libqrtr-glib/uqmi/umbim/qmi-utils、comgt×3、usb-modeswitch、adb/adb-enablemodem、chat、kmod-mhi/qrtr/wwan/mtk-t7xx、全部 kmod-usb-serial、usb-acm/usb-atm、kmod-atm/solos-pci、usb-net 中的 mbim/qmi/hso/sierra/kalmia/kaweth | 无蜂窝硬件；**USB 网卡与手机共享网络保留**（rndis/ipheth/cdc-ncm/asix/ax88179/aqc111/rtl8152 等） |
 | A GPU/显示 | amdgpu/radeon/i915 固件、kmod-drm 全系、kmod-fb 全系、kmod-acpi-video/backlight、nvtop、libdrm | 无头路由；GRUB/QEMU 文本控制台不受影响（kmod-ata-piix 专门留作 QEMU 默认 IDE 启动） |
 | B 文件/存储服务 | nfs-kernel-server 全家+rpcbind+kmod-fs-nfs×5、cifsmount/luci-app-cifs-mount/kmod-fs-cifs+kmod-fs-smbfs-common/wsdd2、davfs2+libneon、mergerfs+luci-app-mergerfs、hd-idle+luci-app-hd-idle、mdadm+kmod-md×7+kmod-dm(-raid)+kmod-dax、iscsi/aoe/mpt3sas/mvsas/libsas/scsi-tape/scsi-raid/libfc/libfcoe、usbip×3 | 文件服务已归 9400F/N100，单盘无 RAID（对应 §四 拓扑） |
-| C 隧道/协议/虚拟化 | l2tp×3/ppptp(mppe)/sstp/gre/ipip/ipsec/macsec/tls 的 kmod+用户态、gre/ipip 协议处理器、bonding+proto-bonding、relayd+luci-proto-relay、trelay、kmod-kvm×3/vfio×2/vhost×2/irqbypass、kmod-9p×3、kmod-misdn/hfc×2 | 远程只走 Tailscale，不做虚拟化宿主，无 ISDN/隧道拨号 |
+| C 隧道/协议/虚拟化 | l2tp×3/ppptp(mppe)/sstp/gre/ipip/ipsec/macsec/tls 的 kmod+用户态、gre/ipip 协议处理器、bonding+proto-bonding、relayd+luci-proto-relay、trelay、kmod-kvm×3/vfio×2/vhost×2/irqbypass、kmod-9p×3、kmod-misdn/hfc×2 | 不用 L2TP/PPTP 拨号（远程走 Tailscale 或公网端口转发），不做虚拟化宿主，无 ISDN |
 | C Docker/UPnP 孤儿 | kmod-veth/macvlan/ipvlan/vxlan/br-netfilter/nf-ipvs、libnatpmp1 | 原为已删 Docker/UPnP 的依赖（首轮漏网） |
 | C 老式网卡 | 3c59x/8139/tulip/via/sis/skge/sky2/tg3/bnx2*/mlx4/5/ixgbe/i40e/iavf/qed×4/sfc/ena/amd-xgbe/atl×5/alx/b44/e100/forcedeth/natsemi/ne2k/pcnet32/niu/pcs-xpcs/stmmac/dwmac/ethoc/et131x/dm9000/r6040/vmxnet3、kmod-r8168/r8126/r8127、ssb 及 bnx2/bnx2x/e100/qed/rtl/mwifiex 各固件 | **保险只留 igc（命根）+ e1000/e1000e/igb/r8169/r8125** |
 
@@ -170,14 +171,16 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 1. **带 ABI 后缀的 opkg 二进制包名** 61 行（`libcurl4` `libgcc1` `libubus20250102` `libruby3.3` …）。kconfig 符号是无后缀的 `libcurl`/`libubus`，后缀只出现在打包出的包名上。死行，库随依赖自动进镜像——已在 §十 清掉。
 2. **iStoreOS 商店应用**（其余 43 行）：`luci-app-openclash`、`luci-app-tailscale-community`、`quickstart`/`luci-app-quickstart`/`luci-i18n-quickstart-zh-cn`、全部 `app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,fastnet,floatip,gowebdav,openclawmgr}`、`luci-lib-mac-vendor`、`linkmount`、`fastnet`、`floatip`、`gowebdav`、`webdav2`、`appfilter`、`kmod-oaf`、`aria2-entry-deps`、`luci-js-deps`、`transmission-daemon-openssl`、`jansson4`。
-   - **证据**：`feeds.conf.default` 与上游 `istoreos/istoreos@istoreos-24.10` 逐字相同（只有 packages/luci/routing/telephony/store/third 六个 feed），而 defconfig 后 `tmp/.config-package.in` 的 **11910** 个包符号里 `quickstart|openclash|app-meta|diskman|eqos|oaf|fastnet|floatip|linkmount|appfilter` 命中 **0**。
+   - **证据**：当时 `feeds.conf.default` 与上游 `istoreos/istoreos@istoreos-24.10` 逐字相同（只有 packages/luci/routing/telephony/store/third 六个 feed；**2026-10-09 起多了第七条 `ddnsgo`，见 §十五**），而 defconfig 后 `tmp/.config-package.in` 的 **11910** 个包符号里 `quickstart|openclash|app-meta|diskman|eqos|oaf|fastnet|floatip|linkmount|appfilter` 命中 **0**。
    - 这些应用住在**没写进 feeds.conf 的仓库**：`jjm2473/openwrt-app-meta`（`applications/app-meta-*`）、`jjm2473/openwrt-apps`（`luci-app-cpufreq`/`luci-app-fan`/`luci-lib-mac-vendor`）、`istoreos/quickstart`、`istoreos/istoreos-app-hub`（`apps/quickstart,fastnet,floatip,linkmount,webdav2,…`）。
    - 也就是说 §六 的基准（路由器 `opkg list-installed` 1122 包）**混入了刷机后从 iStore 商店运行时安装的包**，它们从来不是本仓库的构建期候选；裁剪台账里它们的"已删/保留"都是虚账。
    - 反面确认：商店自身在——`luci-app-store`、`dkml`、`istoreos-files`、`tailscale`（守护进程）都有符号且已开启，刷完机仍可从商店逐个装回。
 
 **符号存在却没开成 2 行**：`kmod-thermal`、`kmod-xdp-sockets-diag`——内核内建符号没开（需 `make kernel menuconfig`，或该 target 未 support），与 feed 无关。
 
-**已定（2026-10-06，用户选）**：**不**往 `feeds.conf` 追加商店 feed，维持"固件只留路由栈 + 商店本体，刷机后从 iStore 商店装回 openclash / tailscale UI / quickstart / eqos …"。理由是这台机器的定位是纯网关，镜像尺寸优先；随之把 104 行死 seed 清掉，见 §十。
+**已定（2026-10-06，用户选）**：**不**把整个 iStore 商店 / app-hub 追加进 `feeds.conf`，维持"固件只留路由栈 + 商店本体，刷机后从 iStore 商店装回 openclash / tailscale UI / quickstart / eqos …"。理由是镜像尺寸优先；随之把 104 行死 seed 清掉，见 §十。
+
+**修订（2026-10-09）**：公网域名是硬需求，六个默认 feed 里又没有 DDNS-Go。允许也只允许 **一条** 例外 feed：`src-git ddnsgo https://github.com/sirpdboy/luci-app-ddns-go.git;main`。这不是「商店 feed 开闸」——openclash 等仍不进构建期。见 §十五。
 
 ## 十、清掉 104 行"从未生效"的 seed 行（2026-10-06，697 → 593）
 
@@ -330,3 +333,30 @@ r7 的量级是 tools 1h15m + toolchain 21m + target 13m + package/compile（到
 | 8 | Report disk usage 删 `.built`/`*_installed` 计数，只量 `dl`、`build_dir` | staging_dir 缓存删了，这组对比失去意义；`build_dir` 体积仍要实测，用来判 ① |
 
 **本轮验证方式**：`bash -n` 过；workflow YAML 解析过（14 步）。`seed-audit.sh` 用合成 fixture 跑了五条路径：只丢两个已知项 rc=0、多丢一项 rc=1 并列出该项、dnsmasq 被加回 rc=1、已知项开成了 rc=0 并提示、两种错误同时出现 rc=1 且两条 error 都打印（旧脚本"多丢一项"是 rc=0，即这个漏洞）。vlmcsd 补丁用三种 Makefile 实跑：原笔误版补齐 rc=0、`PKG_VERSION:=svn1113` 跳过且无 svnsvn rc=0、改成其他写法 rc=1。CI 侧的真实验证等下一次 run；前提是清完死行后真的只剩那 2 个已知项，若冒出别的项，审计步骤几分钟内就会失败，看 artifact 里的 `seed-audit.txt`。
+
+## 十五、加回 DDNS-Go（2026-10-09，用户明确要求开箱即有）
+
+首轮把三套 DDNS 一起删掉，依据写成「远程只走 Tailscale、不用公网」。2026-10-09 用户纠正：宽带有公网 IP、有免费域名，**网关必须走公网**；家人远程仍用 Tailscale，两条路并行。嫌 OpenWrt 自带 `luci-app-ddns` 难用，指定 **DDNS-Go**。
+
+六个默认 feed 里没有 `ddns-go` / `luci-app-ddns-go`（它们是 iStore 商店应用，和 openclash 同类）。只往 seed 写 `CONFIG_PACKAGE_ddns-go=y` 会变成 §九 那种死行，CI 审计还会硬失败。所以这次破例改 `feeds.conf.default`，**只加一条** feed，不把 app-hub 拉进来。
+
+### 功能视角
+
+| 变更后设备能做 / 不能做 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| **能**：刷完机 LuCI 里就有 DDNS-Go，把免费域名的 A/AAAA 刷到当前公网 IP | `ddns-go`、`luci-app-ddns-go`、`luci-i18n-ddns-go-zh-cn` | 域名、Token 仍要用户自己填；不会预置任何密钥 |
+| **能**：公网访问内网服务（配合防火墙手动端口转发） | 已有 firewall4，未改 | 不上 UPnP（仍禁止加回） |
+| **仍不能**：用 OpenWrt 自带 DDNS、用 ddnsto 穿透 | `luci-app-ddns` / `ddns-scripts*` / `ddnsto` **不加回** | 用户明确不用这两套 |
+| **仍不能**：开箱即有 OpenClash 等商店应用 | 未改 feeds 的另外六条、未改 §十 清单 | 刷机后商店装回，与本次无关 |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| `feeds.conf.default` 新增 | `src-git ddnsgo https://github.com/sirpdboy/luci-app-ddns-go.git;main` |
+| seed 新增 `=y` | `ddns-go`、`luci-app-ddns-go`、`luci-i18n-ddns-go-zh-cn`（seed `CONFIG_PACKAGE_*` 593 → 596） |
+| 不加 | `app-meta-ddnsgo`（商店元数据，无 kconfig）、`luci-app-ddns`、`ddns-scripts*`、`ddnsto*` |
+
+`ddns-go` 是 Go 包（`PKG_BUILD_DEPENDS:=golang/host`），冷编会多编一套 golang host，350 分钟预算比 r7 更紧。审计步骤应能看见这三行生效；若 `luci-i18n-ddns-go-zh-cn` 符号名与 luci.mk 生成的不一致，按 artifact 里 `seed-audit.txt` 改名（改名不改功能）。
+
+后续 AI：**不要**再根据 §二 旧表述把 DDNS-Go 删掉；**不要**把这条 feed 扩成整个商店源。
