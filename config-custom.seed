@@ -24,6 +24,8 @@ CONFIG_TARGET_x86_64=y
 CONFIG_TARGET_x86_64_DEVICE_generic=y
 CONFIG_GRUB_IMAGES=y
 CONFIG_GRUB_EFI_IMAGES=y
+# Ventoy 用的 LiveCD（不是 Windows 式安装器）。N100 从 ISO 启动后再把 combined-efi.img.gz dd 到傲腾。见 §十九
+CONFIG_ISO_IMAGES=y
 CONFIG_TARGET_ROOTFS_SQUASHFS=y
 # x86 FEATURES 含 ext4，defconfig 会默认打开 TARGET_ROOTFS_EXT4FS；
 # make_ext4fs 按未压缩体积塞进 PARTSIZE，224MB 必炸。刷机只用 squashfs-combined。见 §十七

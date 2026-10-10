@@ -25,3 +25,5 @@ python3-setuptools
 python3-pyelftools
 python3-dev
 swig
+# x86 ISO：target/linux 的 SetupHostCommand 要 mkisofs/genisoimage/xorrisofs，缺了会在打盘阶段才炸
+genisoimage

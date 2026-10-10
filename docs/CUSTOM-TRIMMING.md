@@ -446,3 +446,42 @@ r10（run 38017418688）出镜像了。页面上两条 warning、一条 notice�
 | ubuntu-latest → 26 | GitHub 2026-10-19 起切 Ubuntu 26 | `runs-on: ubuntu-24.04` |
 
 固件功能零增删。不必为这三条重跑 5 小时构建。
+
+## 十九、Ventoy LiveCD ISO（2026-10-10，N100 16G 傲腾）
+
+用户要把裁剪版装进 N100 机内 **16G 英特尔傲腾**，启动介质是现成的 Ventoy 盘。r10 只有 `combined-efi.img.gz`（整盘镜像），不能当 Ventoy 菜单项。
+
+OpenWrt/iStoreOS 的 ISO 是 **LiveCD**：从光盘/Ventoy 启动进内存里的系统，**不会**像 Windows 安装盘那样自动写到傲腾。装盘仍然是把 `*-squashfs-combined-efi.img.gz` `dd` 到 NVMe。ISO 只解决「Ventoy 能点开、能进系统」。
+
+x86_64 内核已 `CONFIG_BLK_DEV_NVME=y`，不必往 seed 加 `kmod-nvme`。镜像未压缩大约 kernel 32M + root 512M + 预置 2G 数据分区，16G 傲腾装得下；多出来的空间首次启动后若没自动扩，再手动扩 overlay。
+
+### 功能视角
+
+| 变更后能做 / 不能做 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| **能**：把 `*-image-efi.iso` 拷进 Ventoy 盘，菜单里启动进裁剪版（Live） | `CONFIG_ISO_IMAGES=y` | N100 关 Secure Boot；U 盘一直插着才是这套 Live |
+| **能**：Live 里把 `*-squashfs-combined-efi.img.gz` dd 到傲腾，拔掉 U 盘从傲腾开机 | 仍用 combined-efi，不是 ISO 自己写入 | 傲腾上原有数据全没。认盘名：`lsblk` 看 `nvme0n1`，别 dd 到 Ventoy 那块盘 |
+| **不能**：指望 ISO 图形安装向导 | OpenWrt 没有 | 命令见下 |
+| **不能**：把 img.gz 直接丢进 Ventoy 当系统 | 整盘镜像 PARTUUID 对不上 | 不要再试 |
+
+### 包名 / 文件明细
+
+| 动作 | 内容 |
+|---|---|
+| seed 新增 | `CONFIG_ISO_IMAGES=y`（kconfig 文案就是 Build LiveCD） |
+| apt 新增 | `genisoimage`（打 ISO 要 mkisofs；缺了 `target/linux` 才会报 Please install mkisofs） |
+| CI 上传 | `bin/targets/x86/64/*.iso`；顺手把 `manifest` 改成 `*.manifest`（r10 那份清单没传上来） |
+| 产物 | `*-x86-64-generic-image-efi.iso`（Ventoy）+ 原来的 `*-squashfs-combined-efi.img.gz`（dd 到傲腾）。两份都要拷到 Ventoy 盘 |
+
+Live 里安装（U 盘是 Ventoy、傲腾是 nvme0n1 时）：
+
+```bash
+lsblk
+# 确认傲腾是 nvme0n1、Ventoy 不是这块
+gzip -dc /mnt/…/istoreos-*-squashfs-combined-efi.img.gz | dd of=/dev/nvme0n1 bs=4M
+reboot
+```
+
+拔掉 U 盘，BIOS 从 NVMe 启动。16G「傲腾内存」条有的只能当 RST 缓存、不能当系统盘，BIOS 里关掉 Intel RST / 设成 AHCI 或 NVMe 直出；若 `lsblk` 根本没有 nvme，这颗条不能当硬盘用。
+
+后续 AI：**不要**把 ISO 写成「安装盘」；**不要**为了 Ventoy 去改 `gen_image_generic.sh` 里写死的 2G 数据分区（那是源码）。J4125 仍刷 combined-efi 整盘，不走这条 Live 安装。

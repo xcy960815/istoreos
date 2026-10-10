@@ -169,8 +169,9 @@ jobs:
           name: istoreos-x86_64-trimmed-r${{ github.run_number }}
           path: |
             bin/targets/x86/64/*.img.gz
+            bin/targets/x86/64/*.iso
             bin/targets/x86/64/sha256sums
-            bin/targets/x86/64/manifest
+            bin/targets/x86/64/*.manifest
           retention-days: 14
           compression-level: 0
 
