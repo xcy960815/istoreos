@@ -8,6 +8,8 @@
 
 **裁剪版已经编出来了，哪台机器都还没刷上。** 用户上次装官方 iStoreOS 用的就是 **img**（`dd` / Etcher 整盘写入），N100 试刷也走这套，不必等 ISO。
 
+**后续 seed 变更（2026-10-10，§二十）**：用户已要求移除 Aria2/Transmission 及其页面入口，当前 seed 已关闭 9 个包（596 → 587 个 `=y`）。**r10 和基于旧提交启动的 ISO 构建仍含下载器**，本轮修改需新的构建验证后才进入镜像。
+
 | 事实 | 细节 |
 |---|---|
 | 可用固件 | GitHub Actions **r10** 成功（run [`38017418688`](https://github.com/xcy960815/istoreos/actions/runs/38017418688)），产物 `istoreos-x86_64-trimmed-r10`，约 291MB。刷 **EFI** 这一张：`istoreos-x86-64-generic-squashfs-combined-efi.img.gz`（约 100MB）。Mac 上曾下到 `/tmp/istoreos-r10/images/`（`/tmp` 重启可能没） |
@@ -45,14 +47,14 @@
 
 ## 三、保留清单（有实际使用证据，后续 AI 不要当成"没用"误删）
 
-> ⚠️ 本清单是**功能**层面"别丢"，不等于"固件里已烘焙"：其中 openclash、quickstart、`app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,…}` 等不在构建期，刷机后要经 iStore 商店装回。哪些真在固件里、哪些要装回——唯一清单见 §六「仍然完好、一个没动的功能」和 §十，证据见 §九。
+> ⚠️ 本清单是**功能**层面"别丢"，不等于"固件里已烘焙"：其中 openclash、quickstart、`app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,…}` 等不在构建期。除 QuickStart 外，按需从 iStore 商店装回；QuickStart 本轮不装回，以免恢复已删除的下载器、Samba、易有云首页卡片。哪些真在固件里、哪些要装回——唯一清单见 §六「仍然完好、一个没动的功能」和 §十，证据见 §九。
 
 - **openclash**：全家主力代理，GeoIP 数据齐全、多份配置备份（用户本机代理 7897 与之同源）
 - **ddns-go + luci-app-ddns-go**：公网 IP + 免费域名，**开箱即有**（第七条 feed `ddnsgo`）。勿删、勿改回「刷机后商店装」、勿用 `luci-app-ddns` 顶替
 - **tailscale + luci-app-tailscale-community**：家人设备远程入口，路由器是 exit node（与公网 DDNS 并行，不是二选一）
-- **aria2 / transmission**：85 行 / 74 行实际配置，在用的下载工具
-- **openlist / gowebdav / vlmcsd / eqos / oaf / ttyd / wol(etherwake) / cpufreq / luci-fan / fastnet / floatip**：均有活跃配置
-- **istore / quickstart / luci-app-store / argon 主题**：系统管理骨架，勿动
+- **openlist / vlmcsd / eqos / oaf / ttyd / wol(etherwake) / cpufreq / luci-fan / fastnet / floatip**：保留；2026-10-10 用户再次明确 OpenList 和它自带的 WebDAV 要留，不能随下载器删除
+- **Aria2 / Transmission 已退出保留清单**：2026-10-10 用户明确不需要，连同管理页面和首页入口一起去掉，见 §二十。旧配置行数不再作为保留依据
+- **istore / luci-app-store / argon 主题**：系统管理骨架，勿动；QuickStart 首页本轮不装回
 - **kmod-igc**：四个 2.5G i226-V 网卡的驱动，删了机器变砖
 - **irqbalance**：定制新增，为四张 2.5G 网卡分摊中断
 
@@ -86,7 +88,7 @@
 | 3G/4G/5G 上网模组、随身 WiFi 拨号 | modemmanager、libmbim/libqmi、comgt、usb-modeswitch、mhi/qrtr | 无此硬件；**断网应急改用手机 USB 共享网络**（rndis/ipheth/cdc-ncm 已保留，插 iPhone/Android 可当 WAN） |
 | USB 转串口设备（调试线/串口模块） | kmod-usb-serial 全系 | 需要时 iStore 临时装回或往 seed 加一行 |
 | 接显示器看图形界面、GPU 工具 | i915/amdgpu/radeon 固件、DRM/fb 全系、nvtop | 无头设备无影响；GRUB 菜单和 VGA 文本控制台仍可用，QEMU 验证不受影响 |
-| 当 NFS/Samba/WebDAV 服务器；挂载别人的网络盘 | NFS 服务端全家、cifsmount、davfs2（Samba 首轮已删） | 文件服务归 9400F/N100；**gowebdav 服务端仍在用** |
+| 当 NFS/Samba 服务器；用 cifsmount/davfs2 挂载别人的网络盘 | NFS 服务端全家、cifsmount、davfs2（Samba 首轮已删） | OpenList 及其自带 WebDAV 保留；独立的 gowebdav/webdav2 仍不在构建期 |
 | RAID / 多盘合并 / 硬盘休眠 / iSCSI / USB over IP | mdadm+kmod-md、kmod-dm、mergerfs、hd-idle、iscsi/aoe、usbip | 单盘直用完全不受影响 |
 | L2TP/PPTP/SSTP VPN 拨号、GRE/IPIP 隧道、IPsec、链路聚合、中继 | 各协议 kmod+用户态、bonding、relayd | 不用这些拨号协议；远程走 Tailscale 或公网端口转发。**WireGuard 完整保留** |
 | 跑 KVM 虚拟机 | kvm/vfio/vhost（容器首轮已删） | 虚拟化归 9400F/N100 |
@@ -96,9 +98,9 @@
 
 ### 仍然完好、一个没动的功能
 
-本节写于 r4 审计之前，当时把"路由器在用的功能"和"固件里已烘焙的包"混为一谈，按 §九/§十 的口径重列：
+本节写于 r4 审计之前，当时把"路由器在用的功能"和"固件里已烘焙的包"混为一谈，按 §九/§十 的口径重列。以下清单已按 §二十 更新为当前 seed 的预期，r10 等旧镜像仍含 Aria2/Transmission：
 
-- **固件里确实有**：tailscale（守护进程，路由器仍作 exit node）、**ddns-go + luci-app-ddns-go（2026-10-09 加回，见 §十五）**、aria2+ariang、transmission、openlist、
+- **固件里确实有**：tailscale（守护进程，路由器仍作 exit node）、**ddns-go + luci-app-ddns-go（2026-10-09 加回，见 §十五）**、openlist（含 WebDAV）、
   vlmcsd、ttyd、wol、iStore 商店本体（`luci-app-store`+`dkml`）、argon 主题、zram、smartd+lm-sensors（温控）、
   wireguard、dnsmasq-full、flow offload（kmod-nf-flow）
 - **不在固件里、刷机后要从商店装回**：openclash、eqos、oaf、cpufreq、luci-app-fan、fastnet、floatip、
@@ -131,7 +133,7 @@
 
 1. `make defconfig` 会把"仍被保留包硬依赖"的项自动加回 `=y`——审计脚本 `.github/scripts/seed-audit.sh` 现在直接打印这份"seed 没写却开启"的清单（`seed-audit.txt` 第二段），刷前照它核对，不再靠猜候选。**但不止硬依赖**：它还会加回 **profile 默认包**（`DEFAULT_PACKAGES`），这类可能与有意替换的实现冲突，见 §七
 2. **`make defconfig` 必须在 `./scripts/feeds install -a` 之后跑**，否则所有 feed 包的 `CONFIG_PACKAGE_*=y` 行被静默丢弃（符号还不存在），后果见 §七 原因 1
-3. **软依赖**（脚本 shell 调用而非包依赖）不会被自动拉回——QEMU 启动验证 + 刷机后核对 LuCI 各页（重点：iStore 商店；quickstart、磁盘管理、openclash、tailscale UI 这些**先按 §九 从商店装回**再核对）照 BUILD-CUSTOM.md 流程走
+3. **软依赖**（脚本 shell 调用而非包依赖）不会被自动拉回——QEMU 启动验证 + 刷机后核对 LuCI 各页（重点：iStore 商店；磁盘管理、openclash、tailscale UI 这些**先按 §九 从商店装回**再核对；QuickStart 不装回）照 BUILD-CUSTOM.md 流程走
 4. `dkml`（iStoreOS 动态内核模块加载器，package/diy/dkml）**保留**：iStore 商店装内核模块类应用的基础设施
 
 ## 七、CI 首次构建失败复盘（2026-10-05，run 37324148570）
@@ -196,7 +198,7 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 **符号存在却没开成 2 行**：`kmod-thermal`、`kmod-xdp-sockets-diag`——内核内建符号没开（需 `make kernel menuconfig`，或该 target 未 support），与 feed 无关。
 
-**已定（2026-10-06，用户选）**：**不**把整个 iStore 商店 / app-hub 追加进 `feeds.conf`，维持"固件只留路由栈 + 商店本体，刷机后从 iStore 商店装回 openclash / tailscale UI / quickstart / eqos …"。理由是镜像尺寸优先；随之把 104 行死 seed 清掉，见 §十。
+**已定（2026-10-06，用户选）**：**不**把整个 iStore 商店 / app-hub 追加进 `feeds.conf`，维持"固件只留路由栈 + 商店本体，刷机后按需从 iStore 商店装回 openclash / tailscale UI / eqos …"。QuickStart 因会带回已删除的首页卡片，本轮不装回。理由是镜像尺寸优先；随之把 104 行死 seed 清掉，见 §十。
 
 **修订（2026-10-09）**：公网域名是硬需求，六个默认 feed 里又没有 DDNS-Go。允许也只允许 **一条** 例外 feed：`src-git ddnsgo https://github.com/sirpdboy/luci-app-ddns-go.git;v6.12.2`。这不是「商店 feed 开闸」——openclash 等仍不进构建期。见 §十五。
 
@@ -206,7 +208,7 @@ opkg 报 `Collected errors`。该 run 用的是**首轮 seed**（HEAD=eea07ec0f3
 
 **设备能做的事零变化**——这 104 行自写进 seed 起就是空转（符号不存在，defconfig 无警告删除），删掉它们不移除任何一块已烘焙的功能；固件产物与清理前逐包相同。
 
-要交代的不是"删了什么"，而是**刷机后必须自己装回的东西**（原先误以为已在固件里）：OpenClash、Tailscale 的 LuCI 配置页（守护进程 `tailscale` 确实在，可先用 UCI/`/etc/config/tailscale` 配）、iStoreOS 首页 quickstart、eqos IP 限速、oaf/appfilter 应用过滤、cpufreq 与风扇调节、diskman 磁盘管理、gowebdav/fastnet/floatip/webdav2、aria2 与 transmission 的入口与商店元数据。装回途径：LuCI → iStore 商店（本体 `luci-app-store` + `dkml` 已在固件）。
+要交代的不是"删了什么"，而是**刷机后必须自己装回的东西**（原先误以为已在固件里）：OpenClash、Tailscale 的 LuCI 配置页（守护进程 `tailscale` 确实在，可先用 UCI/`/etc/config/tailscale` 配）、eqos IP 限速、oaf/appfilter 应用过滤、cpufreq 与风扇调节、diskman 磁盘管理、gowebdav/fastnet/floatip/webdav2。QuickStart 本轮不装回，因为其首页会带下载器、Samba、易有云卡片。装回途径：LuCI → iStore 商店（本体 `luci-app-store` + `dkml` 已在固件）。**2026-10-10 更正：Aria2/Transmission 及其入口与商店元数据不再装回**（§二十）；下方批次清单只记录历史清理，不是恢复清单。
 
 ### 包名明细（全部为「符号不存在」的死行，按档位列全）
 
@@ -501,3 +503,27 @@ reboot
 拔掉 U 盘，BIOS 从 NVMe 启动。16G「傲腾内存」条有的只能当 RST 缓存、不能当系统盘，BIOS 里关掉 Intel RST / 设成 AHCI 或 NVMe 直出；若 `lsblk` 根本没有 nvme，这颗条不能当硬盘用。
 
 后续 AI：**不要**把 ISO 写成「安装盘」；**不要**为了 Ventoy 去改 `gen_image_generic.sh` 里写死的 2G 数据分区（那是源码）。J4125 仍刷 combined-efi 整盘，不走这条 Live 安装。
+
+## 二十、移除 Aria2 / Transmission（2026-10-10，用户明确要求）
+
+用户确认路由器不需要本地下载器：Aria2、Transmission、qBittorrent、Samba 和易有云均不作为网关服务；OpenList 的 WebDAV 保留，继续负责现有文件访问。这样下载和文件访问职责分开，网关不再常驻下载任务、BT 连接和下载管理页面。
+
+### 功能视角
+
+| 变更后设备不能再做什么 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| 在路由器上用 Aria2 下载 HTTP/HTTPS/FTP/SFTP 直链、磁力或 BT 任务 | aria2、aria2-openssl、ariang、Aria2 LuCI 页面 | 需要下载时改在 9400F 或其他服务器运行下载器；OpenList WebDAV 仍可访问已有文件 |
+| 在路由器上运行 Transmission 常驻 BT、做种、队列和分享率管理 | transmission-daemon、transmission-web-control、Transmission LuCI 页面 | 不再由网关承担 BT 长连接、磁盘 I/O 和上传；需要 PT/做种时放到服务器 |
+| 在路由器首页和 LuCI 菜单看到上述下载应用入口 | 对应 LuCI 页面、中文语言包及固件内入口 | iStore 商店本体保留；不删 iStore 本身 |
+| 通过 Samba 或易有云提供文件共享/同步 | 首轮已删的 Samba/LinkEase 系 | OpenList WebDAV 是保留的文件访问方式 |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 从 config-custom.seed 删除 | aria2、aria2-openssl、ariang、luci-app-aria2、luci-i18n-aria2-zh-cn |
+| 从 config-custom.seed 删除 | transmission-daemon、transmission-web-control、luci-app-transmission、luci-i18n-transmission-zh-cn |
+| 保留 | openlist、luci-app-openlist、luci-i18n-openlist-zh-cn；OpenList WebDAV 不随本批删除 |
+| 已确认不在当前 seed | qbittorrent*、samba4-*、luci-app-samba4、linkease、luci-app-linkease、ddnsto* |
+
+app-meta-aria2、app-meta-transmission、aria2-entry-deps、transmission-daemon-openssl 属于 iStore 商店应用的元数据/入口，早前清理死行时已经不在当前 seed；本次不改 iStore 商店源，也不删除 OpenList 或商店本体。

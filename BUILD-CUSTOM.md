@@ -10,8 +10,8 @@
 |---|---|---|
 | ❌ 删除（首轮 2026-10-05） | Docker 全家桶 / Samba 文件共享 / OpenWrt 自带 DDNS（luci-app-ddns） / UPnP / Linkease 系（含 ddnsto） | Docker 已迁往 9400F；公网域名用 DDNS-Go，不用自带那套也不用 ddnsto。包名明细见 `docs/CUSTOM-TRIMMING.md` §二、§十五 |
 | ❌ 二次裁剪(2026-10-05) | 无线全家/蜂窝modem全家/GPU固件与DRM/NFS·SMB存储/l2tp-pptp-sstp-gre-ipip-ipsec隧道/KVM宿主/Docker孤儿kmod/老式网卡驱动 | J4125 无对应硬件；文件服务归 9400F/N100。明细见 `docs/CUSTOM-TRIMMING.md` §六 |
-| ✅ 保留（固件里确实有） | 基础网络栈 / kmod-igc / firewall4 / dnsmasq-full / IPv6 / tailscale 守护进程 / **ddns-go + luci-app-ddns-go** / aria2+ariang / transmission / openlist / vlmcsd / ttyd / wol / zram / smartd+lm-sensors / wireguard / argon 主题 / iStore 商店本体（luci-app-store、dkml） | 路由器命根子 + 确实在用的服务 |
-| 📦 刷机后从 iStore 商店装回（**不在构建期**） | openclash、tailscale 的 LuCI 配置页、quickstart、eqos、oaf、cpufreq、luci-app-fan、diskman、gowebdav、fastnet、floatip | 这些名字在默认 feed 里没有 kconfig 符号，写进 seed 也进不了镜像；证据与逐条清单见 `docs/CUSTOM-TRIMMING.md` §九/§十。**DDNS-Go 不在此列**，已烘焙 |
+| ✅ 保留（固件里确实有） | 基础网络栈 / kmod-igc / firewall4 / dnsmasq-full / IPv6 / tailscale 守护进程 / **ddns-go + luci-app-ddns-go** / openlist（含 WebDAV） / vlmcsd / ttyd / wol / zram / smartd+lm-sensors / wireguard / argon 主题 / iStore 商店本体（luci-app-store、dkml） | 路由器命根子 + 确实保留的服务 |
+| 📦 刷机后从 iStore 商店装回（**不在构建期**） | openclash、tailscale 的 LuCI 配置页、eqos、oaf、cpufreq、luci-app-fan、diskman、gowebdav、fastnet、floatip | 这些名字在默认 feed 里没有 kconfig 符号，写进 seed 也进不了镜像；QuickStart 本轮不装回，避免恢复下载器、Samba、易有云首页卡片。证据与逐条清单见 `docs/CUSTOM-TRIMMING.md` §九/§十。**DDNS-Go 不在此列**，已烘焙 |
 | ➕ 新增 | irqbalance；`feeds.conf.default` 的 `src-git ddnsgo`（sirpdboy/luci-app-ddns-go） | irqbalance：四张 2.5G 网卡中断分摊。ddnsgo feed：六个默认 feed 没有 DDNS-Go，不加这条就开箱不了；不要顺手把 app-hub 拉进来。见 `docs/CUSTOM-TRIMMING.md` §十五 |
 
 参数：EFI+BIOS 双引导、只要 squashfs（显式关掉 x86 默认的 ext4 根镜像）、kernel 分区 32MB、root 分区 512MB、另出一份 EFI LiveCD ISO（Ventoy 可启动，**不是**一键安装器）、中文界面。224MB+默认 ext4 会在 `make_ext4fs` 阶段把 `target/linux` 打挂，见 `docs/CUSTOM-TRIMMING.md` §十七。Ventoy 装到 N100 傲腾的步骤见 §十九。
@@ -63,7 +63,7 @@ ls bin/targets/x86/64/
 2. **备份现系统**：LuCI → 系统 → 备份升级（导出 `/etc/config`）；稳妥起见把系统盘整盘 dd 备份一份
 3. **写盘**：新镜像 gz 解压后 dd 到系统盘（或 LuCI sysupgrade）
 4. **恢复配置**：`/etc/config` 里的 network/firewall/dhcp/tailscale/**ddns-go** 等恢复回去（dockerd/dpanel/samba、OpenWrt 自带 luci-app-ddns、ddnsto 相关配置直接不要了）
-5. 验证 WAN 拨号、四个 2.5G 口、Tailscale 连通、**LuCI 里已有 DDNS-Go**（不用进商店）；**openclash / tailscale UI / quickstart / eqos / cpufreq / fan / diskman 这些不在固件里**，先在 LuCI → iStore 商店装回再验（原因见 `docs/CUSTOM-TRIMMING.md` §九/§十）
+5. 验证 WAN 拨号、四个 2.5G 口、Tailscale 连通、**LuCI 里已有 DDNS-Go**（不用进商店）；**openclash / tailscale UI / eqos / cpufreq / fan / diskman 这些不在固件里**，按需从 LuCI → iStore 商店装回再验。QuickStart 不装回，以免恢复已删除的下载器、Samba、易有云首页卡片（原因见 `docs/CUSTOM-TRIMMING.md` §九/§十/§二十）
 6. 旧盘留作回滚
 
 ## 上游同步工作流（fork 维护）
@@ -86,8 +86,8 @@ git push --force-with-lease origin custom-24.10  # rebase 改写了已推送历�
 
 ## 备注
 
-- seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字：seed 自身 `CONFIG_PACKAGE_*` 行 首轮 1078 → 二次裁剪 697 → 清死行后 593 → **2026-10-09 加回 DDNS-Go 后 596**（`grep -c '^CONFIG_PACKAGE_' config-custom.seed` 可复核）；r4 那次 `make defconfig` 展开选中 **705**（含 defconfig 自行加回的 114 个）。镜像最终包数以成功构建的 `manifest` 为准
-- **商店应用不在构建期**：上面「📦 刷机后从 iStore 商店装回」那一行的包名，在 `feeds.conf.default` 的六个 feed 里根本没有对应 kconfig 符号，写进 seed 也是死行。证据见 `docs/CUSTOM-TRIMMING.md` §九，逐条清单见 §十——包名只在那两处维护，本文不再重列
+- seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字：seed 自身 `CONFIG_PACKAGE_*` 行 首轮 1078 → 二次裁剪 697 → 清死行后 593 → 2026-10-09 加回 DDNS-Go 后 596 → **2026-10-10 删 Aria2/Transmission 后 587**（`grep -c '^CONFIG_PACKAGE_' config-custom.seed` 可复核）；r4 那次 `make defconfig` 展开选中 **705**（含 defconfig 自行加回的 114 个）。镜像最终包数以成功构建的 `manifest` 为准
+- **商店应用不在构建期**：上面「📦 刷机后从 iStore 商店装回」那一行的包名，在 `feeds.conf.default` 的默认 feed 里根本没有对应 kconfig 符号（DDNS-Go 是唯一单独加入的例外），写进 seed 也是死行。证据见 `docs/CUSTOM-TRIMMING.md` §九，逐条清单见 §十——包名只在那两处维护，本文不再重列
 - **上面第 3、4 步的顺序不能调换**：`make defconfig` 早于 `feeds install` 会静默删掉所有 feed 包的 `=y` 行（符号还不存在），那次构建的产物连 LuCI 都没有。`make download` 也有坑：它对失败包只打 ERROR、退出码仍是 0。两道坑的机制与修法复盘在 §七、§八
 - **云构建现状（r7 = run 37470180070 冷缓存实测）**：tools 1h14m43s + toolchain 20m55s + target 12m57s + package/compile 约 2h，全量冷编 **约 4h15m–4h45m**（此前"7h+ 装不下 350 分钟"的推断来自被 timeout 杀掉的 r6，它从没测到终点，已更正）。`dl` 缓存收益确定（省掉实测那 28m01s 的下载）；`staging_dir` 缓存"靠 stamp 续编"已被 `rules.mk`/`package.mk` 证伪（`.built` 在 `build_dir`），CI 已删掉这份缓存省配额；`build_dir` 体积仍由 Report disk usage 实测，用于决定是否上 9400F 自建 runner（见 docs/CUSTOM-TRIMMING.md §十一、§十三）
 - 恢复某个删除的功能：iStore 商店装回（临时），或往 seed 加一行 `CONFIG_PACKAGE_xxx=y`（长期，仅对该符号确实存在于 feed 时有效）
