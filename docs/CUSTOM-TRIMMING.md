@@ -406,4 +406,31 @@ seed 已是 `CONFIG_TARGET_x86=y` / `CONFIG_TARGET_x86_64=y` / `DEVICE_generic`�
 
 执行时按上表分组从 `config-custom.seed` 去掉对应 `=y`（或钉 `is not set`），同一提交更新本节：把「候选」改成「已删」，并写清刷完机少了什么。
 
-后续 AI：**不要**把本节当成授权去删 `target/linux` 或其他架构源码；**不要**在当前 DDNS-Go 那次 CI 跑完之前改 seed。
+后续 AI：**不要**把本节当成授权去删 `target/linux` 或其他架构源码。r9 已证明打盘会挂，允许的 seed 改动只有 §十七 的镜像布局；D 档包仍等出镜像后再动。
+
+## 十七、r9 打盘失败（run 37897946779，2026-10-09）
+
+DDNS-Go 钉 `v6.12.2` 之后包全部编过（含 `feeds/ddnsgo/luci-app-ddns-go`），`package/install` 也过了。挂在：
+
+```
+make[3] -C target/linux install
+   ERROR: target/linux failed to build.
+```
+
+quiet 日志里没有 `ERROR: package` 行，CI 旧逻辑当成「tools/kernel」直接退出，**没有 V=s**。磁盘仍剩 54G，不是空间不够。
+
+### 原因
+
+seed 只写了 `CONFIG_TARGET_ROOTFS_SQUASHFS=y` 和 `PARTSIZE=224`。x86 `FEATURES` 含 `ext4`，`TARGET_ROOTFS_EXT4FS` 默认 y，defconfig 把 **ext4 根镜像**加回来。`make_ext4fs -l 224MB` 按**未压缩** rootfs 算；ruby/git/perl、i915 固件（`DEVICE_PACKAGES` 里的 `kmod-drm-i915` 又拉回来了）、tailscale、ddns-go 叠在一起远超 224MB，这一步必炸。squashfs 能压、刷机也只用 `*-squashfs-combined-efi.img.gz`，ext4 根镜像根本不需要。kernel 分区当时走默认 16MB，vmlinuz+grub 也偏紧。
+
+### 修法（仍只改 seed + CI，不改源码）
+
+| 动作 | 内容 |
+|---|---|
+| seed 钉关 | `# CONFIG_TARGET_ROOTFS_EXT4FS is not set` |
+| seed 加大 | `CONFIG_TARGET_KERNEL_PARTSIZE=32`、`CONFIG_TARGET_ROOTFS_PARTSIZE=512` |
+| CI | 看到 `ERROR: target/linux` 时 `make target/linux/install -j1 V=s`；artifact 带上 `logs/target` |
+
+刷完机少的只是「另打一份 ext4 根盘镜像」——LuCI/overlay/扩容不受影响。i915 仍被 profile 加回，属 §六 A 档没钉死 `is not set`，**这次不动**（D 档同样不动），出镜像后再收。
+
+后续 AI：**不要**再把 `TARGET_ROOTFS_EXT4FS` 打开，也**不要**把 PARTSIZE 改回 224。

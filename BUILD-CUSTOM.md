@@ -14,7 +14,7 @@
 | 📦 刷机后从 iStore 商店装回（**不在构建期**） | openclash、tailscale 的 LuCI 配置页、quickstart、eqos、oaf、cpufreq、luci-app-fan、diskman、gowebdav、fastnet、floatip | 这些名字在默认 feed 里没有 kconfig 符号，写进 seed 也进不了镜像；证据与逐条清单见 `docs/CUSTOM-TRIMMING.md` §九/§十。**DDNS-Go 不在此列**，已烘焙 |
 | ➕ 新增 | irqbalance；`feeds.conf.default` 的 `src-git ddnsgo`（sirpdboy/luci-app-ddns-go） | irqbalance：四张 2.5G 网卡中断分摊。ddnsgo feed：六个默认 feed 没有 DDNS-Go，不加这条就开箱不了；不要顺手把 app-hub 拉进来。见 `docs/CUSTOM-TRIMMING.md` §十五 |
 
-参数与官方镜像对齐：EFI+BIOS 双引导、squashfs、root 分区 224MB、中文界面。
+参数：EFI+BIOS 双引导、只要 squashfs（显式关掉 x86 默认的 ext4 根镜像）、kernel 分区 32MB、root 分区 512MB、中文界面。224MB+默认 ext4 会在 `make_ext4fs` 阶段把 `target/linux` 打挂，见 `docs/CUSTOM-TRIMMING.md` §十七。
 
 ## 构建步骤（Ubuntu 22.04/24.04 x86_64，建议在 9400F 装好系统后进行）
 

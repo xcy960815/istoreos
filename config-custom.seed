@@ -18,14 +18,18 @@
 # D档待查依赖后处理(本次未动): ruby/git/taskd/sqlite3-cli/lm-sensors-detect(perl)/冷门fs/网卡保险再收
 #   不要删 target/linux 其他架构——镜像已是 x86_64，删源码会把上游同步搞炸。台账见 docs/CUSTOM-TRIMMING.md §十六
 #   验证: opkg whatdepends ruby git taskd perl lm-sensors-detect; df -T /mnt/sata1-4
-#   等当前 CI 出镜像后再动 seed，勿与 §十五 DDNS-Go 那次构建抢 HEAD
+#   D 档仍等出镜像后再动；r9 只改镜像布局（关 ext4 根镜像、分区加大），见 §十七
 CONFIG_TARGET_x86=y
 CONFIG_TARGET_x86_64=y
 CONFIG_TARGET_x86_64_DEVICE_generic=y
 CONFIG_GRUB_IMAGES=y
 CONFIG_GRUB_EFI_IMAGES=y
 CONFIG_TARGET_ROOTFS_SQUASHFS=y
-CONFIG_TARGET_ROOTFS_PARTSIZE=224
+# x86 FEATURES 含 ext4，defconfig 会默认打开 TARGET_ROOTFS_EXT4FS；
+# make_ext4fs 按未压缩体积塞进 PARTSIZE，224MB 必炸。刷机只用 squashfs-combined。见 §十七
+# CONFIG_TARGET_ROOTFS_EXT4FS is not set
+CONFIG_TARGET_KERNEL_PARTSIZE=32
+CONFIG_TARGET_ROOTFS_PARTSIZE=512
 CONFIG_LUCI_LANG_zh_Hans=y
 CONFIG_PACKAGE_irqbalance=y
 CONFIG_PACKAGE_aria2-openssl=y

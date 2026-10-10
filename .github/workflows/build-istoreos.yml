@@ -132,7 +132,15 @@ jobs:
           if make -j$(nproc) 2>&1 | tee compile.log; then exit 0; fi
           pkgs=$(grep -oE 'ERROR: package/[^ ]+ failed to build' compile.log | sed -E 's|^ERROR: (package/[^ ]+) failed to build$|\1|' | sort -u || true)
           if [ -z "$pkgs" ]; then
-            echo "::error::compile.log 里没有 ERROR: package 行（可能是 tools/kernel 挂了），原因见上传的 compile.log"
+            # r9：包全绿，挂在 target/linux install（打盘）。quiet make 不把 mksquashfs/make_ext4fs
+            # 原文打到 compile.log，必须 V=s 重跑这一步，并带走 logs/target。
+            if grep -q 'ERROR: target/linux failed to build' compile.log; then
+              echo "::group::verbose 重跑 target/linux/install"
+              make target/linux/install -j1 V=s || true
+              echo "::endgroup::"
+            else
+              echo "::error::compile.log 里没有 ERROR: package / target/linux 行（可能是 tools 挂了），原因见上传的 compile.log"
+            fi
             exit 1
           fi
           for p in $pkgs; do
@@ -147,8 +155,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: compile-log-r${{ github.run_number }}
-          path: compile.log
+          path: |
+            compile.log
+            logs/target
           retention-days: 14
+          if-no-files-found: warn
 
       - name: Upload images
         if: success()
