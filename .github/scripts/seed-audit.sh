@@ -35,8 +35,8 @@ comm -23 lost.txt lost_hidden.txt > lost_dead.txt
   cat lost_hidden.txt
 } | tee seed-audit.txt
 
-echo "::warning::seed 有 $(wc -l < lost.txt) 行未生效，详见 seed-audit.txt"
-
+# 已知未生效项只写进 artifact，不再 ::warning::——r10 那两条 kmod 是有意保留的，
+# 每次绿构建还刷黄条。未知丢失走下面的 ::error::。
 fail=0
 if grep -q '^CONFIG_PACKAGE_dnsmasq=y$' .config; then
   echo "::error::dnsmasq(非 full)又被加回，会与 dnsmasq-full 抢文件；说明有保留包 select 了默认变体"

@@ -434,3 +434,15 @@ seed 只写了 `CONFIG_TARGET_ROOTFS_SQUASHFS=y` 和 `PARTSIZE=224`。x86 `FEATU
 刷完机少的只是「另打一份 ext4 根盘镜像」——LuCI/overlay/扩容不受影响。i915 仍被 profile 加回，属 §六 A 档没钉死 `is not set`，**这次不动**（D 档同样不动），出镜像后再收。
 
 后续 AI：**不要**再把 `TARGET_ROOTFS_EXT4FS` 打开，也**不要**把 PARTSIZE 改回 224。
+
+## 十八、r10 成功后清掉 CI 黄条（2026-10-10）
+
+r10（run 38017418688）出镜像了。页面上两条 warning、一条 notice，都不影响固件：
+
+| 注解 | 原因 | 修法 |
+|---|---|---|
+| Node.js 20 deprecated | `checkout`/`cache`/`upload-artifact` 还钉 v4 | 改为 `checkout@v5`、`cache@v5`、`upload-artifact@v6`（Node 24） |
+| seed 有 2 行未生效 | `kmod-thermal`、`kmod-xdp-sockets-diag` 是 §十 已知项；审计对已知项也 `::warning::` | 已知项只写 artifact；未知丢失仍 `::error::`。**不要**为消黄条从 seed 删这两行，也**不要**把 warning 加回 |
+| ubuntu-latest → 26 | GitHub 2026-10-19 起切 Ubuntu 26 | `runs-on: ubuntu-24.04` |
+
+固件功能零增删。不必为这三条重跑 5 小时构建。

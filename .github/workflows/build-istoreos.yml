@@ -9,11 +9,12 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # 钉 24.04：ubuntu-latest 从 2026-10-19 起切到 26，OpenWrt 主机工具链别跟着漂
+    runs-on: ubuntu-24.04
     timeout-minutes: 350
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Free runner disk space
         run: |
@@ -35,7 +36,7 @@ jobs:
       # dl 的收益确定（省掉那 28 分钟下载，r7 实测）。
       # staging_dir 缓存已删：stamp .built 在 build_dir，缓存 staging_dir 买不到续编，见 docs/CUSTOM-TRIMMING.md §十一。
       - name: Restore downloads cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: dl
           key: istoreos-dl-${{ github.run_id }}
@@ -56,7 +57,7 @@ jobs:
 
       - name: Upload config audit
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: seed-audit-r${{ github.run_number }}
           path: |
@@ -116,7 +117,7 @@ jobs:
       # dl 在 download 完成后立即存：此刻 job 还健康，上传从容；编译超时也不影响这份缓存
       - name: Save downloads cache
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: dl
           key: istoreos-dl-${{ github.run_id }}
@@ -152,7 +153,7 @@ jobs:
 
       - name: Upload build log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: compile-log-r${{ github.run_number }}
           path: |
@@ -163,7 +164,7 @@ jobs:
 
       - name: Upload images
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: istoreos-x86_64-trimmed-r${{ github.run_number }}
           path: |
