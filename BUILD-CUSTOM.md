@@ -56,6 +56,9 @@ ls bin/targets/x86/64/
 
 ## 上线路径（主路由！先验证再刷）
 
+**2026-10-10**：r10 已出镜像，**先 N100 试刷，不要刷 J4125**。用户上次装官方也是 **img 整盘写入**（不是 ISO、不是 Ventoy 菜单）。写到一根普通 U 盘 → 插 N100 USB 口开机；Mac 网线接 N100 第二口、`192.168.100.2`、http://192.168.100.1。禁止双公头 USB 线连 Mac↔N100。快照见 `docs/CUSTOM-TRIMMING.md` 文首。
+
+
 1. **QEMU 验证**：`qemu-system-x86_64 -nographic -hda bin/targets/x86/64/istoreos-*-combined-efi.img` 确认可启动、包齐全
 2. **备份现系统**：LuCI → 系统 → 备份升级（导出 `/etc/config`）；稳妥起见把系统盘整盘 dd 备份一份
 3. **写盘**：新镜像 gz 解压后 dd 到系统盘（或 LuCI sysupgrade）

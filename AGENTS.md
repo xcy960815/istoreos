@@ -15,3 +15,5 @@
 **了解整个家庭服务器改造计划（为什么这样裁剪、全家设备分工、迁移路线）：读 [`docs/HOME-SERVER-BACKGROUND.md`](docs/HOME-SERVER-BACKGROUND.md)**。
 
 构建与刷机步骤见 [`BUILD-CUSTOM.md`](BUILD-CUSTOM.md)；云端构建走 Actions（手动触发）。
+
+**进度（2026-10-10 晚）**：r10 镜像已成功，**还没刷任何机器**。试刷用 N100 + img（不是 ISO、不是双公头 USB 线），**禁止动 J4125**。快照见 `docs/CUSTOM-TRIMMING.md` 文首「当前进度」。

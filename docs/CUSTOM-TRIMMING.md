@@ -4,6 +4,22 @@
 > 用于为家里的 J4125 四口 2.5G 软路由（LAN IP `192.168.100.1`）构建裁剪版固件。
 > 用户在 2026-10-05 明确要求删除下列功能，**除非用户再次明确要求，不得在 seed 中加回**。
 
+## 当前进度（2026-10-10 晚，后续 AI 先读这里）
+
+**裁剪版已经编出来了，哪台机器都还没刷上。** 用户上次装官方 iStoreOS 用的就是 **img**（`dd` / Etcher 整盘写入），N100 试刷也走这套，不必等 ISO。
+
+| 事实 | 细节 |
+|---|---|
+| 可用固件 | GitHub Actions **r10** 成功（run [`38017418688`](https://github.com/xcy960815/istoreos/actions/runs/38017418688)），产物 `istoreos-x86_64-trimmed-r10`，约 291MB。刷 **EFI** 这一张：`istoreos-x86-64-generic-squashfs-combined-efi.img.gz`（约 100MB）。Mac 上曾下到 `/tmp/istoreos-r10/images/`（`/tmp` 重启可能没） |
+| 里面有什么 | DDNS-Go **6.12.2** 开箱；无 Docker/Samba/UPnP/ddnsto；OpenClash 等仍要刷完进商店装。分区 kernel 32MB / root 512MB，没打 ext4 根镜像 |
+| **禁止** | **不要刷正在用的 J4125**。N100 的 LAN **不要**插家里交换机（和网关抢 `192.168.100.1`）。**不要**用双公头 USB 线连 Mac↔N100（两边都是主机口，刷不了机，可能烧口） |
+| N100 试刷 | 双网口、无显示器、机内 **16G 英特尔傲腾**。把 img **写到一根普通 U 盘**（不要写到 Ventoy 那根），U 盘插 N100 开机。Mac 关 Wi‑Fi，网线接 N100 **第二口**，Mac 设 `192.168.100.2/24`，打开 http://192.168.100.1。无内存点不亮；要关 Secure Boot。傲腾若是 RST 缓存条，`lsblk` 没 nvme 就当不了系统盘 |
+| ISO 那轮 | seed 已开 `CONFIG_ISO_IMAGES`（§十九）。run [`38052856173`](https://github.com/xcy960815/istoreos/actions/runs/38052856173) 在编。ISO 是 **LiveCD**，不是安装向导；用户已说明上次装的是 img，**试刷优先用 r10 的 img** |
+| 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu，冷编也不比 Actions 快多少 |
+| 还没做 | D 档再瘦 seed（§十六）；J4125 刷入；N100 实际开机仍未验证 |
+
+后续 AI：**不要**把 r10 当失败；**不要**为清 Actions 黄条重编（§十八 已改 workflow，下次 run 才干净）；**不要**把双公头线当刷机方案。
+
 ## 一、改动纪律（最重要）
 
 1. **所有功能增删只允许改根目录的 `config-custom.seed`，禁止直接修改源码文件** —— 这是上游修复能无痛合并的前提
@@ -449,7 +465,7 @@ r10（run 38017418688）出镜像了。页面上两条 warning、一条 notice�
 
 ## 十九、Ventoy LiveCD ISO（2026-10-10，N100 16G 傲腾）
 
-用户要把裁剪版装进 N100 机内 **16G 英特尔傲腾**，启动介质是现成的 Ventoy 盘。r10 只有 `combined-efi.img.gz`（整盘镜像），不能当 Ventoy 菜单项。
+用户要把裁剪版装进 N100 机内 **16G 英特尔傲腾**。2026-10-10 晚用户纠正：**上次装官方 iStoreOS 用的就是 img**（`dd`/Etcher 整盘写入），N100 试刷优先走同一套，不必等 ISO。ISO 只是给「非要把文件丢进 Ventoy 菜单」的备选。r10 的 `combined-efi.img.gz` **不要**写进现有 Ventoy 盘（会覆盖 Ventoy），写到另一根普通 U 盘。
 
 OpenWrt/iStoreOS 的 ISO 是 **LiveCD**：从光盘/Ventoy 启动进内存里的系统，**不会**像 Windows 安装盘那样自动写到傲腾。装盘仍然是把 `*-squashfs-combined-efi.img.gz` `dd` 到 NVMe。ISO 只解决「Ventoy 能点开、能进系统」。
 
@@ -462,7 +478,7 @@ x86_64 内核已 `CONFIG_BLK_DEV_NVME=y`，不必往 seed 加 `kmod-nvme`。镜�
 | **能**：把 `*-image-efi.iso` 拷进 Ventoy 盘，菜单里启动进裁剪版（Live） | `CONFIG_ISO_IMAGES=y` | N100 关 Secure Boot；U 盘一直插着才是这套 Live |
 | **能**：Live 里把 `*-squashfs-combined-efi.img.gz` dd 到傲腾，拔掉 U 盘从傲腾开机 | 仍用 combined-efi，不是 ISO 自己写入 | 傲腾上原有数据全没。认盘名：`lsblk` 看 `nvme0n1`，别 dd 到 Ventoy 那块盘 |
 | **不能**：指望 ISO 图形安装向导 | OpenWrt 没有 | 命令见下 |
-| **不能**：把 img.gz 直接丢进 Ventoy 当系统 | 整盘镜像 PARTUUID 对不上 | 不要再试 |
+| **不能**：把 img.gz 拷进现有 Ventoy 盘当菜单项指望稳妥启动 | 整盘镜像 PARTUUID 常对不上 | 另找普通 U 盘 `dd` 整盘，与上次装官方相同 |
 
 ### 包名 / 文件明细
 
