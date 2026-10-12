@@ -86,7 +86,7 @@ git push --force-with-lease origin custom-24.10  # rebase 改写了已推送历�
 
 ## 备注
 
-- seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字：seed 自身 `CONFIG_PACKAGE_*` 行 首轮 1078 → 二次裁剪 697 → 清死行后 593 → 2026-10-09 加回 DDNS-Go 后 596 → **2026-10-10 删 Aria2/Transmission 后 587**（`grep -c '^CONFIG_PACKAGE_' config-custom.seed` 可复核）；r4 那次 `make defconfig` 展开选中 **705**（含 defconfig 自行加回的 114 个）。镜像最终包数以成功构建的 `manifest` 为准
+- seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字：seed 自身 `CONFIG_PACKAGE_*` 行 首轮 1078 → 二次裁剪 697 → 清死行后 593 → 2026-10-09 加回 DDNS-Go 后 596 → 2026-10-10 删 Aria2/Transmission 后 587 → **2026-10-12 删在线升级 OTA 后 585**（`grep -c '^CONFIG_PACKAGE_' config-custom.seed` 可复核）；r4 那次 `make defconfig` 展开选中 **705**（含 defconfig 自行加回的 114 个）。镜像最终包数以成功构建的 `manifest` 为准
 - **商店应用不在构建期**：上面「📦 刷机后从 iStore 商店装回」那一行的包名，在 `feeds.conf.default` 的默认 feed 里根本没有对应 kconfig 符号（DDNS-Go 是唯一单独加入的例外），写进 seed 也是死行。证据见 `docs/CUSTOM-TRIMMING.md` §九，逐条清单见 §十——包名只在那两处维护，本文不再重列
 - **上面第 3、4 步的顺序不能调换**：`make defconfig` 早于 `feeds install` 会静默删掉所有 feed 包的 `=y` 行（符号还不存在），那次构建的产物连 LuCI 都没有。`make download` 也有坑：它对失败包只打 ERROR、退出码仍是 0。两道坑的机制与修法复盘在 §七、§八
 - **云构建现状（r7 = run 37470180070 冷缓存实测）**：tools 1h14m43s + toolchain 20m55s + target 12m57s + package/compile 约 2h，全量冷编 **约 4h15m–4h45m**（此前"7h+ 装不下 350 分钟"的推断来自被 timeout 杀掉的 r6，它从没测到终点，已更正）。`dl` 缓存收益确定（省掉实测那 28m01s 的下载）；`staging_dir` 缓存"靠 stamp 续编"已被 `rules.mk`/`package.mk` 证伪（`.built` 在 `build_dir`），CI 已删掉这份缓存省配额；`build_dir` 体积仍由 Report disk usage 实测，用于决定是否上 9400F 自建 runner（见 docs/CUSTOM-TRIMMING.md §十一、§十三）

@@ -10,6 +10,8 @@
 
 **后续 seed 变更（2026-10-10，§二十）**：用户已要求移除 Aria2/Transmission 及其页面入口，当前 seed 已关闭 9 个包（596 → 587 个 `=y`）。**r10 和基于旧提交启动的 ISO 构建仍含下载器**，本轮修改需新的构建验证后才进入镜像。
 
+**后续 seed 变更（2026-10-12，§二十一）**：用户要求删除「在线升级」页面，seed 再关 2 个包（587 → 585 个 `=y`）。r10 仍含 OTA，同样要新构建后才进镜像。
+
 | 事实 | 细节 |
 |---|---|
 | 可用固件 | GitHub Actions **r10** 成功（run [`38017418688`](https://github.com/xcy960815/istoreos/actions/runs/38017418688)），产物 `istoreos-x86_64-trimmed-r10`，约 291MB。刷 **EFI** 这一张：`istoreos-x86-64-generic-squashfs-combined-efi.img.gz`（约 100MB）。Mac 上曾下到 `/tmp/istoreos-r10/images/`（`/tmp` 重启可能没） |
@@ -365,3 +367,24 @@ reboot
 | 已确认不在当前 seed | qbittorrent*、samba4-*、luci-app-samba4、linkease、luci-app-linkease、ddnsto* |
 
 app-meta-aria2、app-meta-transmission、aria2-entry-deps、transmission-daemon-openssl 属于 iStore 商店应用的元数据/入口，早前清理死行时已经不在当前 seed；本次不改 iStore 商店源，也不删除 OpenList 或商店本体。
+
+## 二十一、移除在线升级 OTA（2026-10-12，用户明确要求）
+
+本仓库已脱离官方发布节奏，固件只从自己的 CI 出。`luci-app-ota` 检查和下载的是 `fw.koolcenter.com` 上的**官方完整版**，在裁剪版上点「升级」会把整台机器刷回官方镜像，裁剪全部作废——留着它不仅没用，还是一个误操作入口。
+
+用户同时问过 WireGuard、网络唤醒、备份与升级：这三项与上游同步无关，**全部保留**。WireGuard 是公网 DDNS-Go 之外的另一条远程入口（Tailscale 自带 userspace WireGuard，不依赖它）；网络唤醒用来叫醒 9400F/N100；备份与升级是 `luci-mod-system` 自带页面，刷机前导出 `/etc/config`、本地上传自编镜像都靠它。
+
+### 功能视角
+
+| 变更后设备不能再做什么 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| 在 LuCI「系统 → OTA」里在线检查、下载并刷入新固件 | luci-app-ota 及中文包 | 新固件从本仓库 Actions 下载 `*-combined-efi.img.gz`（或 sysupgrade 包），在「系统 → 备份与升级」本地上传刷入 |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 从 config-custom.seed 删除 | luci-app-ota、luci-i18n-ota-zh-cn |
+| 保留 | curl（不是 OTA 独占）；kmod-wireguard、wireguard-tools、luci-proto-wireguard；luci-app-wol、etherwake 及中文包；luci-mod-system（备份与升级） |
+
+`package/istoreos-files` 的 postinst 仍会 sed 一次 `controller/admin/ota.lua`；文件不在时 sed 只打一行 stderr，该块不带 `set -e` 且以 `true` 收尾，不影响打包。不改它，守「不改源码」。
