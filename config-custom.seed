@@ -7,7 +7,8 @@
 # 删除: Docker全家桶/Samba/OpenWrt自带DDNS(luci-app-ddns)/UPnP/linkease/ddnsto/unishare 及其 i18n
 # 2026-10-10: Aria2/Transmission 及其 Web/LuCI 页面已从 seed 删除；首页入口不装回。见 §二十
 # 2026-10-12: 在线升级(luci-app-ota)从 seed 删除——它拉的是官方整包，刷上去会覆盖裁剪。见 §二十一
-# 保留: 基础路由栈 + kmod-igc + tailscale(守护进程) + iStore 商店(luci-app-store/dkml)
+# 2026-10-14: Tailscale 开箱即有最新稳定版（官方 amd64 1.104.1 预编译）+ LuCI。见 §二十二
+# 保留: 基础路由栈 + kmod-igc + tailscale(守护进程+LuCI) + iStore 商店(luci-app-store/dkml)
 #       + ddns-go(公网域名，2026-10-09 加回，feed 见 feeds.conf.default 的 ddnsgo)
 #       + openlist/vlmcsd/ttyd/wol 等仍保留的服务
 # 已清死行 (2026-10-06): 删掉 104 行"符号根本不存在"的 =y(697→593)。openclash/quickstart/app-meta-*/
@@ -422,6 +423,7 @@ CONFIG_PACKAGE_luci-app-firewall=y
 CONFIG_PACKAGE_luci-app-openlist=y
 CONFIG_PACKAGE_luci-app-package-manager=y
 CONFIG_PACKAGE_luci-app-store=y
+CONFIG_PACKAGE_luci-app-tailscale=y
 CONFIG_PACKAGE_luci-app-ttyd=y
 CONFIG_PACKAGE_luci-app-vlmcsd=y
 CONFIG_PACKAGE_luci-app-wol=y
@@ -435,6 +437,7 @@ CONFIG_PACKAGE_luci-i18n-filetransfer-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-openlist-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-package-manager-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-tailscale-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-vlmcsd-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-wol-zh-cn=y

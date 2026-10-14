@@ -47,6 +47,9 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
+      - name: Pin Tailscale official amd64 + LuCI
+        run: bash .github/scripts/pin-tailscale-prebuilt.sh
+
       - name: Apply custom config
         run: |
           cp config-custom.seed .config

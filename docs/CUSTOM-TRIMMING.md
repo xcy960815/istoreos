@@ -12,6 +12,8 @@
 
 **后续 seed 变更（2026-10-12，§二十一）**：用户要求删除「在线升级」页面，seed 再关 2 个包（587 → 585 个 `=y`）。r10 仍含 OTA，同样要新构建后才进镜像。
 
+**后续 seed 变更（2026-10-14，§二十二）**：用户要求内置最新 Tailscale。守护进程本来就在（r13 是 1.80.3）；本轮换成官方 **1.104.1** amd64 预编译，并烘焙 LuCI（asvow `luci-app-tailscale` v1.2.6）。不能从源码编最新版（要 Go 1.27，本树 golang 1.23.12）。seed 585 → 587。
+
 | 事实 | 细节 |
 |---|---|
 | 可用固件 | GitHub Actions **r10** 成功（run [`38017418688`](https://github.com/xcy960815/istoreos/actions/runs/38017418688)），产物 `istoreos-x86_64-trimmed-r10`，约 291MB。刷 **EFI** 这一张：`istoreos-x86-64-generic-squashfs-combined-efi.img.gz`（约 100MB）。Mac 上曾下到 `/tmp/istoreos-r10/images/`（`/tmp` 重启可能没） |
@@ -53,7 +55,7 @@
 
 - **openclash**：全家主力代理，GeoIP 数据齐全、多份配置备份（用户本机代理 7897 与之同源）
 - **ddns-go + luci-app-ddns-go**：公网 IP + 免费域名，**开箱即有**（第七条 feed `ddnsgo`）。勿删、勿改回「刷机后商店装」、勿用 `luci-app-ddns` 顶替
-- **tailscale + luci-app-tailscale-community**：家人设备远程入口，路由器是 exit node（与公网 DDNS 并行，不是二选一）
+- **tailscale + luci-app-tailscale**：家人设备远程入口，路由器是 exit node（与公网 DDNS 并行，不是二选一）。**2026-10-14 起开箱即有**：官方 1.104.1 amd64 + asvow LuCI，见 §二十二。不要再写成「刷机后商店装 `luci-app-tailscale-community`」
 - **openlist / vlmcsd / eqos / oaf / ttyd / wol(etherwake) / cpufreq / luci-fan / fastnet / floatip**：保留；2026-10-10 用户再次明确 OpenList 和它自带的 WebDAV 要留，不能随下载器删除
 - **Aria2 / Transmission 已退出保留清单**：2026-10-10 用户明确不需要，连同管理页面和首页入口一起去掉，见 §二十。旧配置行数不再作为保留依据
 - **istore / luci-app-store / argon 主题**：系统管理骨架，勿动；QuickStart 首页本轮不装回
@@ -95,11 +97,11 @@
 
 本节写于 r4 审计之前，当时把"路由器在用的功能"和"固件里已烘焙的包"混为一谈，按 §九/§十 的口径重列。以下清单已按 §二十 更新为当前 seed 的预期，r10 等旧镜像仍含 Aria2/Transmission：
 
-- **固件里确实有**：tailscale（守护进程，路由器仍作 exit node）、**ddns-go + luci-app-ddns-go（2026-10-09 加回，见 §十五）**、openlist（含 WebDAV）、
+- **固件里确实有**：**tailscale 1.104.1 + luci-app-tailscale（2026-10-14 起开箱，见 §二十二）**、**ddns-go + luci-app-ddns-go（2026-10-09 加回，见 §十五）**、openlist（含 WebDAV）、
   vlmcsd、ttyd、wol、iStore 商店本体（`luci-app-store`+`dkml`）、argon 主题、zram、smartd+lm-sensors（温控）、
   wireguard、dnsmasq-full、flow offload（kmod-nf-flow）
 - **不在固件里、刷机后要从商店装回**：openclash、eqos、oaf、cpufreq、luci-app-fan、fastnet、floatip、
-  quickstart、gowebdav、tailscale 的 LuCI 配置页——它们从来不是构建期候选，包名与证据见 §十
+  quickstart、gowebdav——它们从来不是构建期候选，包名与证据见 §十。**Tailscale LuCI 已不在此列**
 
 ### 包名明细（按批次）
 
@@ -128,7 +130,7 @@
 
 1. `make defconfig` 会把"仍被保留包硬依赖"的项自动加回 `=y`——审计脚本 `.github/scripts/seed-audit.sh` 现在直接打印这份"seed 没写却开启"的清单（`seed-audit.txt` 第二段），刷前照它核对，不再靠猜候选。**但不止硬依赖**：它还会加回 **profile 默认包**（`DEFAULT_PACKAGES`），这类可能与有意替换的实现冲突，见 §七
 2. **`make defconfig` 必须在 `./scripts/feeds install -a` 之后跑**，否则所有 feed 包的 `CONFIG_PACKAGE_*=y` 行被静默丢弃（符号还不存在），后果见 §七 原因 1
-3. **软依赖**（脚本 shell 调用而非包依赖）不会被自动拉回——QEMU 启动验证 + 刷机后核对 LuCI 各页（重点：iStore 商店；磁盘管理、openclash、tailscale UI 这些**先按 §九 从商店装回**再核对；QuickStart 不装回）照 BUILD-CUSTOM.md 流程走
+3. **软依赖**（脚本 shell 调用而非包依赖）不会被自动拉回——QEMU 启动验证 + 刷机后核对 LuCI 各页（重点：iStore 商店、**已烘焙的 Tailscale/DDNS-Go**；磁盘管理、openclash 这些**先按 §九 从商店装回**再核对；QuickStart 不装回）照 BUILD-CUSTOM.md 流程走
 4. `dkml`（iStoreOS 动态内核模块加载器，package/diy/dkml）**保留**：iStore 商店装内核模块类应用的基础设施
 
 ## 七、构建顺序与 dnsmasq 冲突（r1，2026-10-05）
@@ -167,6 +169,8 @@
 **已定（2026-10-06，用户选）**：**不**把整个 iStore 商店 / app-hub 追加进 `feeds.conf`，维持"固件只留路由栈 + 商店本体，刷机后按需从 iStore 商店装回 openclash / tailscale UI / eqos …"。QuickStart 因会带回已删除的首页卡片，本轮不装回。理由是镜像尺寸优先；随之把 104 行死 seed 清掉，见 §十。
 
 **修订（2026-10-09）**：公网域名是硬需求，六个默认 feed 里又没有 DDNS-Go。允许也只允许 **一条** 例外 feed：`src-git ddnsgo https://github.com/sirpdboy/luci-app-ddns-go.git;v6.12.2`。这不是「商店 feed 开闸」——openclash 等仍不进构建期。见 §十五。
+
+**修订（2026-10-14）**：用户要求内置最新 Tailscale。第二条构建例外是脚本、不是新 feed：`.github/scripts/pin-tailscale-prebuilt.sh`。openclash 等仍不进构建期。见 §二十二。
 
 ## 十、清掉 104 行"从未生效"的 seed 行（2026-10-06，697 → 593）
 
@@ -388,3 +392,30 @@ app-meta-aria2、app-meta-transmission、aria2-entry-deps、transmission-daemon-
 | 保留 | curl（不是 OTA 独占）；kmod-wireguard、wireguard-tools、luci-proto-wireguard；luci-app-wol、etherwake 及中文包；luci-mod-system（备份与升级） |
 
 `package/istoreos-files` 的 postinst 仍会 sed 一次 `controller/admin/ota.lua`；文件不在时 sed 只打一行 stderr，该块不带 `set -e` 且以 `true` 收尾，不影响打包。不改它，守「不改源码」。
+
+## 二十二、内置最新 Tailscale（2026-10-14，用户明确要求）
+
+r13 固件里已经有 Tailscale **守护进程**，但是 packages feed（`jjm2473/packages@istoreos-24.10`）钉在 **1.80.3**。用户要求开箱即有、并且用最新稳定版。
+
+不能从源码编最新版：本树 golang 是 **1.23.12** 且 `GOTOOLCHAIN=local`。Tailscale 1.80.3 要 Go 1.23.1（能编）；1.82.0 起要 1.24；**1.104.1（2026-10-07 最新稳定）要 Go 1.27.1**。升 golang 会牵动所有 Go 包（含已钉死的 DDNS-Go v6.12.2），r8 已经为此炸过一次，见 §十五。本 fork 只做 x86_64，所以改为装 **官方 amd64 预编译**，不改 packages 源码树。
+
+LuCI 配置页 `luci-app-tailscale-community` 仍是商店应用、六个默认 feed 里没有符号（§九）。这次不拉 app-hub，只在 defconfig 前把 **asvow/luci-app-tailscale v1.2.6** 克隆进构建树（和 vlmcsd 补丁一样，副本不进 git）。
+
+### 功能视角
+
+| 变更后设备能做 / 不能做 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| **能**：刷完机就是 Tailscale 1.104.1，LuCI 里有配置页，可作 exit node | 官方 `tailscale`/`tailscaled` amd64 + `luci-app-tailscale` + 中文包 | 账号、auth key 仍要用户自己登；不预置密钥 |
+| **仍不能**：用本树 Go 从源码编 1.82+ | 不升 `feeds/packages/lang/golang` | 要换更新的官方 tgz：改 `.github/scripts/pin-tailscale-prebuilt.sh` 里的版本和 HASH |
+| **仍不能**：开箱即有 OpenClash 等其它商店应用 | 未改 app-hub、未改 §十 | 刷机后商店装回，与本次无关 |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-tailscale-prebuilt.sh`：把 `package/feeds/packages/tailscale` 换成官方 `tailscale_1.104.1_amd64.tgz`（sha256 `108d1d96…4528`）；`git clone --branch v1.2.6` asvow/luci-app-tailscale 到 `package/luci-app-tailscale` |
+| seed 新增 `=y` | `luci-app-tailscale`、`luci-i18n-tailscale-zh-cn`（seed `CONFIG_PACKAGE_*` 585 → 587） |
+| seed 原本就有、未删 | `tailscale`（守护进程；二进制由脚本换成 1.104.1） |
+| 不加 | `luci-app-tailscale-community`（商店包，无 kconfig，写了也是死行）；不升 golang |
+
+后续 AI：**不要**为了「最新 Tailscale」去升 packages 的 golang；**不要**把 asvow 这一包扩成整个 app-hub；换更新的官方版本只改脚本里的 `TS_VERSION` / `TS_HASH`。本地编也必须跑这支脚本，见 `BUILD-CUSTOM.md` 步骤 3c。
