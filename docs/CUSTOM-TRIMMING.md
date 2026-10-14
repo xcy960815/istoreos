@@ -413,7 +413,7 @@ LuCI 配置页 `luci-app-tailscale-community` 仍是商店应用、六个默认 
 
 | 动作 | 内容 |
 |---|---|
-| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-tailscale-prebuilt.sh`：把 `package/feeds/packages/tailscale` 换成官方 `tailscale_1.104.1_amd64.tgz`（sha256 `108d1d96…4528`）；`git clone --branch v1.2.6` asvow/luci-app-tailscale 到 `package/luci-app-tailscale` |
+| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-tailscale-prebuilt.sh`：把 `package/feeds/packages/tailscale` 换成官方 `tailscale_1.104.1_amd64.tgz`（sha256 `108d1d96ecf410d305571e173516f27038f870919a9b89c914a167c6d33a4528`）；只装两个二进制。init/config 由 asvow LuCI 提供。`git clone --branch v1.2.6` asvow/luci-app-tailscale 到 `package/luci-app-tailscale` |
 | seed 新增 `=y` | `luci-app-tailscale`、`luci-i18n-tailscale-zh-cn`（seed `CONFIG_PACKAGE_*` 585 → 587） |
 | seed 原本就有、未删 | `tailscale`（守护进程；二进制由脚本换成 1.104.1） |
 | 不加 | `luci-app-tailscale-community`（商店包，无 kconfig，写了也是死行）；不升 golang |

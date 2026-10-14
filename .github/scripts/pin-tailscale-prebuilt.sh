@@ -70,73 +70,19 @@ define Package/tailscale/description
   1.23.12 and cannot compile Tailscale >= 1.82 from source.
 endef
 
-define Package/tailscale/conffiles
-/etc/config/tailscale
-/etc/tailscale/
-endef
-
 define Build/Compile
 endef
 
 define Package/tailscale/install
-	\$(INSTALL_DIR) \$(1)/usr/sbin \$(1)/etc/init.d \$(1)/etc/config
+	\$(INSTALL_DIR) \$(1)/usr/sbin
 	\$(INSTALL_BIN) \$(PKG_BUILD_DIR)/tailscaled \$(1)/usr/sbin/
 	\$(INSTALL_BIN) \$(PKG_BUILD_DIR)/tailscale \$(1)/usr/sbin/
-	\$(INSTALL_BIN) ./files/tailscale.init \$(1)/etc/init.d/tailscale
-	\$(INSTALL_DATA) ./files/tailscale.conf \$(1)/etc/config/tailscale
 endef
 
 \$(eval \$(call BuildPackage,tailscale))
 EOF
 
-# 1.104.1 起关掉往 log.tailscale.com 打点（openwrt/packages master 同改）
-cat > "$d/files/tailscale.init" <<'EOF'
-#!/bin/sh /etc/rc.common
-
-# Copyright 2020 Google LLC.
-# Copyright (C) 2021 CZ.NIC z.s.p.o. (https://www.nic.cz/)
-# SPDX-License-Identifier: Apache-2.0
-
-USE_PROCD=1
-START=80
-
-export TS_NO_LOGS_NO_SUPPORT=true
-
-start_service() {
-  local state_file
-  local port
-  local std_err std_out
-
-  config_load tailscale
-  config_get_bool std_out "settings" log_stdout 1
-  config_get_bool std_err "settings" log_stderr 1
-  config_get port "settings" port 41641
-  config_get state_file "settings" state_file /etc/tailscale/tailscaled.state
-  config_get fw_mode "settings" fw_mode nftables
-
-  /usr/sbin/tailscaled --cleanup
-
-  procd_open_instance
-  procd_set_param command /usr/sbin/tailscaled
-
-  procd_set_param env TS_DEBUG_FIREWALL_MODE="$fw_mode"
-  procd_append_param env TS_NO_LOGS_NO_SUPPORT=true
-
-  procd_append_param command --port "$port"
-  procd_append_param command --state "$state_file"
-
-  procd_set_param respawn
-  procd_set_param stdout "$std_out"
-  procd_set_param stderr "$std_err"
-
-  procd_close_instance
-}
-
-stop_service() {
-  /usr/sbin/tailscaled --cleanup
-}
-EOF
-
+# init/config 由 luci-app-tailscale 提供，这里只换二进制，避免两个包抢 /etc/init.d/tailscale
 grep -q "PKG_VERSION:=${TS_VERSION}" "$m" && grep -q 'tailscale_$(PKG_VERSION)_amd64.tgz' "$m" || {
   echo "::error::tailscale Makefile 写入后校验失败"
   exit 1

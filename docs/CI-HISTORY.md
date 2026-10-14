@@ -237,3 +237,11 @@ r10（run 38017418688）出镜像了。页面上两条 warning、一条 notice�
 | ubuntu-latest → 26 | GitHub 2026-10-19 起切 Ubuntu 26 | `runs-on: ubuntu-24.04` |
 
 固件功能零增删。不必为这三条重跑 5 小时构建。
+
+## 二十二、r14 Tailscale 预编译下载失败（run 38521708425，2026-10-14）
+
+Pin 脚本和 LuCI clone 都绿，`make defconfig` / seed 审计也过了。卡在 **Download sources**：`ERROR: package/feeds/packages/tailscale failed to build`。并行 `make download` 把 wget/hash 原文冲掉了，日志里看不到 URL。
+
+根因：脚本里的 `PKG_HASH` 抄错一位（`…a9a7c6…`，应为 `…a167c6…`）。`pkgs.tailscale.com` 的 ETag 就是文件 sha256：`108d1d96ecf410d305571e173516f27038f870919a9b89c914a167c6d33a4528`。hash 对不上，download.pl 判失败。
+
+修法：改 HASH；Tailscale 包只装 `tailscale`/`tailscaled` 两个二进制，init/config 留给 asvow LuCI，避免 rootfs 抢 `/etc/init.d/tailscale`。download 失败时按包 `make …/download -j1 V=s`，下次能看见原文。

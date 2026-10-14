@@ -114,6 +114,12 @@ jobs:
               echo "-- $b 尝试过的 URL:"
               grep -F "$b" download.log | grep -oE 'https?://[A-Za-z0-9./:_-]+' | sort -u | sed 's/^/     /' || true
             done
+            pkgs=$(echo "$bad" | sed -E 's|^ERROR: (package/[^ ]+) failed to build$|\1|' | sort -u || true)
+            for p in $pkgs; do
+              echo "::group::verbose 重跑 $p/download"
+              make $p/download -j1 V=s || true
+              echo "::endgroup::"
+            done
             exit 1
           fi
 
