@@ -4,27 +4,33 @@
 > 用于为家里的 J4125 四口 2.5G 软路由（LAN IP `192.168.100.1`）构建裁剪版固件。
 > 用户在 2026-10-05 明确要求删除下列功能，**除非用户再次明确要求，不得在 seed 中加回**。
 
-## 当前进度（2026-10-10 晚，后续 AI 先读这里）
+## 当前进度（2026-10-16 晚，后续 AI 先读这里）
 
-**裁剪版已经编出来了，哪台机器都还没刷上。** 用户上次装官方 iStoreOS 用的就是 **img**（`dd` / Etcher 整盘写入），N100 试刷也走这套，不必等 ISO。
+**两套状态不要混：** 已经能刷的是 **r17**；带官方首页、去掉 Bootstrap 的改动还在本机工作区，**没 commit、没 push、没编过**。N100 已经用 r17 的 U 盘开过机。用户上次装官方也是 **img** 整盘写入，不必等 ISO。
 
-**后续 seed 变更（2026-10-10，§二十）**：用户已要求移除 Aria2/Transmission 及其页面入口，当前 seed 已关闭 9 个包（596 → 587 个 `=y`）。**r10 和基于旧提交启动的 ISO 构建仍含下载器**，本轮修改需新的构建验证后才进入镜像。
+**后续 seed 变更（2026-10-10，§二十）**：用户已要求移除 Aria2/Transmission 及其页面入口，当前 seed 已关闭 9 个包（596 → 587 个 `=y`）。r12 起的镜像已不含下载器（r10、r11 仍含）。
 
-**后续 seed 变更（2026-10-12，§二十一）**：用户要求删除「在线升级」页面，seed 再关 2 个包（587 → 585 个 `=y`）。r10 仍含 OTA，同样要新构建后才进镜像。
+**后续 seed 变更（2026-10-12，§二十一）**：用户要求删除「在线升级」页面，seed 再关 2 个包（587 → 585 个 `=y`）。r13 起的镜像已不含 OTA。
 
 **后续 seed 变更（2026-10-14，§二十二）**：用户要求内置最新 Tailscale。守护进程本来就在（r13 是 1.80.3）；本轮换成官方 **1.104.1** amd64 预编译，并烘焙 LuCI（asvow `luci-app-tailscale` v1.2.6）。不能从源码编最新版（要 Go 1.27，本树 golang 1.23.12）。seed 585 → 587。
 
+**后续 seed 变更（2026-10-16，§二十三，仅工作区）**：用户要官方那种 QuickStart 首页，但不要 Samba/易有云/下载器/OTA。第三条构建例外 `.github/scripts/pin-quickstart.sh`：只 clone 两个包，从首页渲染里**删掉**存储/下载/远程域名/Docker 整块（不是开关隐藏）。侧栏「网络向导」保留。seed 587 → 590。**r17 没有这些**，还是 Argon 概览。
+
+**后续 seed 变更（2026-10-16，§二十四，仅工作区）**：用户要求去掉第二主题 Bootstrap。seed 再关 1 个包（590 → 589）。`luci-light` 硬依赖它，所以还有 `.github/scripts/drop-luci-theme-bootstrap.sh`。界面只留 Argon。**r17 仍带 Bootstrap。**
+
 | 事实 | 细节 |
 |---|---|
-| 可用固件 | GitHub Actions **r10** 成功（run [`38017418688`](https://github.com/xcy960815/istoreos/actions/runs/38017418688)），产物 `istoreos-x86_64-trimmed-r10`，约 291MB。刷 **EFI** 这一张：`istoreos-x86-64-generic-squashfs-combined-efi.img.gz`（约 100MB）。Mac 上曾下到 `/tmp/istoreos-r10/images/`（`/tmp` 重启可能没） |
-| 里面有什么 | DDNS-Go **6.12.2** 开箱；无 Docker/Samba/UPnP/ddnsto；OpenClash 等仍要刷完进商店装。分区 kernel 32MB / root 512MB，没打 ext4 根镜像 |
-| **禁止** | **不要刷正在用的 J4125**。N100 的 LAN **不要**插家里交换机（和网关抢 `192.168.100.1`）。**不要**用双公头 USB 线连 Mac↔N100（两边都是主机口，刷不了机，可能烧口） |
-| N100 试刷 | 双网口、无显示器、机内 **16G 英特尔傲腾**。把 img **写到一根普通 U 盘**（不要写到 Ventoy 那根），U 盘插 N100 开机。Mac 关 Wi‑Fi，网线接 N100 **第二口**，Mac 设 `192.168.100.2/24`，打开 http://192.168.100.1。无内存点不亮；要关 Secure Boot。傲腾若是 RST 缓存条，`lsblk` 没 nvme 就当不了系统盘 |
-| ISO 那轮 | seed 已开 `CONFIG_ISO_IMAGES`（§十九）。run [`38052856173`](https://github.com/xcy960815/istoreos/actions/runs/38052856173) 在编。ISO 是 **LiveCD**，不是安装向导；用户已说明上次装的是 img，**试刷优先用 r10 的 img** |
-| 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu，冷编也不比 Actions 快多少 |
-| 还没做 | D 档再瘦 seed（§十六）；J4125 刷入；N100 实际开机仍未验证 |
+| 可用固件 | GitHub Actions **r17** 成功（run [`38561237293`](https://github.com/xcy960815/istoreos/actions/runs/38561237293)，提交 `597a40aba3`），产物 `istoreos-x86_64-trimmed-r17`。刷 **EFI img**：gz 解压后的 `*-squashfs-combined-efi.img` 整盘 dd。r10 已过时，别再刷 |
+| r17 里面有什么 | DDNS-Go **6.12.2**、Tailscale **1.104.1** + LuCI（VPN → Tailscale）；WireGuard、网络唤醒、OpenList、Argon + Bootstrap。**没有** Docker/Samba/UPnP/ddnsto/下载器/OTA。登录是 Argon 状态概览，**没有** QuickStart 首页，侧栏**没有**「网络向导」。默认 `root` / 空密码 |
+| 已写到哪 | 64G SanDisk 当 N100 系统盘（整盘 dd）。Finder「无法读取磁盘」正常，**不要初始化**。macOS 要用终端.app 完全磁盘访问后 `sudo dd`，Cursor `osascript` 会被 TCC 拦 |
+| **禁止** | **不要刷正在用的 J4125**（和 N100 都是 `192.168.100.1`）。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100 |
+| N100 | **已经用这根 U 盘开过机**，能进 LuCI。双网口、无显示器、机内 16G 傲腾（RST 缓存条当不了系统盘就别写）。BIOS：U 盘优先、Secure Boot 关。Mac 无内置网口：网线接 N100 **第二口**，`192.168.100.2/24`、**网关留空**。家里关 Wi‑Fi；公司 USB 网卡（用过 AX88179A）必须排在 Wi‑Fi 下面，否则 `192.168.100.1` 会被公司网抢走 |
+| 官方截图 | 家里 **J4125** 上的官方整包 QuickStart（Samba/易有云/固件更新卡片），不是 r17，也不是选错分支。`custom-24.10` 跟踪的就是 `istoreos-24.10` |
+| 本机未提交 | seed **589**。`pin-quickstart.sh`：烘焙首页，删掉 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导（§二十三）。`drop-luci-theme-bootstrap.sh`：去掉第二主题（§二十四）。都还没 commit / push / 构建 |
+| 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu |
+| 还没做 | 提交并触发下一轮构建，再写 U 盘验首页；D 档再瘦 seed（§十六）；**J4125 仍禁止刷** |
 
-后续 AI：**不要**把 r10 当失败；**不要**为清 Actions 黄条重编（§十八 已改 workflow，下次 run 才干净）；**不要**把双公头线当刷机方案。
+后续 AI：**不要**把工作区 QuickStart 写成「r17 已有首页」；**不要**只删 seed 里的 bootstrap 就以为主题没了；**不要**再拿 r10 试刷；**不要**把双公头线当刷机方案。
 
 ## 一、改动纪律（最重要）
 
@@ -51,14 +57,14 @@
 
 ## 三、保留清单（有实际使用证据，后续 AI 不要当成"没用"误删）
 
-> ⚠️ 本清单是**功能**层面"别丢"，不等于"固件里已烘焙"：其中 openclash、quickstart、`app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,…}` 等不在构建期。除 QuickStart 外，按需从 iStore 商店装回；QuickStart 本轮不装回，以免恢复已删除的下载器、Samba、易有云首页卡片。哪些真在固件里、哪些要装回——唯一清单见 §六「仍然完好、一个没动的功能」和 §十，证据见 §九。
+> ⚠️ 本清单是**功能**层面"别丢"，不等于"固件里已烘焙"：其中 openclash、`app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,…}` 等不在构建期，按需从 iStore 商店装回。**QuickStart 首页已定要烘焙**（卡片已裁，见 §二十三），但 **r17 还没有**，只在本机未提交改动里。哪些真在固件里、哪些要装回——唯一清单见 §六「仍然完好、一个没动的功能」和 §十，证据见 §九。
 
 - **openclash**：全家主力代理，GeoIP 数据齐全、多份配置备份（用户本机代理 7897 与之同源）
 - **ddns-go + luci-app-ddns-go**：公网 IP + 免费域名，**开箱即有**（第七条 feed `ddnsgo`）。勿删、勿改回「刷机后商店装」、勿用 `luci-app-ddns` 顶替
 - **tailscale + luci-app-tailscale**：家人设备远程入口，路由器是 exit node（与公网 DDNS 并行，不是二选一）。**2026-10-14 起开箱即有**：官方 1.104.1 amd64 + asvow LuCI，见 §二十二。不要再写成「刷机后商店装 `luci-app-tailscale-community`」
 - **openlist / vlmcsd / eqos / oaf / ttyd / wol(etherwake) / cpufreq / luci-fan / fastnet / floatip**：保留；2026-10-10 用户再次明确 OpenList 和它自带的 WebDAV 要留，不能随下载器删除
 - **Aria2 / Transmission 已退出保留清单**：2026-10-10 用户明确不需要，连同管理页面和首页入口一起去掉，见 §二十。旧配置行数不再作为保留依据
-- **istore / luci-app-store / argon 主题**：系统管理骨架，勿动；QuickStart 首页本轮不装回
+- **istore / luci-app-store / argon 主题 / QuickStart 首页**：系统管理骨架，勿动。首页方案见 §二十三（r17 还没有，工作区未提交）；Samba/易有云/下载器/ddnsto 卡片要从页面去掉，不要加回 Bootstrap（§二十四）
 - **kmod-igc**：四个 2.5G i226-V 网卡的驱动，删了机器变砖
 - **irqbalance**：定制新增，为四张 2.5G 网卡分摊中断
 
@@ -97,11 +103,11 @@
 
 本节写于 r4 审计之前，当时把"路由器在用的功能"和"固件里已烘焙的包"混为一谈，按 §九/§十 的口径重列。以下清单已按 §二十 更新为当前 seed 的预期，r10 等旧镜像仍含 Aria2/Transmission：
 
-- **固件里确实有**：**tailscale 1.104.1 + luci-app-tailscale（2026-10-14 起开箱，见 §二十二）**、**ddns-go + luci-app-ddns-go（2026-10-09 加回，见 §十五）**、openlist（含 WebDAV）、
+- **固件里确实有（r17）**：**tailscale 1.104.1 + luci-app-tailscale（见 §二十二）**、**ddns-go + luci-app-ddns-go（见 §十五）**、openlist（含 WebDAV）、
   vlmcsd、ttyd、wol、iStore 商店本体（`luci-app-store`+`dkml`）、argon 主题、zram、smartd+lm-sensors（温控）、
   wireguard、dnsmasq-full、flow offload（kmod-nf-flow）
 - **不在固件里、刷机后要从商店装回**：openclash、eqos、oaf、cpufreq、luci-app-fan、fastnet、floatip、
-  quickstart、gowebdav——它们从来不是构建期候选，包名与证据见 §十。**Tailscale LuCI 已不在此列**
+  gowebdav——它们从来不是构建期候选，包名与证据见 §十。**Tailscale LuCI 已不在此列**。**QuickStart 也不该再写成商店装，但 r17 还没有，等 §二十三 那轮构建**
 
 ### 包名明细（按批次）
 
@@ -130,7 +136,7 @@
 
 1. `make defconfig` 会把"仍被保留包硬依赖"的项自动加回 `=y`——审计脚本 `.github/scripts/seed-audit.sh` 现在直接打印这份"seed 没写却开启"的清单（`seed-audit.txt` 第二段），刷前照它核对，不再靠猜候选。**但不止硬依赖**：它还会加回 **profile 默认包**（`DEFAULT_PACKAGES`），这类可能与有意替换的实现冲突，见 §七
 2. **`make defconfig` 必须在 `./scripts/feeds install -a` 之后跑**，否则所有 feed 包的 `CONFIG_PACKAGE_*=y` 行被静默丢弃（符号还不存在），后果见 §七 原因 1
-3. **软依赖**（脚本 shell 调用而非包依赖）不会被自动拉回——QEMU 启动验证 + 刷机后核对 LuCI 各页（重点：iStore 商店、**已烘焙的 Tailscale/DDNS-Go**；磁盘管理、openclash 这些**先按 §九 从商店装回**再核对；QuickStart 不装回）照 BUILD-CUSTOM.md 流程走
+3. **软依赖**（脚本 shell 调用而非包依赖）不会被自动拉回——QEMU 启动验证 + 刷机后核对 LuCI 各页（重点：iStore 商店、**已烘焙的 Tailscale/DDNS-Go**；下一轮才有 QuickStart 首页；磁盘管理、openclash 这些**先按 §九 从商店装回**再核对）照 BUILD-CUSTOM.md 流程走
 4. `dkml`（iStoreOS 动态内核模块加载器，package/diy/dkml）**保留**：iStore 商店装内核模块类应用的基础设施
 
 ## 七、构建顺序与 dnsmasq 冲突（r1，2026-10-05）
@@ -166,11 +172,13 @@
 
 **符号存在却没开成 2 行**：`kmod-thermal`、`kmod-xdp-sockets-diag`——内核内建符号没开（需 `make kernel menuconfig`，或该 target 未 support），与 feed 无关。
 
-**已定（2026-10-06，用户选）**：**不**把整个 iStore 商店 / app-hub 追加进 `feeds.conf`，维持"固件只留路由栈 + 商店本体，刷机后按需从 iStore 商店装回 openclash / tailscale UI / eqos …"。QuickStart 因会带回已删除的首页卡片，本轮不装回。理由是镜像尺寸优先；随之把 104 行死 seed 清掉，见 §十。
+**已定（2026-10-06，用户选）**：**不**把整个 iStore 商店 / app-hub 追加进 `feeds.conf`，维持"固件只留路由栈 + 商店本体，刷机后按需从 iStore 商店装回 openclash / eqos …"。随之把 104 行死 seed 清掉，见 §十。
 
 **修订（2026-10-09）**：公网域名是硬需求，六个默认 feed 里又没有 DDNS-Go。允许也只允许 **一条** 例外 feed：`src-git ddnsgo https://github.com/sirpdboy/luci-app-ddns-go.git;v6.12.2`。这不是「商店 feed 开闸」——openclash 等仍不进构建期。见 §十五。
 
 **修订（2026-10-14）**：用户要求内置最新 Tailscale。第二条构建例外是脚本、不是新 feed：`.github/scripts/pin-tailscale-prebuilt.sh`。openclash 等仍不进构建期。见 §二十二。
+
+**修订（2026-10-16）**：用户要 QuickStart 首页、不要那些已删服务。第三条构建例外 `.github/scripts/pin-quickstart.sh`：只 clone 两个包，不拉 app-hub。见 §二十三。
 
 ## 十、清掉 104 行"从未生效"的 seed 行（2026-10-06，697 → 593）
 
@@ -178,7 +186,7 @@
 
 **设备能做的事零变化**——这 104 行自写进 seed 起就是空转（符号不存在，defconfig 无警告删除），删掉它们不移除任何一块已烘焙的功能；固件产物与清理前逐包相同。
 
-要交代的不是"删了什么"，而是**刷机后必须自己装回的东西**（原先误以为已在固件里）：OpenClash、Tailscale 的 LuCI 配置页（守护进程 `tailscale` 确实在，可先用 UCI/`/etc/config/tailscale` 配）、eqos IP 限速、oaf/appfilter 应用过滤、cpufreq 与风扇调节、diskman 磁盘管理、gowebdav/fastnet/floatip/webdav2。QuickStart 本轮不装回，因为其首页会带下载器、Samba、易有云卡片。装回途径：LuCI → iStore 商店（本体 `luci-app-store` + `dkml` 已在固件）。**2026-10-10 更正：Aria2/Transmission 及其入口与商店元数据不再装回**（§二十）；下方批次清单只记录历史清理，不是恢复清单。
+要交代的不是"删了什么"，而是**刷机后必须自己装回的东西**（原先误以为已在固件里）：OpenClash、eqos IP 限速、oaf/appfilter 应用过滤、cpufreq 与风扇调节、diskman 磁盘管理、gowebdav/fastnet/floatip/webdav2。装回途径：LuCI → iStore 商店（本体 `luci-app-store` + `dkml` 已在固件）。**2026-10-10 更正：Aria2/Transmission 及其入口与商店元数据不再装回**（§二十）；**Tailscale LuCI 2026-10-14 起已烘焙**（§二十二，r17 已有）；**QuickStart 首页方案见 §二十三，r17 还没有**；下方批次清单只记录历史清理，不是恢复清单。
 
 ### 包名明细（全部为「符号不存在」的死行，按档位列全）
 
@@ -419,3 +427,69 @@ LuCI 配置页 `luci-app-tailscale-community` 仍是商店应用、六个默认 
 | 不加 | `luci-app-tailscale-community`（商店包，无 kconfig，写了也是死行）；不升 golang |
 
 后续 AI：**不要**为了「最新 Tailscale」去升 packages 的 golang；**不要**把 asvow 这一包扩成整个 app-hub；换更新的官方版本只改脚本里的 `TS_VERSION` / `TS_HASH`。本地编也必须跑这支脚本，见 `BUILD-CUSTOM.md` 步骤 3c。
+
+## 二十三、QuickStart 首页（不要 Samba/易有云/下载器，2026-10-16，用户明确要求）
+
+r17 及更早镜像登录后是 LuCI Argon 概览，不是官方那种彩色首页。不是分支选错：`custom-24.10` 跟踪的就是 `istoreos-24.10`；用户截图来自家用 J4125 上的**官方整包**，那里从 iStore 商店装了 QuickStart。
+
+六个默认 feed 里没有 `luci-app-quickstart`（§九）。2026-10-06 不装回，是因为首页会带下载器、Samba、易有云卡片；用户当时选镜像尺寸优先。2026-10-16 改口：**要这个首页，但那些已删服务不能跟着回来。**
+
+不把 `linkease/nas-packages` 整仓写进 `feeds.conf`（会露出 samba/linkease 等符号）。第三条构建例外只 clone 两个包，和 Tailscale LuCI 同一套路。
+
+首页卡片怎么处理：
+
+| 区块 | 做法 | 原因 |
+|---|---|---|
+| 左侧菜单「网络向导」 | 保留（`luci-app-quickstart` 自带 `admin/network_guide`，补丁禁止动 controller） | 官方侧栏第二项；r17 没有 QuickStart 才看不见 |
+| 首页卡片：网络向导 / 局域网设备 / 测速 / 商店 / 内网·DNS·日志·终端 | 保留 | 这就是用户要的首页 |
+| 磁盘信息 | 保留 | 只读概览，不是 Samba |
+| Docker | 前端已按 `/etc/init.d/dockerd` 是否存在决定；本镜像没有 dockerd，卡片不出现 | 不装 Docker |
+| 固件更新 / 沙箱 | 前端已按 `ota` 二进制、`/ext_overlay` 决定；本镜像都没有 | OTA 已删（§二十一） |
+| 存储服务（易有云 / Samba / WebDAV） | 从首页渲染和模块表删除，格子让给磁盘信息 | 文件服务归 9400F/N100；OpenList 自带的 WebDAV 走它自己的页面，不是这块 NAS 向导 |
+| 下载服务（Aria2 / Transmission） | 同上删除 | §二十 |
+| 远程域名（ddnsto） | 同上删除 | 公网走 DDNS-Go，禁止 ddnsto |
+| 点「快速配置」从商店装回上述包 | `auto_setup.sh` 直接拒绝 | 即使用户以后从别处进向导，也不能把已删服务装回来 |
+
+`quickstart` 的 Makefile 声明依赖 `mdadm` 等磁盘工具。二次裁剪曾从 seed 拿掉 mdadm（§六 B，单盘无 RAID）；这次 defconfig 会把它作为依赖加回二进制，**不是**把 Samba 加回来。不要为了「首页」去改 `package/istoreos-files` 源码。
+
+### 功能视角
+
+| 变更后设备能做 / 不能做 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| **能**：登录就是官方那种 QuickStart 首页；侧栏有「首页」和「网络向导」 | `quickstart` + `luci-app-quickstart` + 中文包 | 不再默认停在 Argon 状态概览；网络向导走 `admin/network_guide` |
+| **仍不能**：在首页看到或配置 Samba / 易有云 / NAS WebDAV / Aria2 / Transmission / ddnsto | 首页渲染删除这些模块 + auto_setup 拒绝名单 | 文件服务用 9400F/N100；公网域名用 DDNS-Go；OpenList WebDAV 用 OpenList 自己的页面 |
+| **仍不能**：开箱即有 OpenClash 等其它商店应用 | 未改 app-hub、未改 §十 | 刷机后商店装回，与本次无关 |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-quickstart.sh`：sparse clone `linkease/nas-packages@c82c458b61e5` 的 `network/services/quickstart`（预编译 0.13.0）到 `package/quickstart`；sparse clone `linkease/nas-packages-luci@7e5083e2ca4c` 的 `luci/luci-app-quickstart`（0.12.10-r1）到 `package/luci-app-quickstart`。再改构建树副本：从首页渲染删除 storage/downloadService/remoteDomain（含 Docker 块），模块表和设置列表也不留这几项，剩下的卡片按数量重新占宽；`auto_setup.sh` 拒绝 samba/linkease/aria2/transmission/docker/ddnsto 等，`disable_update_check=1` |
+| seed 新增 `=y` | `quickstart`、`luci-app-quickstart`、`luci-i18n-quickstart-zh-cn`（seed `CONFIG_PACKAGE_*` 587 → 590） |
+| defconfig 可能自行加回 | `mdadm` 等 `quickstart` 的 DEPENDS（seed 里没有这些行也不算死行） |
+| 不加 | 整个 nas-packages / app-hub；`app-meta-samba`、linkease、aria2、luci-app-ota、ddnsto |
+
+后续 AI：**不要**把 nas-packages 写成第七/八条 feed；升 QuickStart 版本只改脚本里的 `NAS_COMMIT` / `LUCI_COMMIT` / `QS_VERSION` / `LUCI_VERSION`，前端字符串对不上就让 CI 红、不要猜着补。本地编也必须跑这支脚本，见 `BUILD-CUSTOM.md` 步骤 3d。
+
+## 二十四、去掉 Bootstrap 第二主题（2026-10-16，用户明确要求）
+
+LuCI 默认集合 `luci-light` 的 `DEPENDS` 带 `+luci-theme-bootstrap`。只从 seed 删 `CONFIG_PACKAGE_luci-theme-bootstrap=y`，`make defconfig` 会把它加回来，镜像里还是两个主题。
+
+界面已经用 Argon（`istoreos-files` 依赖 `luci-theme-argon`，`99_theme` 默认切过去）。用户只要这一个，不要系统里再出现 Bootstrap。
+
+### 功能视角
+
+| 变更后设备不能再做什么 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| 在「系统 → 语言和界面」里切到 Bootstrap 主题 | `luci-theme-bootstrap` | 只留 Argon；配色仍走 `luci-app-argon-config` |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 从 config-custom.seed 删除 | `luci-theme-bootstrap`（seed `CONFIG_PACKAGE_*` 590 → 589） |
+| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/drop-luci-theme-bootstrap.sh`：从 `luci-light` Makefile 去掉 `+luci-theme-bootstrap` |
+| 审计 | `seed-audit.sh`：展开后的 `.config` 若再出现 `CONFIG_PACKAGE_luci-theme-bootstrap=y` 则失败 |
+| 保留 | `luci-theme-argon`、`luci-app-argon-config` 及中文包 |
+
+后续 AI：**不要**只删 seed 那一行就以为主题没了；本地编也必须跑这支脚本，见 `BUILD-CUSTOM.md` 步骤 3e。**不要**改 `package/istoreos-files` 里的 `99_theme`（源码）。

@@ -42,6 +42,10 @@ if grep -q '^CONFIG_PACKAGE_dnsmasq=y$' .config; then
   echo "::error::dnsmasq(非 full)又被加回，会与 dnsmasq-full 抢文件；说明有保留包 select 了默认变体"
   fail=1
 fi
+if grep -q '^CONFIG_PACKAGE_luci-theme-bootstrap=y$' .config; then
+  echo "::error::luci-theme-bootstrap 又被加回；先跑 .github/scripts/drop-luci-theme-bootstrap.sh 再 defconfig。见 §二十四"
+  fail=1
+fi
 
 new=$(grep -vxF "$known" lost.txt || true)
 if [ -n "$new" ]; then
