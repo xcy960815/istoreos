@@ -6,7 +6,7 @@
 
 ## 当前进度（2026-10-16 晚，后续 AI 先读这里）
 
-**两套状态不要混：** 已经能刷的是 **r17**；带官方首页、去掉 Bootstrap 的改动已提交并推送（`5612b37936`），但**还没有构建出镜像**：r18 触发后因给 workflow 加「构建成功发 Release」（§二十五）被取消，改由 **r19 重跑**。N100 已经用 r17 的 U 盘开过机。用户上次装官方也是 **img** 整盘写入，不必等 ISO。
+**两套状态不要混：** 已经能刷的是 **r17**；带官方首页、去掉 Bootstrap 的改动已提交并推送（`5612b37936`），但**还没有构建出镜像**：r18 触发后因给 workflow 加「构建成功发 Release」（§二十五）被取消，改由 **r19 重跑**（另有一批杂项零头删除已推送，编入下一轮 r20，§二十六）。N100 已经用 r17 的 U 盘开过机。用户上次装官方也是 **img** 整盘写入，不必等 ISO。
 
 **后续 seed 变更（2026-10-10，§二十）**：用户已要求移除 Aria2/Transmission 及其页面入口，当前 seed 已关闭 9 个包（596 → 587 个 `=y`）。r12 起的镜像已不含下载器（r10、r11 仍含）。
 
@@ -20,6 +20,8 @@
 
 **产物去处（2026-10-16 起，§二十五）**：构建成功后，镜像除 Actions artifact（14 天过期、下载要登录）外，自动发 GitHub Releases（tag `r<run_number>`，长期公开下载）。r17 及更早只在 artifact 里。
 
+**后续 seed 变更（2026-10-16，§二十六）**：用户要求先清「杂项零头」。seed 删除 7 行（589 → 582）：`kmod-igbvf`、`kmod-ipt-physdev`（连带 br-netfilter）、`kmod-keys-encrypted`、`kmod-keys-trusted`、`kmod-ppdev`、`kmod-sctp`、`kmod-tpm`。**尚未构建**，编入 r19 之后的下一轮（r20）。
+
 | 事实 | 细节 |
 |---|---|
 | 可用固件 | GitHub Actions **r17** 成功（run [`38561237293`](https://github.com/xcy960815/istoreos/actions/runs/38561237293)，提交 `597a40aba3`），产物 `istoreos-x86_64-trimmed-r17`。刷 **EFI img**：gz 解压后的 `*-squashfs-combined-efi.img` 整盘 dd。r10 已过时，别再刷 |
@@ -28,9 +30,9 @@
 | **禁止** | **不要刷正在用的 J4125**（和 N100 都是 `192.168.100.1`）。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100 |
 | N100 | **已经用这根 U 盘开过机**，能进 LuCI。双网口、无显示器、机内 16G 傲腾（RST 缓存条当不了系统盘就别写）。BIOS：U 盘优先、Secure Boot 关。Mac 无内置网口：网线接 N100 **第二口**，`192.168.100.2/24`、**网关留空**。家里关 Wi‑Fi；公司 USB 网卡（用过 AX88179A）必须排在 Wi‑Fi 下面，否则 `192.168.100.1` 会被公司网抢走 |
 | 官方截图 | 家里 **J4125** 上的官方整包 QuickStart（Samba/易有云/固件更新卡片），不是 r17，也不是选错分支。`custom-24.10` 跟踪的就是 `istoreos-24.10` |
-| 已推送未构建 | seed **589**，提交 `5612b37936` 已推到 `origin/custom-24.10`。`pin-quickstart.sh` 烘焙首页（删 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导，§二十三）；`drop-luci-theme-bootstrap.sh` 去第二主题（§二十四）。r18 首次触发后因 workflow 加「发 Release」被取消 → **r19 重跑中**，成功后镜像自动进 Releases（§二十五） |
+| 已推送未构建 | seed **582**。两块改动都在 `origin/custom-24.10`：① `5612b37936`——`pin-quickstart.sh` 烘焙首页（删 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导，§二十三）＋`drop-luci-theme-bootstrap.sh` 去第二主题（§二十四）；② 2026-10-16 杂项零头 7 行（§二十六）。r19 基于 `9d5f97ef56` **构建中**（不含杂项）；杂项编入下一轮 **r20**。出镜像后自动进 Releases（§二十五） |
 | 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu |
-| 还没做 | r19 出镜像后写 U 盘验首页；D 档再瘦 seed（§十六）；**J4125 仍禁止刷** |
+| 还没做 | r19 出镜像后写 U 盘验首页（随后 r20 验杂项清收）；D 档剩余项（§十六）继续分批瘦；**J4125 仍禁止刷** |
 
 后续 AI：**不要**把已推送未构建的 QuickStart 写成「r17 已有首页」；**不要**只删 seed 里的 bootstrap 就以为主题没了；**不要**再拿 r10 试刷；**不要**把双公头线当刷机方案。
 
@@ -285,6 +287,8 @@ seed 已是 `CONFIG_TARGET_x86=y` / `CONFIG_TARGET_x86_64=y` / `DEVICE_generic`�
 
 二次裁剪已经按盒子拿掉无线/蜂窝/老网卡/KVM。剩下是 §六 D 档——和架构无关，是「这台机器用不用」。每组必须先在路由器上 `opkg whatdepends`（或刷裁剪版后查），硬依赖为 0 才从 seed 钉 `# CONFIG_PACKAGE_xxx is not set`。软依赖（脚本里调命令）不会被 defconfig 拉回，见 §六安全网 3。
 
+**2026-10-16 执行记录（§二十六）**：首批「杂项零头」已落地——本节点名的 `kmod-sctp`、`kmod-tpm` 已删（同批还删了 `kmod-igbvf`、`kmod-ipt-physdev`、`kmod-keys-encrypted`、`kmod-keys-trusted`、`kmod-ppdev`，明细见 §二十六）。这批没用路由器 `opkg whatdepends`，依据是本地构建树反向依赖核查（依赖者全未进固件）+ CI 审计兜底。其余候选（ruby/git/taskd/sqlite3-cli/lm-sensors-detect、冷门 fs、隧道群 map/ds-lite/sit/nat46、保险网卡）**仍未动**。
+
 #### 功能视角（候选，未执行）
 
 | 若从 seed 删掉，设备不能再做什么 | 候选（仍在 seed） | 前提 / 必须留的 |
@@ -295,14 +299,14 @@ seed 已是 `CONFIG_TARGET_x86=y` / `CONFIG_TARGET_x86_64=y` / `DEVICE_generic`�
 | sqlite 命令行 | `sqlite3-cli` | **库可能被别的包依赖，只砍 CLI** |
 | `sensors-detect` 探测芯片 | `lm-sensors-detect`、`perl`、全部 `perlbase-*` | **`lm-sensors` 本体留**（风扇温控） |
 | 挂冷门磁盘格式 | `kmod-fs-{hfs,hfsplus,jfs,reiserfs,minix,cramfs,isofs,udf,msdos}` 及对应用户态 | **必留**：squashfs、ext4、vfat/exfat（U 盘）、efivarfs。btrfs/xfs/ntfs3/f2fs 等 `df -T /mnt/sata1-4` 再说 |
-| 老式交换机 / DS-Lite 等过渡隧道 | `map`、`ds-lite`、`kmod-sit`、`kmod-nat46`、`kmod-sctp`、`kmod-tpm` | IPv6 本体（odhcp6c/odhcpd）留 |
-| 换一块非 Intel i226 的 PCI 网卡 | `kmod-e1000`、`kmod-e1000e`、`kmod-igb`、`kmod-igbvf`、`r8169-firmware`（及 r8169/r8125 若仍在） | **`kmod-igc` 绝对留**。USB 网卡 + 手机 RNDIS/iPhone 共享仍留。只在「这块板永远不换 PCI 网卡」时才收保险 |
+| 老式交换机 / DS-Lite 等过渡隧道 | `map`、`ds-lite`、`kmod-sit`、`kmod-nat46`（`kmod-sctp`、`kmod-tpm` 已删，§二十六） | IPv6 本体（odhcp6c/odhcpd）留 |
+| 换一块非 Intel i226 的 PCI 网卡 | `kmod-e1000`、`kmod-e1000e`、`kmod-igb`、`r8169-firmware`（及 r8169/r8125 若仍在；`kmod-igbvf` 已删——VF 只给 SR-IOV 虚拟机用，换物理网卡不需要，§二十六） | **`kmod-igc` 绝对留**。USB 网卡 + 手机 RNDIS/iPhone 共享仍留。只在「这块板永远不换 PCI 网卡」时才收保险 |
 
 #### 包名明细（仍在 seed，尚未删除）
 
-执行时按上表分组从 `config-custom.seed` 去掉对应 `=y`（或钉 `is not set`），同一提交更新本节：把「候选」改成「已删」，并写清刷完机少了什么。
+执行时按上表分组从 `config-custom.seed` 去掉对应 `=y`（或钉 `is not set`），同一提交更新本节或新开一节：把「候选」改成「已删」，并写清刷完机少了什么。2026-10-16 首批已按此流程记录在 §二十六。
 
-后续 AI：**不要**把本节当成授权去删 `target/linux` 或其他架构源码。r9 已证明打盘会挂，允许的 seed 改动只有 §十七 的镜像布局；D 档包仍等出镜像后再动。
+后续 AI：**不要**把本节当成授权去删 `target/linux` 或其他架构源码。r9 已证明打盘会挂，允许的 seed 改动只有 §十七 的镜像布局；D 档包分批推进，首批已执行（§二十六），后续批次每轮镜像出来后继续。
 
 ## 十七、镜像布局：只出 squashfs，分区 32/512（r9，2026-10-09）
 
@@ -515,3 +519,29 @@ r17 及更早的镜像只挂在 Actions 的 artifact 上：**14 天过期**，�
 | 仅手动触发 | 构建入口仍只有 workflow_dispatch；Release 是产物去处，不是触发器 |
 
 后续 AI：**不要**为发 Release 去改仓库全局默认权限；**不要**把 Release 当作「已刷机验证」的证据——机器验证仍按 `BUILD-CUSTOM.md` 流程走。
+
+## 二十六、杂项零头清收（2026-10-16，用户明确要求）
+
+用户要求「先把杂项的依赖包删了」——即「还能删什么」审查里最小无争议的一组：并口、SCTP、TPM 密钥环、网卡 VF、iptables physdev 桥接匹配；连带拉入的 `kmod-br-netfilter` 随之消失。这是分批瘦身的第一批，其余组（显示栈、非保险网卡、隧道群、工具）待逐批确认后另行记录。
+
+本批**未经路由器 `opkg whatdepends`**，依据是本地构建树的反向依赖静态核查：这 7 个包的依赖者在构建树里全部未启用或同批删除（`iptables-mod-physdev`、`kmod-usb-serial-mos7720`、`parport-pc`、`lp`、`sctp-diag`、`tpm-tis`/`tpm-i2c`/`tpm-spi`；`kmod-keys-encrypted` 依赖 `kmod-keys-trusted`，同批一起删），且它们都不在 x86/64 的 `DEVICE_PACKAGES` 里。CI seed 审计兜底：若 feeds 里还有构建树外、本地看不到的隐藏依赖，`defconfig` 会把被依赖项加回，并出现在审计报告「seed 没写却开启」列表里，按报告处理即可。体积收益不大（都是小模块），价值在于去掉无场景功能、保持 seed 精简。
+
+### 功能视角
+
+| 变更后设备不能再做什么 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| 接并口（老式打印机）设备 | `kmod-ppdev` | 无此场景；依赖它的 `kmod-usb-serial-mos7720`、`parport-pc`、`lp` 都没进固件 |
+| 跑 SCTP 协议 | `kmod-sctp` | 家庭网络无此用途；`sctp-diag` 没进固件。要时从 opkg/iStore 装回 |
+| 使用内核 TPM 密钥环（trusted / encrypted keys） | `kmod-tpm`、`kmod-keys-trusted`、`kmod-keys-encrypted` | J4125 无 TPM 芯片；接口驱动（`tpm-tis` 等）都没进固件。无影响 |
+| 给 SR-IOV 虚拟机分配 Intel 网卡 VF | `kmod-igbvf` | KVM 早已删（§六）；换物理网卡走保险驱动（`kmod-igb` 还在），不受影响 |
+| 用 iptables `-m physdev` 匹配桥接物理口 | `kmod-ipt-physdev`、连带 `kmod-br-netfilter` | fw4/nftables 不使用；唯一依赖者 `iptables-mod-physdev` 没进固件。要时装回它会把两者一起拉回 |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 从 config-custom.seed 删除（7 行；seed `=y` 计数 589 → 582） | `kmod-igbvf`、`kmod-ipt-physdev`、`kmod-keys-encrypted`、`kmod-keys-trusted`、`kmod-ppdev`、`kmod-sctp`、`kmod-tpm` |
+| 连带自动消失（本不在 seed，由依赖拉入） | `kmod-br-netfilter`（构建树里唯一来源是 `kmod-ipt-physdev` 的 DEPENDS，`package/kernel/linux/modules/netfilter.mk:847`） |
+| 保留 / 勿动 | `kmod-udptunnel4/6`——WireGuard 硬依赖（`netsupport.mk:1555`），**不是**零头；`kmod-i2c-algo-bit`/`kmod-i2c-core`/`kmod-ptp`——igb/igc 保险网卡需要 |
+
+后续 AI：**不要**把上面「勿动」两项当零头再删；若后续 seed 审计的「seed 没写却开启」里新出现本批包名，说明有隐藏依赖，先查清再决定，不要无视。本批是否真消失，以 r20 构建的审计报告为准。

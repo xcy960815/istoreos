@@ -16,4 +16,4 @@
 
 构建与刷机步骤见 [`BUILD-CUSTOM.md`](BUILD-CUSTOM.md)；云端构建走 Actions（手动触发）。CI 历次失败的原始复盘（run 编号、日志原文）在 [`docs/CI-HISTORY.md`](docs/CI-HISTORY.md)，节号与 CUSTOM-TRIMMING.md 对应；CUSTOM-TRIMMING.md 只留当前有效的结论。
 
-**进度（2026-10-16 晚）**：能刷的是 **r17**（`597a40aba3`），已写成 U 盘并在 **N100 开过机**。登录是 Argon 概览，没有官方 QuickStart 首页。带首页、去掉 Samba/下载/Docker 卡片、去掉 Bootstrap 主题的改动**已提交并推送（`5612b37936`），还没构建出镜像**：r18 因 workflow 新增「构建成功后自动发 GitHub Release」被打断取消，改由 **r19 重跑**，产物以后自动进 Releases。试刷继续用 N100 + img，**禁止动 J4125**。快照见 [`docs/CUSTOM-TRIMMING.md`](docs/CUSTOM-TRIMMING.md) 文首「当前进度」。
+**进度（2026-10-16 晚）**：能刷的是 **r17**（`597a40aba3`），已写成 U 盘并在 **N100 开过机**。登录是 Argon 概览，没有官方 QuickStart 首页。带首页、去掉 Samba/下载/Docker 卡片、去掉 Bootstrap 主题的改动**已提交并推送（`5612b37936`），还没构建出镜像**：r18 因 workflow 新增「构建成功后自动发 GitHub Release」被打断取消，改由 **r19 重跑**，产物以后自动进 Releases。另：**杂项零头清收已提交推送**（删 7 行：kmod-sctp、kmod-tpm、kmod-keys-encrypted、kmod-keys-trusted、kmod-ppdev、kmod-igbvf、kmod-ipt-physdev，§二十六），编入下一轮 **r20**。试刷继续用 N100 + img，**禁止动 J4125**。快照见 [`docs/CUSTOM-TRIMMING.md`](docs/CUSTOM-TRIMMING.md) 文首「当前进度」。
