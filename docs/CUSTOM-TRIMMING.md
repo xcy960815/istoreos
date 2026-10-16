@@ -6,7 +6,7 @@
 
 ## 当前进度（2026-10-16 晚，后续 AI 先读这里）
 
-**两套状态不要混：** 已经能刷的是 **r17**；带官方首页、去掉 Bootstrap 的改动还在本机工作区，**没 commit、没 push、没编过**。N100 已经用 r17 的 U 盘开过机。用户上次装官方也是 **img** 整盘写入，不必等 ISO。
+**两套状态不要混：** 已经能刷的是 **r17**；带官方首页、去掉 Bootstrap 的改动已提交并推送（`5612b37936`），但**还没有构建出镜像**：r18 触发后因给 workflow 加「构建成功发 Release」（§二十五）被取消，改由 **r19 重跑**。N100 已经用 r17 的 U 盘开过机。用户上次装官方也是 **img** 整盘写入，不必等 ISO。
 
 **后续 seed 变更（2026-10-10，§二十）**：用户已要求移除 Aria2/Transmission 及其页面入口，当前 seed 已关闭 9 个包（596 → 587 个 `=y`）。r12 起的镜像已不含下载器（r10、r11 仍含）。
 
@@ -14,9 +14,11 @@
 
 **后续 seed 变更（2026-10-14，§二十二）**：用户要求内置最新 Tailscale。守护进程本来就在（r13 是 1.80.3）；本轮换成官方 **1.104.1** amd64 预编译，并烘焙 LuCI（asvow `luci-app-tailscale` v1.2.6）。不能从源码编最新版（要 Go 1.27，本树 golang 1.23.12）。seed 585 → 587。
 
-**后续 seed 变更（2026-10-16，§二十三，仅工作区）**：用户要官方那种 QuickStart 首页，但不要 Samba/易有云/下载器/OTA。第三条构建例外 `.github/scripts/pin-quickstart.sh`：只 clone 两个包，从首页渲染里**删掉**存储/下载/远程域名/Docker 整块（不是开关隐藏）。侧栏「网络向导」保留。seed 587 → 590。**r17 没有这些**，还是 Argon 概览。
+**后续 seed 变更（2026-10-16，§二十三，`5612b37936` 已推送）**：用户要官方那种 QuickStart 首页，但不要 Samba/易有云/下载器/OTA。第三条构建例外 `.github/scripts/pin-quickstart.sh`：只 clone 两个包，从首页渲染里**删掉**存储/下载/远程域名/Docker 整块（不是开关隐藏）。侧栏「网络向导」保留。seed 587 → 590。**r17 没有这些**，还是 Argon 概览。
 
-**后续 seed 变更（2026-10-16，§二十四，仅工作区）**：用户要求去掉第二主题 Bootstrap。seed 再关 1 个包（590 → 589）。`luci-light` 硬依赖它，所以还有 `.github/scripts/drop-luci-theme-bootstrap.sh`。界面只留 Argon。**r17 仍带 Bootstrap。**
+**后续 seed 变更（2026-10-16，§二十四，`5612b37936` 已推送）**：用户要求去掉第二主题 Bootstrap。seed 再关 1 个包（590 → 589）。`luci-light` 硬依赖它，所以还有 `.github/scripts/drop-luci-theme-bootstrap.sh`。界面只留 Argon。**r17 仍带 Bootstrap。**
+
+**产物去处（2026-10-16 起，§二十五）**：构建成功后，镜像除 Actions artifact（14 天过期、下载要登录）外，自动发 GitHub Releases（tag `r<run_number>`，长期公开下载）。r17 及更早只在 artifact 里。
 
 | 事实 | 细节 |
 |---|---|
@@ -26,11 +28,11 @@
 | **禁止** | **不要刷正在用的 J4125**（和 N100 都是 `192.168.100.1`）。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100 |
 | N100 | **已经用这根 U 盘开过机**，能进 LuCI。双网口、无显示器、机内 16G 傲腾（RST 缓存条当不了系统盘就别写）。BIOS：U 盘优先、Secure Boot 关。Mac 无内置网口：网线接 N100 **第二口**，`192.168.100.2/24`、**网关留空**。家里关 Wi‑Fi；公司 USB 网卡（用过 AX88179A）必须排在 Wi‑Fi 下面，否则 `192.168.100.1` 会被公司网抢走 |
 | 官方截图 | 家里 **J4125** 上的官方整包 QuickStart（Samba/易有云/固件更新卡片），不是 r17，也不是选错分支。`custom-24.10` 跟踪的就是 `istoreos-24.10` |
-| 本机未提交 | seed **589**。`pin-quickstart.sh`：烘焙首页，删掉 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导（§二十三）。`drop-luci-theme-bootstrap.sh`：去掉第二主题（§二十四）。都还没 commit / push / 构建 |
+| 已推送未构建 | seed **589**，提交 `5612b37936` 已推到 `origin/custom-24.10`。`pin-quickstart.sh` 烘焙首页（删 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导，§二十三）；`drop-luci-theme-bootstrap.sh` 去第二主题（§二十四）。r18 首次触发后因 workflow 加「发 Release」被取消 → **r19 重跑中**，成功后镜像自动进 Releases（§二十五） |
 | 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu |
-| 还没做 | 提交并触发下一轮构建，再写 U 盘验首页；D 档再瘦 seed（§十六）；**J4125 仍禁止刷** |
+| 还没做 | r19 出镜像后写 U 盘验首页；D 档再瘦 seed（§十六）；**J4125 仍禁止刷** |
 
-后续 AI：**不要**把工作区 QuickStart 写成「r17 已有首页」；**不要**只删 seed 里的 bootstrap 就以为主题没了；**不要**再拿 r10 试刷；**不要**把双公头线当刷机方案。
+后续 AI：**不要**把已推送未构建的 QuickStart 写成「r17 已有首页」；**不要**只删 seed 里的 bootstrap 就以为主题没了；**不要**再拿 r10 试刷；**不要**把双公头线当刷机方案。
 
 ## 一、改动纪律（最重要）
 
@@ -57,14 +59,14 @@
 
 ## 三、保留清单（有实际使用证据，后续 AI 不要当成"没用"误删）
 
-> ⚠️ 本清单是**功能**层面"别丢"，不等于"固件里已烘焙"：其中 openclash、`app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,…}` 等不在构建期，按需从 iStore 商店装回。**QuickStart 首页已定要烘焙**（卡片已裁，见 §二十三），但 **r17 还没有**，只在本机未提交改动里。哪些真在固件里、哪些要装回——唯一清单见 §六「仍然完好、一个没动的功能」和 §十，证据见 §九。
+> ⚠️ 本清单是**功能**层面"别丢"，不等于"固件里已烘焙"：其中 openclash、`app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,…}` 等不在构建期，按需从 iStore 商店装回。**QuickStart 首页已定要烘焙**（卡片已裁，见 §二十三），但 **r17 还没有**；改动已推送（`5612b37936`）、r19 构建中。哪些真在固件里、哪些要装回——唯一清单见 §六「仍然完好、一个没动的功能」和 §十，证据见 §九。
 
 - **openclash**：全家主力代理，GeoIP 数据齐全、多份配置备份（用户本机代理 7897 与之同源）
 - **ddns-go + luci-app-ddns-go**：公网 IP + 免费域名，**开箱即有**（第七条 feed `ddnsgo`）。勿删、勿改回「刷机后商店装」、勿用 `luci-app-ddns` 顶替
 - **tailscale + luci-app-tailscale**：家人设备远程入口，路由器是 exit node（与公网 DDNS 并行，不是二选一）。**2026-10-14 起开箱即有**：官方 1.104.1 amd64 + asvow LuCI，见 §二十二。不要再写成「刷机后商店装 `luci-app-tailscale-community`」
 - **openlist / vlmcsd / eqos / oaf / ttyd / wol(etherwake) / cpufreq / luci-fan / fastnet / floatip**：保留；2026-10-10 用户再次明确 OpenList 和它自带的 WebDAV 要留，不能随下载器删除
 - **Aria2 / Transmission 已退出保留清单**：2026-10-10 用户明确不需要，连同管理页面和首页入口一起去掉，见 §二十。旧配置行数不再作为保留依据
-- **istore / luci-app-store / argon 主题 / QuickStart 首页**：系统管理骨架，勿动。首页方案见 §二十三（r17 还没有，工作区未提交）；Samba/易有云/下载器/ddnsto 卡片要从页面去掉，不要加回 Bootstrap（§二十四）
+- **istore / luci-app-store / argon 主题 / QuickStart 首页**：系统管理骨架，勿动。首页方案见 §二十三（r17 还没有；改动已推送、r19 构建中）；Samba/易有云/下载器/ddnsto 卡片要从页面去掉，不要加回 Bootstrap（§二十四）
 - **kmod-igc**：四个 2.5G i226-V 网卡的驱动，删了机器变砖
 - **irqbalance**：定制新增，为四张 2.5G 网卡分摊中断
 
@@ -493,3 +495,23 @@ LuCI 默认集合 `luci-light` 的 `DEPENDS` 带 `+luci-theme-bootstrap`。只�
 | 保留 | `luci-theme-argon`、`luci-app-argon-config` 及中文包 |
 
 后续 AI：**不要**只删 seed 那一行就以为主题没了；本地编也必须跑这支脚本，见 `BUILD-CUSTOM.md` 步骤 3e。**不要**改 `package/istoreos-files` 里的 `99_theme`（源码）。
+
+## 二十五、构建产物自动发 GitHub Releases（2026-10-16，用户明确要求）
+
+r17 及更早的镜像只挂在 Actions 的 artifact 上：**14 天过期**，下载还要登录 GitHub。用户要求把构建产物放到 Releases 长期可下载。
+
+### 功能视角
+
+| 变更后能做 / 不能做 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| **能**：在仓库 Releases 页直接下载每轮镜像（tag `r<run_number>`），长期有效、无需登录 | workflow 新增 Publish 步骤（`gh release create`） | artifact 上传保留（14 天，供 run 页快速取）；不改变固件内容 |
+| **仍不能**：在固件里在线升级 | OTA 已删（§二十一） | 下载 `*-squashfs-combined-efi.img.gz` 解压后整盘写入，或在「系统 → 备份与升级」本地上传 |
+
+### 明细
+
+| 动作 | 内容 |
+|---|---|
+| workflow 新增 | `build-istoreos.yml`：job 申请 `permissions: contents: write`（仓库全局默认仍是 read，没动它）；`Upload images` 之后新增 `Publish to GitHub Releases`（`if: success()`），`gh release create r<run_number>` 上传 `*.img.gz`、`*.iso`、`sha256sums`、`*.manifest`，tag 锚定被构建的提交；同一 run 重跑用 `gh release upload --clobber` 覆盖 |
+| 仅手动触发 | 构建入口仍只有 workflow_dispatch；Release 是产物去处，不是触发器 |
+
+后续 AI：**不要**为发 Release 去改仓库全局默认权限；**不要**把 Release 当作「已刷机验证」的证据——机器验证仍按 `BUILD-CUSTOM.md` 流程走。

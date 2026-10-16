@@ -11,7 +11,7 @@
 | ❌ 删除（首轮 2026-10-05） | Docker 全家桶 / Samba 文件共享 / OpenWrt 自带 DDNS（luci-app-ddns） / UPnP / Linkease 系（含 ddnsto） | Docker 已迁往 9400F；公网域名用 DDNS-Go，不用自带那套也不用 ddnsto。包名明细见 `docs/CUSTOM-TRIMMING.md` §二、§十五 |
 | ❌ 二次裁剪(2026-10-05) | 无线全家/蜂窝modem全家/GPU固件与DRM/NFS·SMB存储/l2tp-pptp-sstp-gre-ipip-ipsec隧道/KVM宿主/Docker孤儿kmod/老式网卡驱动 | J4125 无对应硬件；文件服务归 9400F/N100。明细见 `docs/CUSTOM-TRIMMING.md` §六 |
 | ✅ 保留（固件里确实有） | 基础网络栈 / kmod-igc / firewall4 / dnsmasq-full / IPv6 / **tailscale 1.104.1 + luci-app-tailscale** / **ddns-go + luci-app-ddns-go** / openlist（含 WebDAV） / vlmcsd / ttyd / wol / zram / smartd+lm-sensors / wireguard / argon 主题 / iStore 商店本体（luci-app-store、dkml） | 路由器命根子 + 确实保留的服务 |
-| 📦 刷机后从 iStore 商店装回（**不在构建期**） | openclash、eqos、oaf、cpufreq、luci-app-fan、diskman、gowebdav、fastnet、floatip | 这些名字在默认 feed 里没有 kconfig 符号，写进 seed 也进不了镜像。证据与逐条清单见 `docs/CUSTOM-TRIMMING.md` §九/§十。**DDNS-Go、Tailscale LuCI 不在此列**（r17 已烘焙）。**QuickStart 首页方案在工作区（§二十三），r17 还没有** |
+| 📦 刷机后从 iStore 商店装回（**不在构建期**） | openclash、eqos、oaf、cpufreq、luci-app-fan、diskman、gowebdav、fastnet、floatip | 这些名字在默认 feed 里没有 kconfig 符号，写进 seed 也进不了镜像。证据与逐条清单见 `docs/CUSTOM-TRIMMING.md` §九/§十。**DDNS-Go、Tailscale LuCI 不在此列**（r17 已烘焙）。**QuickStart 首页方案已推送、随 r19 构建（§二十三），r17 还没有** |
 | ➕ 新增 | irqbalance；`feeds.conf.default` 的 `src-git ddnsgo`（sirpdboy/luci-app-ddns-go）；CI/本地在 defconfig 前跑 `pin-tailscale-prebuilt.sh`、`pin-quickstart.sh`、`drop-luci-theme-bootstrap.sh` | irqbalance：四张 2.5G 网卡中断分摊。ddnsgo feed：六个默认 feed 没有 DDNS-Go。Tailscale 最新稳定版不能用本树 Go 1.23.12 从源码编，改用官方 amd64 预编译 + asvow LuCI，见 `docs/CUSTOM-TRIMMING.md` §二十二。QuickStart 只 clone 两个包、从首页去掉 NAS/下载/ddnsto 卡片，见 §二十三。Bootstrap 主题：`luci-light` 硬依赖，要脚本拆掉，见 §二十四 |
 
 参数：EFI+BIOS 双引导、只要 squashfs（显式关掉 x86 默认的 ext4 根镜像）、kernel 分区 32MB、root 分区 512MB、另出一份 EFI LiveCD ISO（Ventoy 可启动，**不是**一键安装器）、中文界面。224MB+默认 ext4 会在 `make_ext4fs` 阶段把 `target/linux` 打挂，见 `docs/CUSTOM-TRIMMING.md` §十七。Ventoy 装到 N100 傲腾的步骤见 §十九。
@@ -66,14 +66,14 @@ ls bin/targets/x86/64/
 
 ## 上线路径（主路由！先验证再刷）
 
-**2026-10-16**：能刷的是 **r17**（Tailscale 1.104.1 + DDNS-Go，Argon 概览、没有 QuickStart 首页）。**先 N100 试刷，不要刷 J4125**。N100 已经用 U 盘当系统盘开过机。用户装官方也是 **img 整盘写入**（不是 ISO、不是 Ventoy 菜单）。Mac 网线接 N100 第二口、`192.168.100.2`、网关留空，http://192.168.100.1。禁止双公头 USB 线连 Mac↔N100。工作区里的首页/Bootstrap 改动要提交并再编一轮才进镜像。快照见 `docs/CUSTOM-TRIMMING.md` 文首。
+**2026-10-16**：能刷的是 **r17**（Tailscale 1.104.1 + DDNS-Go，Argon 概览、没有 QuickStart 首页）。**先 N100 试刷，不要刷 J4125**。N100 已经用 U 盘当系统盘开过机。用户装官方也是 **img 整盘写入**（不是 ISO、不是 Ventoy 菜单）。Mac 网线接 N100 第二口、`192.168.100.2`、网关留空，http://192.168.100.1。禁止双公头 USB 线连 Mac↔N100。首页/Bootstrap 改动已推送（`5612b37936`），r19 重跑中；构建成功后镜像自动发仓库 Releases（§二十五）。快照见 `docs/CUSTOM-TRIMMING.md` 文首。
 
 
 1. **QEMU 验证**：`qemu-system-x86_64 -nographic -hda bin/targets/x86/64/istoreos-*-combined-efi.img` 确认可启动、包齐全
 2. **备份现系统**：LuCI → 系统 → 备份升级（导出 `/etc/config`）；稳妥起见把系统盘整盘 dd 备份一份
 3. **写盘**：新镜像 gz 解压后 dd 到系统盘（或 LuCI sysupgrade）
 4. **恢复配置**：`/etc/config` 里的 network/firewall/dhcp/tailscale/**ddns-go** 等恢复回去（dockerd/dpanel/samba、OpenWrt 自带 luci-app-ddns、ddnsto 相关配置直接不要了）
-5. 验证 WAN 拨号、四个 2.5G 口、**LuCI 里已有 Tailscale 和 DDNS-Go**（r17 起不用进商店）。**QuickStart 首页和侧栏「网络向导」要等下一轮构建**（§二十三，当前工作区未提交）；有首页之后不应出现 Samba/易有云/下载器/OTA/Docker 卡片。**openclash / eqos / cpufreq / fan / diskman 这些不在固件里**，按需从 LuCI → iStore 商店装回再验
+5. 验证 WAN 拨号、四个 2.5G 口、**LuCI 里已有 Tailscale 和 DDNS-Go**（r17 起不用进商店）。**QuickStart 首页和侧栏「网络向导」要等 r19 构建**（§二十三，已推送未构建）；有首页之后不应出现 Samba/易有云/下载器/OTA/Docker 卡片。**openclash / eqos / cpufreq / fan / diskman 这些不在固件里**，按需从 LuCI → iStore 商店装回再验
 6. 旧盘留作回滚
 
 ## 上游同步工作流（fork 维护）
@@ -92,7 +92,7 @@ git push --force-with-lease origin custom-24.10  # rebase 改写了已推送历�
 ```
 
 - 由于全部定制收敛在一个 seed 文件，上游 99% 的提交都与它无冲突；符号改名（罕见）时 `make defconfig` 会静默丢掉那一行，本地不会有任何提示；CI 的 seed 审计会把"已知清单外的未生效行"判失败（几分钟内），看 artifact 里的 seed-audit.txt 按报告改 seed。本地构建后可自己跑 `bash .github/scripts/seed-audit.sh` 检查
-- 云端构建走本仓库自己的 workflow（不引 P3TERX 等第三方模板；r10 起稳定出镜像，最近一次是 r17）：`.github/workflows/build-istoreos.yml` 手动触发，seed 审计逻辑在 `.github/scripts/seed-audit.sh`（装好 feeds、跑过 defconfig 后可本地执行）。取舍理由见 `docs/CUSTOM-TRIMMING.md` §十二
+- 云端构建走本仓库自己的 workflow（不引 P3TERX 等第三方模板；r10 起稳定出镜像，最近一次成功是 r17）：`.github/workflows/build-istoreos.yml` 手动触发，seed 审计逻辑在 `.github/scripts/seed-audit.sh`（装好 feeds、跑过 defconfig 后可本地执行）。取舍理由见 `docs/CUSTOM-TRIMMING.md` §十二。构建成功后镜像自动发 GitHub Releases（tag `r<run_number>`，长期下载位；Actions artifact 仍在、14 天过期），见 `docs/CUSTOM-TRIMMING.md` §二十五
 
 ## 备注
 

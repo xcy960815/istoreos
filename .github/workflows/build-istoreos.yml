@@ -12,6 +12,9 @@ jobs:
     # 钉 24.04：ubuntu-latest 从 2026-10-19 起切到 26，OpenWrt 主机工具链别跟着漂
     runs-on: ubuntu-24.04
     timeout-minutes: 350
+    # 仓库默认 workflow 权限是 read（没有动那个全局设置）；发 Release 只在本 job 显式申请写权限
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -189,6 +192,33 @@ jobs:
             bin/targets/x86/64/*.manifest
           retention-days: 14
           compression-level: 0
+
+      # artifact 是 14 天的临时位（下载还要登录 GitHub）；Release 才是长期公开的下载位。
+      # 只在前面的步骤都成功后才发；同一次 run 重跑会命中已存在的 tag，用 upload --clobber 覆盖。
+      - name: Publish to GitHub Releases
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="r${GITHUB_RUN_NUMBER}"
+          files=(bin/targets/x86/64/*.img.gz bin/targets/x86/64/*.iso bin/targets/x86/64/sha256sums bin/targets/x86/64/*.manifest)
+          for f in "${files[@]}"; do
+            [ -f "$f" ] || { echo "::error::缺少产物 $f，不建 Release"; exit 1; }
+          done
+          notes="iStoreOS 裁剪版（x86_64，目标机 J4125 四口 2.5G；先在 N100 验证，不要直接刷正在用的 J4125）。
+
+          - 构建提交：\`${GITHUB_SHA:0:10}\`
+          - 构建日志：https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          - 下载 \`*-squashfs-combined-efi.img.gz\`，**解压**得到 \`.img\` 后整盘写入（不是直接把 gz 写进盘）
+          - 刷机步骤见仓库 \`BUILD-CUSTOM.md\`；裁剪记录见 \`docs/CUSTOM-TRIMMING.md\`
+          - 包清单见 \`.manifest\`，校验值见 \`sha256sums\`"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$tag" "${files[@]}" --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --title "iStoreOS 裁剪版 ${tag}" --notes "$notes"
+          fi
 
       - name: Report disk usage
         if: always()
