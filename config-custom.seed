@@ -10,6 +10,8 @@
 # 2026-10-14: Tailscale 开箱即有最新稳定版（官方 amd64 1.104.1 预编译）+ LuCI。见 §二十二
 # 2026-10-16: QuickStart 首页开箱即有；Samba/易有云/下载器/ddnsto 卡片从首页去掉。见 §二十三
 # 2026-10-16: 去掉第二主题 luci-theme-bootstrap，界面只留 Argon。见 §二十四
+# 2026-10-16: 第二批清收：显示栈/USB摄像头/音频/隧道群/老式交换机/nbd/htop/strace/华为LTE驱动 删除；
+#   非保险网卡(tg3/ixgbe/bnx2/amd-xgbe/amazon-ena/forcedeth/dwmac-intel)与 i915 钉关。见 §二十七
 # 保留: 基础路由栈 + kmod-igc + tailscale(守护进程+LuCI) + iStore 商店(luci-app-store/dkml)
 #       + ddns-go(公网域名，2026-10-09 加回，feed 见 feeds.conf.default 的 ddnsgo)
 #       + openlist/vlmcsd/ttyd/wol 等仍保留的服务
@@ -20,7 +22,8 @@
 # 二次裁剪 (2026-10-05): 按"纯网关+Tailscale入口+公网DDNS-Go"定位再删——无线全家/蜂窝modem全家/GPU固件与DRM/
 #   NFS-SMB存储服务/l2tp-pptp-sstp-gre-ipip-ipsec隧道/KVM虚拟化宿主/Docker孤儿kmod/老式网卡驱动
 #   (网卡保险仅留 igc/e1000/e1000e/igb/r8169/r8125; USB网卡与手机共享网络保留)
-# D档待查依赖后处理(本次未动): ruby/git/taskd/sqlite3-cli/lm-sensors-detect(perl)/冷门fs/网卡保险再收
+# D档待查依赖后处理(等 N100 证据): ruby/git/taskd/sqlite3-cli/lm-sensors-detect(perl)/冷门fs
+# 保险网卡定型(2026-10-16, §二十七): 只留 igc/e1000/e1000e/igb/r8169/r8125 + USB网卡
 #   不要删 target/linux 其他架构——镜像已是 x86_64，删源码会把上游同步搞炸。台账见 docs/CUSTOM-TRIMMING.md §十六
 #   验证: opkg whatdepends ruby git taskd perl lm-sensors-detect; df -T /mnt/sata1-4
 #   D 档仍等出镜像后再动；r9 只改镜像布局（关 ext4 根镜像、分区加大），见 §十七
@@ -66,7 +69,6 @@ CONFIG_PACKAGE_dkml=y
 # CONFIG_PACKAGE_dnsmasq is not set
 CONFIG_PACKAGE_dnsmasq-full=y
 CONFIG_PACKAGE_dropbear=y
-CONFIG_PACKAGE_ds-lite=y
 CONFIG_PACKAGE_e2fsprogs=y
 CONFIG_PACKAGE_etherwake=y
 CONFIG_PACKAGE_ethtool=y
@@ -84,7 +86,6 @@ CONFIG_PACKAGE_grub2-bios-setup=y
 CONFIG_PACKAGE_grub2-editenv=y
 CONFIG_PACKAGE_grub2-efi=y
 CONFIG_PACKAGE_grub2=y
-CONFIG_PACKAGE_htop=y
 CONFIG_PACKAGE_iommu-conf=y
 CONFIG_PACKAGE_ip-full=y
 CONFIG_PACKAGE_ip6tables-nft=y
@@ -97,12 +98,16 @@ CONFIG_PACKAGE_iptables-nft=y
 CONFIG_PACKAGE_istoreos-files=y
 CONFIG_PACKAGE_jshn=y
 CONFIG_PACKAGE_jsonfilter=y
+# 以下 is not set 为 x86/64 profile 默认包(DEVICE_PACKAGES)钉关：本地树核查无启用依赖者，见 §二十七
+# CONFIG_PACKAGE_kmod-amazon-ena is not set
+# CONFIG_PACKAGE_kmod-amd-xgbe is not set
 CONFIG_PACKAGE_kmod-asn1-decoder=y
 CONFIG_PACKAGE_kmod-asn1-encoder=y
 CONFIG_PACKAGE_kmod-ata-ahci=y
 CONFIG_PACKAGE_kmod-ata-core=y
 CONFIG_PACKAGE_kmod-ata-piix=y
 CONFIG_PACKAGE_kmod-block2mtd=y
+# CONFIG_PACKAGE_kmod-bnx2 is not set
 CONFIG_PACKAGE_kmod-button-hotplug=y
 CONFIG_PACKAGE_kmod-cdrom=y
 CONFIG_PACKAGE_kmod-chaoskey=y
@@ -149,11 +154,13 @@ CONFIG_PACKAGE_kmod-crypto-sha3=y
 CONFIG_PACKAGE_kmod-crypto-sha512=y
 CONFIG_PACKAGE_kmod-crypto-user=y
 CONFIG_PACKAGE_kmod-crypto-xxhash=y
-CONFIG_PACKAGE_kmod-dma-buf=y
+# CONFIG_PACKAGE_kmod-drm-i915 is not set
 CONFIG_PACKAGE_kmod-dummy=y
+# CONFIG_PACKAGE_kmod-dwmac-intel is not set
 CONFIG_PACKAGE_kmod-e1000=y
 CONFIG_PACKAGE_kmod-e1000e=y
 CONFIG_PACKAGE_kmod-fixed-phy=y
+# CONFIG_PACKAGE_kmod-forcedeth is not set
 CONFIG_PACKAGE_kmod-fs-autofs4=y
 CONFIG_PACKAGE_kmod-fs-binfmt-misc=y
 CONFIG_PACKAGE_kmod-fs-btrfs=y
@@ -190,7 +197,6 @@ CONFIG_PACKAGE_kmod-igc=y
 CONFIG_PACKAGE_kmod-inet-diag=y
 CONFIG_PACKAGE_kmod-input-core=y
 CONFIG_PACKAGE_kmod-input-evdev=y
-CONFIG_PACKAGE_kmod-ip6-tunnel=y
 CONFIG_PACKAGE_kmod-ip6tables=y
 CONFIG_PACKAGE_kmod-ipt-conntrack-extra=y
 CONFIG_PACKAGE_kmod-ipt-conntrack=y
@@ -200,7 +206,7 @@ CONFIG_PACKAGE_kmod-ipt-ipopt=y
 CONFIG_PACKAGE_kmod-ipt-ipset=y
 CONFIG_PACKAGE_kmod-ipt-nat=y
 CONFIG_PACKAGE_kmod-ipt-nat6=y
-CONFIG_PACKAGE_kmod-iptunnel6=y
+# CONFIG_PACKAGE_kmod-ixgbe is not set
 CONFIG_PACKAGE_kmod-ledtrig-activity=y
 CONFIG_PACKAGE_kmod-lib-crc-ccitt=y
 CONFIG_PACKAGE_kmod-lib-crc-itu-t=y
@@ -221,12 +227,9 @@ CONFIG_PACKAGE_kmod-loop=y
 CONFIG_PACKAGE_kmod-mdio-devres=y
 CONFIG_PACKAGE_kmod-mdio-gpio=y
 CONFIG_PACKAGE_kmod-mdio=y
-CONFIG_PACKAGE_kmod-media-controller=y
 CONFIG_PACKAGE_kmod-mii=y
 CONFIG_PACKAGE_kmod-mmc-spi=y
 CONFIG_PACKAGE_kmod-mmc=y
-CONFIG_PACKAGE_kmod-nat46=y
-CONFIG_PACKAGE_kmod-nbd=y
 CONFIG_PACKAGE_kmod-net-selftests=y
 CONFIG_PACKAGE_kmod-netlink-diag=y
 CONFIG_PACKAGE_kmod-nf-conncount=y
@@ -293,23 +296,12 @@ CONFIG_PACKAGE_kmod-scsi-cdrom=y
 CONFIG_PACKAGE_kmod-scsi-core=y
 CONFIG_PACKAGE_kmod-scsi-generic=y
 CONFIG_PACKAGE_kmod-sfp=y
-CONFIG_PACKAGE_kmod-siit=y
-CONFIG_PACKAGE_kmod-sit=y
 CONFIG_PACKAGE_kmod-slhc=y
-CONFIG_PACKAGE_kmod-sound-core=y
-CONFIG_PACKAGE_kmod-spi-ks8995=y
-CONFIG_PACKAGE_kmod-swconfig=y
-CONFIG_PACKAGE_kmod-switch-ip17xx=y
-CONFIG_PACKAGE_kmod-switch-rtl8306=y
-CONFIG_PACKAGE_kmod-switch-rtl8366-smi=y
-CONFIG_PACKAGE_kmod-switch-rtl8366rb=y
-CONFIG_PACKAGE_kmod-switch-rtl8366s=y
-CONFIG_PACKAGE_kmod-switch-rtl8367b=y
+# CONFIG_PACKAGE_kmod-tg3 is not set
 CONFIG_PACKAGE_kmod-thermal=y
 CONFIG_PACKAGE_kmod-tun=y
 CONFIG_PACKAGE_kmod-udptunnel4=y
 CONFIG_PACKAGE_kmod-udptunnel6=y
-CONFIG_PACKAGE_kmod-usb-audio=y
 CONFIG_PACKAGE_kmod-usb-cm109=y
 CONFIG_PACKAGE_kmod-usb-core=y
 CONFIG_PACKAGE_kmod-usb-dwc2=y
@@ -326,7 +318,6 @@ CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y
 CONFIG_PACKAGE_kmod-usb-net-cdc-ncm=y
 CONFIG_PACKAGE_kmod-usb-net-cdc-subset=y
 CONFIG_PACKAGE_kmod-usb-net-dm9601-ether=y
-CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm=y
 CONFIG_PACKAGE_kmod-usb-net-ipheth=y
 CONFIG_PACKAGE_kmod-usb-net-lan78xx=y
 CONFIG_PACKAGE_kmod-usb-net-mcs7830=y
@@ -352,9 +343,6 @@ CONFIG_PACKAGE_kmod-usb-xhci-hcd=y
 CONFIG_PACKAGE_kmod-usb2-pci=y
 CONFIG_PACKAGE_kmod-usb2=y
 CONFIG_PACKAGE_kmod-usb3=y
-CONFIG_PACKAGE_kmod-video-core=y
-CONFIG_PACKAGE_kmod-video-uvc=y
-CONFIG_PACKAGE_kmod-video-videobuf2=y
 CONFIG_PACKAGE_kmod-wireguard=y
 CONFIG_PACKAGE_kmod-xdp-sockets-diag=y
 CONFIG_PACKAGE_kmod-zram=y
@@ -461,7 +449,6 @@ CONFIG_PACKAGE_luci-proto-wireguard=y
 CONFIG_PACKAGE_luci-ssl=y
 CONFIG_PACKAGE_luci-theme-argon=y
 CONFIG_PACKAGE_luci=y
-CONFIG_PACKAGE_map=y
 CONFIG_PACKAGE_mkf2fs=y
 CONFIG_PACKAGE_mount-utils=y
 CONFIG_PACKAGE_mtd=y
@@ -576,7 +563,6 @@ CONFIG_PACKAGE_smartd=y
 CONFIG_PACKAGE_smartmontools-drivedb=y
 CONFIG_PACKAGE_smartmontools=y
 CONFIG_PACKAGE_sqlite3-cli=y
-CONFIG_PACKAGE_strace=y
 CONFIG_PACKAGE_swap-utils=y
 CONFIG_PACKAGE_sysfsutils=y
 CONFIG_PACKAGE_sysstat=y

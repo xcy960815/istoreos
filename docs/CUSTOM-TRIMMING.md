@@ -6,7 +6,7 @@
 
 ## 当前进度（2026-10-16 晚，后续 AI 先读这里）
 
-**两套状态不要混：** 已经能刷的是 **r17**；带官方首页、去掉 Bootstrap 的改动已提交并推送（`5612b37936`），但**还没有构建出镜像**：r18 触发后因给 workflow 加「构建成功发 Release」（§二十五）被取消，改由 **r19 重跑**（另有一批杂项零头删除已推送，编入下一轮 r20，§二十六）。N100 已经用 r17 的 U 盘开过机。用户上次装官方也是 **img** 整盘写入，不必等 ISO。
+**两套状态不要混：** 已经能刷的是 **r17**；带官方首页、去掉 Bootstrap 的改动已提交并推送（`5612b37936`），但**还没有构建出镜像**：r18 触发后因给 workflow 加「构建成功发 Release」（§二十五）被取消，改由 **r19 重跑**（SHA `9d5f97ef56`，只含首页/主题改动）。其后两批 seed 瘦身已推送（§二十六 删 7 行、§二十七 删 26 行钉 8 行），**r20 一并编入、排队在 r19 后自动开跑**。N100 已经用 r17 的 U 盘开过机。用户上次装官方也是 **img** 整盘写入，不必等 ISO。
 
 **后续 seed 变更（2026-10-10，§二十）**：用户已要求移除 Aria2/Transmission 及其页面入口，当前 seed 已关闭 9 个包（596 → 587 个 `=y`）。r12 起的镜像已不含下载器（r10、r11 仍含）。
 
@@ -22,6 +22,8 @@
 
 **后续 seed 变更（2026-10-16，§二十六）**：用户要求先清「杂项零头」。seed 删除 7 行（589 → 582）：`kmod-igbvf`、`kmod-ipt-physdev`（连带 br-netfilter）、`kmod-keys-encrypted`、`kmod-keys-trusted`、`kmod-ppdev`、`kmod-sctp`、`kmod-tpm`。**尚未构建**，编入 r19 之后的下一轮（r20）。
 
+**后续 seed 变更（2026-10-16，§二十七）**：用户要求「继续删，最后一起编」。第二批清收一次做完：删 26 行、钉 8 行（seed 582 → **556**）——显示栈（钉 `kmod-drm-i915`）/USB 摄像头/USB 音频/隧道群（sit·ip6-tunnel·iptunnel6·nat46·siit·ds-lite·map）/老式交换机（swconfig＋6 驱动＋spi-ks8995）/nbd/htop·strace/华为 LTE 驱动/非保险网卡（钉 tg3·ixgbe·bnx2·amd-xgbe·amazon-ena·forcedeth·dwmac-intel）。**尚未构建**，与 §二十六 一起编入 **r20**。
+
 | 事实 | 细节 |
 |---|---|
 | 可用固件 | GitHub Actions **r17** 成功（run [`38561237293`](https://github.com/xcy960815/istoreos/actions/runs/38561237293)，提交 `597a40aba3`），产物 `istoreos-x86_64-trimmed-r17`。刷 **EFI img**：gz 解压后的 `*-squashfs-combined-efi.img` 整盘 dd。r10 已过时，别再刷 |
@@ -30,9 +32,9 @@
 | **禁止** | **不要刷正在用的 J4125**（和 N100 都是 `192.168.100.1`）。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100 |
 | N100 | **已经用这根 U 盘开过机**，能进 LuCI。双网口、无显示器、机内 16G 傲腾（RST 缓存条当不了系统盘就别写）。BIOS：U 盘优先、Secure Boot 关。Mac 无内置网口：网线接 N100 **第二口**，`192.168.100.2/24`、**网关留空**。家里关 Wi‑Fi；公司 USB 网卡（用过 AX88179A）必须排在 Wi‑Fi 下面，否则 `192.168.100.1` 会被公司网抢走 |
 | 官方截图 | 家里 **J4125** 上的官方整包 QuickStart（Samba/易有云/固件更新卡片），不是 r17，也不是选错分支。`custom-24.10` 跟踪的就是 `istoreos-24.10` |
-| 已推送未构建 | seed **582**。两块改动都在 `origin/custom-24.10`：① `5612b37936`——`pin-quickstart.sh` 烘焙首页（删 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导，§二十三）＋`drop-luci-theme-bootstrap.sh` 去第二主题（§二十四）；② 2026-10-16 杂项零头 7 行（§二十六）。r19 基于 `9d5f97ef56` **构建中**（不含杂项）；杂项编入下一轮 **r20**。出镜像后自动进 Releases（§二十五） |
+| 已推送未构建 | seed **556**。三块改动都在 `origin/custom-24.10`：① `5612b37936`——`pin-quickstart.sh` 烘焙首页（删 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导，§二十三）＋`drop-luci-theme-bootstrap.sh` 去第二主题（§二十四）；② 杂项零头 7 行（§二十六）；③ 第二批清收 26 删 8 钉（§二十七）。r19 基于 `9d5f97ef56` **构建中**（只含①）；②③编入 **r20**（排队在 r19 后自动开跑）。出镜像后自动进 Releases（§二十五） |
 | 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu |
-| 还没做 | r19 出镜像后写 U 盘验首页（随后 r20 验杂项清收）；D 档剩余项（§十六）继续分批瘦；**J4125 仍禁止刷** |
+| 还没做 | r19 出镜像后写 U 盘验首页（随后 r20 验两批清收：审计里显示栈/摄像头/隧道/交换机/br-netfilter 等应消失、「seed 没写却开启」不应新增）；D 档剩余项（ruby/git/taskd/sqlite3-cli/lm-sensors-detect、冷门 fs，§十六）等 N100 证据；**J4125 仍禁止刷** |
 
 后续 AI：**不要**把已推送未构建的 QuickStart 写成「r17 已有首页」；**不要**只删 seed 里的 bootstrap 就以为主题没了；**不要**再拿 r10 试刷；**不要**把双公头线当刷机方案。
 
@@ -287,7 +289,7 @@ seed 已是 `CONFIG_TARGET_x86=y` / `CONFIG_TARGET_x86_64=y` / `DEVICE_generic`�
 
 二次裁剪已经按盒子拿掉无线/蜂窝/老网卡/KVM。剩下是 §六 D 档——和架构无关，是「这台机器用不用」。每组必须先在路由器上 `opkg whatdepends`（或刷裁剪版后查），硬依赖为 0 才从 seed 钉 `# CONFIG_PACKAGE_xxx is not set`。软依赖（脚本里调命令）不会被 defconfig 拉回，见 §六安全网 3。
 
-**2026-10-16 执行记录（§二十六）**：首批「杂项零头」已落地——本节点名的 `kmod-sctp`、`kmod-tpm` 已删（同批还删了 `kmod-igbvf`、`kmod-ipt-physdev`、`kmod-keys-encrypted`、`kmod-keys-trusted`、`kmod-ppdev`，明细见 §二十六）。这批没用路由器 `opkg whatdepends`，依据是本地构建树反向依赖核查（依赖者全未进固件）+ CI 审计兜底。其余候选（ruby/git/taskd/sqlite3-cli/lm-sensors-detect、冷门 fs、隧道群 map/ds-lite/sit/nat46、保险网卡）**仍未动**。
+**2026-10-16 执行记录**：首批「杂项零头」（§二十六）＋第二批清收（§二十七）已落地——上表「老式交换机 / 过渡隧道」行整行执行（并多删 `kmod-siit`、`kmod-ip6-tunnel`、`kmod-iptunnel6`、`kmod-spi-ks8995`），「非保险网卡」行按行执行且保险定型（保留不再收）。两批都未用路由器 `opkg whatdepends`，依据是本地构建树反向依赖核查（依赖者全未进固件）+ CI 审计兜底。**剩余候选**：ruby/git/taskd/sqlite3-cli/lm-sensors-detect、冷门 fs——等 N100 刷机后按表中前提核查再动。
 
 #### 功能视角（候选，未执行）
 
@@ -299,14 +301,14 @@ seed 已是 `CONFIG_TARGET_x86=y` / `CONFIG_TARGET_x86_64=y` / `DEVICE_generic`�
 | sqlite 命令行 | `sqlite3-cli` | **库可能被别的包依赖，只砍 CLI** |
 | `sensors-detect` 探测芯片 | `lm-sensors-detect`、`perl`、全部 `perlbase-*` | **`lm-sensors` 本体留**（风扇温控） |
 | 挂冷门磁盘格式 | `kmod-fs-{hfs,hfsplus,jfs,reiserfs,minix,cramfs,isofs,udf,msdos}` 及对应用户态 | **必留**：squashfs、ext4、vfat/exfat（U 盘）、efivarfs。btrfs/xfs/ntfs3/f2fs 等 `df -T /mnt/sata1-4` 再说 |
-| 老式交换机 / DS-Lite 等过渡隧道 | `map`、`ds-lite`、`kmod-sit`、`kmod-nat46`（`kmod-sctp`、`kmod-tpm` 已删，§二十六） | IPv6 本体（odhcp6c/odhcpd）留 |
-| 换一块非 Intel i226 的 PCI 网卡 | `kmod-e1000`、`kmod-e1000e`、`kmod-igb`、`r8169-firmware`（及 r8169/r8125 若仍在；`kmod-igbvf` 已删——VF 只给 SR-IOV 虚拟机用，换物理网卡不需要，§二十六） | **`kmod-igc` 绝对留**。USB 网卡 + 手机 RNDIS/iPhone 共享仍留。只在「这块板永远不换 PCI 网卡」时才收保险 |
+| 老式交换机 / DS-Lite 等过渡隧道 ✅ 已删（§二十七） | `map`、`ds-lite`、`kmod-sit`、`kmod-ip6-tunnel`、`kmod-iptunnel6`、`kmod-nat46`、`kmod-siit`；交换机簇 `kmod-swconfig`＋6×`kmod-switch-*`＋`kmod-spi-ks8995` | IPv6 本体（odhcp6c/odhcpd）留（未动） |
+| 换一块非 Intel i226 的 PCI 网卡 ✅ 保险已定型（§二十七） | 非保险网卡已钉关：`kmod-tg3`、`kmod-ixgbe`、`kmod-bnx2`、`kmod-amd-xgbe`、`kmod-amazon-ena`、`kmod-forcedeth`、`kmod-dwmac-intel`（`kmod-igbvf` 已删，§二十六） | 保险保留不再收：`kmod-igc`（本机）、`kmod-e1000`、`kmod-e1000e`、`kmod-igb`、`kmod-r8169`、`kmod-r8125`；USB 网卡 + 手机 RNDIS/iPhone 共享仍留 |
 
 #### 包名明细（仍在 seed，尚未删除）
 
-执行时按上表分组从 `config-custom.seed` 去掉对应 `=y`（或钉 `is not set`），同一提交更新本节或新开一节：把「候选」改成「已删」，并写清刷完机少了什么。2026-10-16 首批已按此流程记录在 §二十六。
+执行时按上表分组从 `config-custom.seed` 去掉对应 `=y`（或钉 `is not set`），同一提交更新本节或新开一节：把「候选」改成「已删」，并写清刷完机少了什么。2026-10-16 首批记于 §二十六、第二批记于 §二十七。
 
-后续 AI：**不要**把本节当成授权去删 `target/linux` 或其他架构源码。r9 已证明打盘会挂，允许的 seed 改动只有 §十七 的镜像布局；D 档包分批推进，首批已执行（§二十六），后续批次每轮镜像出来后继续。
+后续 AI：**不要**把本节当成授权去删 `target/linux` 或其他架构源码。r9 已证明打盘会挂，允许的 seed 改动只有 §十七 的镜像布局；D 档包分批推进，首批与第二批已执行（§二十六、§二十七），其余等 N100 刷机后的依赖证据再继续。
 
 ## 十七、镜像布局：只出 squashfs，分区 32/512（r9，2026-10-09）
 
@@ -315,7 +317,7 @@ seed 已是 `CONFIG_TARGET_x86=y` / `CONFIG_TARGET_x86_64=y` / `DEVICE_generic`�
 | `# CONFIG_TARGET_ROOTFS_EXT4FS is not set` | x86 默认还打一份 ext4 根镜像，`make_ext4fs` 按未压缩体积算，224MB 装不下，r9 挂在 `target/linux install`。刷机只用 `*-squashfs-combined-efi.img.gz`，ext4 根镜像用不上 |
 | `CONFIG_TARGET_KERNEL_PARTSIZE=32`、`CONFIG_TARGET_ROOTFS_PARTSIZE=512` | 默认 16MB kernel 分区偏紧，root 224MB 不够 |
 
-刷完机少的只是「另一份 ext4 根盘镜像」，LuCI、overlay、扩容不受影响。CI 遇到 `ERROR: target/linux` 会跑 `make target/linux/install -j1 V=s` 并上传 `logs/target`。i915 仍被 profile 的 `DEVICE_PACKAGES` 加回，属 §六 A 档漏网，出镜像后再收（未做）。
+刷完机少的只是「另一份 ext4 根盘镜像」，LuCI、overlay、扩容不受影响。CI 遇到 `ERROR: target/linux` 会跑 `make target/linux/install -j1 V=s` 并上传 `logs/target`。i915 曾一直被 profile 的 `DEVICE_PACKAGES` 加回（§六 A 档漏网）；2026-10-16 已在 §二十七 钉 `# CONFIG_PACKAGE_kmod-drm-i915 is not set`，r20 构建验证是否真的不再进固件。
 
 后续 AI：**不要**再把 `TARGET_ROOTFS_EXT4FS` 打开，也**不要**把 PARTSIZE 改回 224。日志与排查见 [`CI-HISTORY.md`](CI-HISTORY.md) §十七。
 
@@ -545,3 +547,38 @@ r17 及更早的镜像只挂在 Actions 的 artifact 上：**14 天过期**，�
 | 保留 / 勿动 | `kmod-udptunnel4/6`——WireGuard 硬依赖（`netsupport.mk:1555`），**不是**零头；`kmod-i2c-algo-bit`/`kmod-i2c-core`/`kmod-ptp`——igb/igc 保险网卡需要 |
 
 后续 AI：**不要**把上面「勿动」两项当零头再删；若后续 seed 审计的「seed 没写却开启」里新出现本批包名，说明有隐藏依赖，先查清再决定，不要无视。本批是否真消失，以 r20 构建的审计报告为准。
+
+## 二十七、第二批清收：显示栈 / 摄像头 / 音频 / 隧道群 / 老式交换机 / nbd / 工具 / 非保险网卡（2026-10-16，用户明确要求「继续删，最后一起编」）
+
+§二十六 推送后，用户指示把剩余可删组一次做完，之后只编一轮。本批共从 seed 删 26 行（`=y` 582 → **556**）、钉 8 行 `# ... is not set`（全部是 x86/64 profile `DEVICE_PACKAGES` 塞进来的默认包）。未用路由器 `opkg whatdepends`，依据与 §二十六 相同（本地构建树反向依赖核查 + CI 审计兜底，逐项见文末）。
+
+### 功能视角
+
+| 变更后设备不能再做什么 | 本批动的东西 | 影响 / 替代方案 |
+|---|---|---|
+| 用 i915 核显做显示/视频加速 | `kmod-drm-i915` 钉关（连带 drm/fb/backlight/acpi-video/i915-firmware 全链消失） | 纯网关无此场景；OpenWrt x86 内核本就 `CONFIG_VT=n`，接显示器也不会有控制台。要恢复须从 seed 撤钉重编（kmod 与固件内核绑定，不能只 opkg 装回） |
+| 插 USB 摄像头拍图/视频 | `kmod-video-core`、`kmod-video-uvc`、`kmod-video-videobuf2`、`kmod-media-controller`、`kmod-dma-buf` | 无此场景；恢复方式同上（撤行重编） |
+| 插 USB 声卡（内核音频） | `kmod-sound-core`、`kmod-usb-audio` | 同上 |
+| 用 DS-Lite / MAP / SIT 等 IPv6 过渡隧道 | `ds-lite`、`map`、`kmod-sit`、`kmod-ip6-tunnel`、`kmod-iptunnel6`、`kmod-nat46`、`kmod-siit`（连带隐藏 `kmod-iptunnel`/`kmod-iptunnel4` 消失） | 原生 IPv6 不受影响（odhcp6c/odhcpd 留）；6in4/6to4/6rd 本来就没进固件 |
+| 配置老式交换机芯片（家用路由 SoC 那种） | `kmod-swconfig`、`kmod-switch-ip17xx`、`kmod-switch-rtl8306`、`kmod-switch-rtl8366-smi`、`kmod-switch-rtl8366rb`、`kmod-switch-rtl8366s`、`kmod-switch-rtl8367b`、`kmod-spi-ks8995` | x86 无这些芯片；本机 4 口是 igc 直连 |
+| 用 nbd 网络块设备 | `kmod-nbd` | 无此用法 |
+| 用 htop / strace 诊断 | `htop`、`strace` | `tcpdump` 保留；htop/strace 是纯用户态，可 opkg/商店装回 |
+| 用华为 LTE 棒（cdc-ncm 模式）上网 | `kmod-usb-net-huawei-cdc-ncm` | 其他 USB 网卡 / 手机共享（rndis/ipheth/cdc-*）仍留 |
+| 换用 Broadcom / 10G 等非保险网卡 | 钉关 `kmod-tg3`、`kmod-ixgbe`、`kmod-bnx2`、`kmod-amd-xgbe`、`kmod-amazon-ena`、`kmod-forcedeth`、`kmod-dwmac-intel` | 保险网卡定型：`kmod-igc`（本机）＋ `kmod-e1000`/`kmod-e1000e`/`kmod-igb`/`kmod-r8125`/`kmod-r8169` ＋ USB 网卡保留；要换的卡不在其中时从 seed 撤钉重编 |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 删行（26 行） | `ds-lite`、`map`、`htop`、`strace`、`kmod-dma-buf`、`kmod-ip6-tunnel`、`kmod-iptunnel6`、`kmod-media-controller`、`kmod-nat46`、`kmod-nbd`、`kmod-siit`、`kmod-sit`、`kmod-sound-core`、`kmod-spi-ks8995`、`kmod-swconfig`、`kmod-switch-ip17xx`、`kmod-switch-rtl8306`、`kmod-switch-rtl8366-smi`、`kmod-switch-rtl8366rb`、`kmod-switch-rtl8366s`、`kmod-switch-rtl8367b`、`kmod-usb-audio`、`kmod-usb-net-huawei-cdc-ncm`、`kmod-video-core`、`kmod-video-uvc`、`kmod-video-videobuf2` |
+| 钉关（8 行 `is not set`，均为 x86/64 profile 默认包） | `kmod-amazon-ena`、`kmod-amd-xgbe`、`kmod-bnx2`、`kmod-drm-i915`、`kmod-dwmac-intel`、`kmod-forcedeth`、`kmod-ixgbe`、`kmod-tg3` |
+| 预期连带消失（本不在 seed） | 显示全链 drm/fb/backlight/`i915-firmware-{dmc,guc,huc}` 等、`bnx2-firmware`、`stmmac-core`、`pcs-xpcs`、隐藏 `kmod-iptunnel`/`kmod-iptunnel4`——以 r20 审计实际为准 |
+| 保留 / 勿动 | `kmod-udptunnel4/6`（WireGuard 硬依赖）、保险网卡 `kmod-igc`/`kmod-e1000`/`kmod-e1000e`/`kmod-igb`/`kmod-r8125`/`kmod-r8169`、`kmod-i2c-algo-bit`/`kmod-i2c-core`/`kmod-ptp`（igb/igc 需要）、`kmod-mdio`/`kmod-mdio-devres`（r8169 等在用）、`tcpdump`、`openssh-sftp-server`（scp 需要它） |
+
+### 依据（本地构建树反向依赖核查摘要）
+
+- **钉关项为什么改 seed 就能生效**：`DEVICE_PACKAGES` 走「设备符号 `select DEFAULT_<pkg>` ＋ 包侧 `default y if DEFAULT_<pkg>`」（`scripts/target-metadata.pl`、`scripts/package-metadata.pl`），`default` 撼不动 .config 里的显式 `is not set`（同 dnsmasq 先例）；且反向核查确认没有任何启用包以 `+` 依赖（=select）这些包本身——唯一引用 `kmod-ixgbe` 的 `kmod-ixgbevf` 未启用。
+- **删行项**：`+kmod-*` 反向依赖均无启用者——`kmod-media-controller` 仅被 `kmod-video-core`/`kmod-usb-audio` 引用（同批删）；`kmod-dma-buf` 仅被 drm 与 `kmod-video-videobuf2` 引用（钉/删）；`kmod-sit`（引用者 6in4/6to4/6rd）、`kmod-ip6-tunnel`（ds-lite/map/ipsec6/mlxsw 等）、`kmod-iptunnel6`（ip6-tunnel/ipsec6）在本批之外全未启用；`kmod-swconfig` 的引用者全在本批删除集；`kmod-nbd`、`kmod-siit`、`kmod-usb-audio`、`kmod-usb-net-huawei-cdc-ncm` 无任何引用者。
+- **kmod 与用户态的区别**：htop/strace 可 opkg/商店装回；kmod 与固件内核 ABI 绑定，恢复方式是从 seed 撤行重编。
+
+后续 AI：r20 构建后先看审计——「预期连带消失」没消失、或「seed 没写却开启」新增本批包名，说明有构建树外（feeds）的隐藏依赖，按报告再修；**不要**把「保留 / 勿动」里的东西当零头再删。
