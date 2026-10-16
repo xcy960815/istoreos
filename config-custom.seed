@@ -12,6 +12,9 @@
 # 2026-10-16: 去掉第二主题 luci-theme-bootstrap，界面只留 Argon。见 §二十四
 # 2026-10-16: 第二批清收：显示栈/USB摄像头/音频/隧道群/老式交换机/nbd/htop/strace/华为LTE驱动 删除；
 #   非保险网卡(tg3/ixgbe/bnx2/amd-xgbe/amazon-ena/forcedeth/dwmac-intel)与 i915 钉关。见 §二十七
+# 2026-10-17: 第三批清收 23 行：crypto 残留(arc4/cts/des/echainiv/fcrypt/michael-mic/pcbc)/
+#   Broadcom PHY 三连/USB 外设(cm109/printer/hid-cp2112/dwc2/dwc3/roles/wdm/chaoskey)/
+#   AMD CCP/binfmt-misc/mdio-gpio/mmc+mmc-spi 删除，seed 556→533。见 §二十八
 # 保留: 基础路由栈 + kmod-igc + tailscale(守护进程+LuCI) + iStore 商店(luci-app-store/dkml)
 #       + ddns-go(公网域名，2026-10-09 加回，feed 见 feeds.conf.default 的 ddnsgo)
 #       + openlist/vlmcsd/ttyd/wol 等仍保留的服务
@@ -110,10 +113,8 @@ CONFIG_PACKAGE_kmod-block2mtd=y
 # CONFIG_PACKAGE_kmod-bnx2 is not set
 CONFIG_PACKAGE_kmod-button-hotplug=y
 CONFIG_PACKAGE_kmod-cdrom=y
-CONFIG_PACKAGE_kmod-chaoskey=y
 CONFIG_PACKAGE_kmod-crypto-acompress=y
 CONFIG_PACKAGE_kmod-crypto-aead=y
-CONFIG_PACKAGE_kmod-crypto-arc4=y
 CONFIG_PACKAGE_kmod-crypto-authenc=y
 CONFIG_PACKAGE_kmod-crypto-blake2b=y
 CONFIG_PACKAGE_kmod-crypto-cbc=y
@@ -122,19 +123,14 @@ CONFIG_PACKAGE_kmod-crypto-cmac=y
 CONFIG_PACKAGE_kmod-crypto-crc32=y
 CONFIG_PACKAGE_kmod-crypto-crc32c=y
 CONFIG_PACKAGE_kmod-crypto-ctr=y
-CONFIG_PACKAGE_kmod-crypto-cts=y
 CONFIG_PACKAGE_kmod-crypto-deflate=y
-CONFIG_PACKAGE_kmod-crypto-des=y
 CONFIG_PACKAGE_kmod-crypto-ecb=y
-CONFIG_PACKAGE_kmod-crypto-echainiv=y
-CONFIG_PACKAGE_kmod-crypto-fcrypt=y
 CONFIG_PACKAGE_kmod-crypto-gcm=y
 CONFIG_PACKAGE_kmod-crypto-geniv=y
 CONFIG_PACKAGE_kmod-crypto-gf128=y
 CONFIG_PACKAGE_kmod-crypto-ghash=y
 CONFIG_PACKAGE_kmod-crypto-hash=y
 CONFIG_PACKAGE_kmod-crypto-hmac=y
-CONFIG_PACKAGE_kmod-crypto-hw-ccp=y
 CONFIG_PACKAGE_kmod-crypto-kpp=y
 CONFIG_PACKAGE_kmod-crypto-lib-chacha20=y
 CONFIG_PACKAGE_kmod-crypto-lib-chacha20poly1305=y
@@ -142,9 +138,7 @@ CONFIG_PACKAGE_kmod-crypto-lib-curve25519=y
 CONFIG_PACKAGE_kmod-crypto-lib-poly1305=y
 CONFIG_PACKAGE_kmod-crypto-manager=y
 CONFIG_PACKAGE_kmod-crypto-md5=y
-CONFIG_PACKAGE_kmod-crypto-michael-mic=y
 CONFIG_PACKAGE_kmod-crypto-null=y
-CONFIG_PACKAGE_kmod-crypto-pcbc=y
 CONFIG_PACKAGE_kmod-crypto-rng=y
 CONFIG_PACKAGE_kmod-crypto-rsa=y
 CONFIG_PACKAGE_kmod-crypto-seqiv=y
@@ -162,7 +156,6 @@ CONFIG_PACKAGE_kmod-e1000e=y
 CONFIG_PACKAGE_kmod-fixed-phy=y
 # CONFIG_PACKAGE_kmod-forcedeth is not set
 CONFIG_PACKAGE_kmod-fs-autofs4=y
-CONFIG_PACKAGE_kmod-fs-binfmt-misc=y
 CONFIG_PACKAGE_kmod-fs-btrfs=y
 CONFIG_PACKAGE_kmod-fs-cramfs=y
 CONFIG_PACKAGE_kmod-fs-efivarfs=y
@@ -225,11 +218,8 @@ CONFIG_PACKAGE_kmod-lib-zstd=y
 CONFIG_PACKAGE_kmod-libphy=y
 CONFIG_PACKAGE_kmod-loop=y
 CONFIG_PACKAGE_kmod-mdio-devres=y
-CONFIG_PACKAGE_kmod-mdio-gpio=y
 CONFIG_PACKAGE_kmod-mdio=y
 CONFIG_PACKAGE_kmod-mii=y
-CONFIG_PACKAGE_kmod-mmc-spi=y
-CONFIG_PACKAGE_kmod-mmc=y
 CONFIG_PACKAGE_kmod-net-selftests=y
 CONFIG_PACKAGE_kmod-netlink-diag=y
 CONFIG_PACKAGE_kmod-nf-conncount=y
@@ -267,12 +257,9 @@ CONFIG_PACKAGE_kmod-nls-ucs2-utils=y
 CONFIG_PACKAGE_kmod-nls-utf8=y
 CONFIG_PACKAGE_kmod-oid-registry=y
 CONFIG_PACKAGE_kmod-phy-ax88796b=y
-CONFIG_PACKAGE_kmod-phy-bcm84881=y
-CONFIG_PACKAGE_kmod-phy-broadcom=y
 CONFIG_PACKAGE_kmod-phy-microchip=y
 CONFIG_PACKAGE_kmod-phy-realtek=y
 CONFIG_PACKAGE_kmod-phy-smsc=y
-CONFIG_PACKAGE_kmod-phylib-broadcom=y
 CONFIG_PACKAGE_kmod-phylink=y
 CONFIG_PACKAGE_kmod-ppp=y
 CONFIG_PACKAGE_kmod-pppoe=y
@@ -302,12 +289,8 @@ CONFIG_PACKAGE_kmod-thermal=y
 CONFIG_PACKAGE_kmod-tun=y
 CONFIG_PACKAGE_kmod-udptunnel4=y
 CONFIG_PACKAGE_kmod-udptunnel6=y
-CONFIG_PACKAGE_kmod-usb-cm109=y
 CONFIG_PACKAGE_kmod-usb-core=y
-CONFIG_PACKAGE_kmod-usb-dwc2=y
-CONFIG_PACKAGE_kmod-usb-dwc3=y
 CONFIG_PACKAGE_kmod-usb-ehci=y
-CONFIG_PACKAGE_kmod-usb-hid-cp2112=y
 CONFIG_PACKAGE_kmod-usb-hid=y
 CONFIG_PACKAGE_kmod-usb-ledtrig-usbport=y
 CONFIG_PACKAGE_kmod-usb-net-aqc111=y
@@ -332,13 +315,10 @@ CONFIG_PACKAGE_kmod-usb-net-sr9700=y
 CONFIG_PACKAGE_kmod-usb-net=y
 CONFIG_PACKAGE_kmod-usb-ohci-pci=y
 CONFIG_PACKAGE_kmod-usb-ohci=y
-CONFIG_PACKAGE_kmod-usb-printer=y
-CONFIG_PACKAGE_kmod-usb-roles=y
 CONFIG_PACKAGE_kmod-usb-storage-extras=y
 CONFIG_PACKAGE_kmod-usb-storage-uas=y
 CONFIG_PACKAGE_kmod-usb-storage=y
 CONFIG_PACKAGE_kmod-usb-uhci=y
-CONFIG_PACKAGE_kmod-usb-wdm=y
 CONFIG_PACKAGE_kmod-usb-xhci-hcd=y
 CONFIG_PACKAGE_kmod-usb2-pci=y
 CONFIG_PACKAGE_kmod-usb2=y

@@ -24,6 +24,8 @@
 
 **后续 seed 变更（2026-10-16，§二十七）**：用户要求「继续删，最后一起编」。第二批清收一次做完：删 26 行、钉 8 行（seed 582 → **556**）——显示栈（钉 `kmod-drm-i915`）/USB 摄像头/USB 音频/隧道群（sit·ip6-tunnel·iptunnel6·nat46·siit·ds-lite·map）/老式交换机（swconfig＋6 驱动＋spi-ks8995）/nbd/htop·strace/华为 LTE 驱动/非保险网卡（钉 tg3·ixgbe·bnx2·amd-xgbe·amazon-ena·forcedeth·dwmac-intel）。**尚未构建**，与 §二十六 一起编入 **r20**。
 
+**后续 seed 变更（2026-10-17，§二十八）**：用户指挥执行器重做一遍审计、Claude 验收。第三批清收删 23 行（seed 556 → **533**）——crypto 残留 7 条（arc4/cts/des/echainiv/fcrypt/michael-mic/pcbc，消费者 mppe·ipsec·rxrpc·NFS·CIFS·无线全不在固件且无 imply 回加）/Broadcom PHY 三连（bcm84881·broadcom·phylib-broadcom，tg3·bnx2 钉关后的尾巴）/USB 外设 8 个（cm109·printer·hid-cp2112·dwc2·dwc3·roles·wdm·chaoskey）/AMD CCP·binfmt-misc·mdio-gpio·mmc＋mmc-spi。HID 输入簇与 unetd 全家经评估**保留**；`kmod-usb-uhci/ohci`（QEMU 老机型 USB）留后续。**尚未构建**，编入 r20 之后的下一轮。
+
 | 事实 | 细节 |
 |---|---|
 | 可用固件 | GitHub Actions **r17** 成功（run [`38561237293`](https://github.com/xcy960815/istoreos/actions/runs/38561237293)，提交 `597a40aba3`），产物 `istoreos-x86_64-trimmed-r17`。刷 **EFI img**：gz 解压后的 `*-squashfs-combined-efi.img` 整盘 dd。r10 已过时，别再刷 |
@@ -32,7 +34,7 @@
 | **禁止** | **不要刷正在用的 J4125**（和 N100 都是 `192.168.100.1`）。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100 |
 | N100 | **已经用这根 U 盘开过机**，能进 LuCI。双网口、无显示器、机内 16G 傲腾（RST 缓存条当不了系统盘就别写）。BIOS：U 盘优先、Secure Boot 关。Mac 无内置网口：网线接 N100 **第二口**，`192.168.100.2/24`、**网关留空**。家里关 Wi‑Fi；公司 USB 网卡（用过 AX88179A）必须排在 Wi‑Fi 下面，否则 `192.168.100.1` 会被公司网抢走 |
 | 官方截图 | 家里 **J4125** 上的官方整包 QuickStart（Samba/易有云/固件更新卡片），不是 r17，也不是选错分支。`custom-24.10` 跟踪的就是 `istoreos-24.10` |
-| 已推送未构建 | seed **556**。三块改动都在 `origin/custom-24.10`：① `5612b37936`——`pin-quickstart.sh` 烘焙首页（删 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导，§二十三）＋`drop-luci-theme-bootstrap.sh` 去第二主题（§二十四）；② 杂项零头 7 行（§二十六）；③ 第二批清收 26 删 8 钉（§二十七）。r19 基于 `9d5f97ef56` **构建中**（只含①）；②③编入 **r20**（排队在 r19 后自动开跑）。出镜像后自动进 Releases（§二十五） |
+| 已推送未构建 | seed **533**。已推送三块都在 `origin/custom-24.10`：① `5612b37936`——`pin-quickstart.sh` 烘焙首页（删 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导，§二十三）＋`drop-luci-theme-bootstrap.sh` 去第二主题（§二十四）；② 杂项零头 7 行（§二十六）；③ 第二批清收 26 删 8 钉（§二十七）。r19 基于 `9d5f97ef56` **构建中**（只含①）；②③编入 **r20**（排队在 r19 后自动开跑）。出镜像后自动进 Releases（§二十五）。④ 第三批清收 23 行（§二十八，556→533）在**本地工作树、尚未提交**，编入 r20 之后的下一轮 |
 | 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu |
 | 还没做 | r19 出镜像后写 U 盘验首页（随后 r20 验两批清收：审计里显示栈/摄像头/隧道/交换机/br-netfilter 等应消失、「seed 没写却开启」不应新增）；D 档剩余项（ruby/git/taskd/sqlite3-cli/lm-sensors-detect、冷门 fs，§十六）等 N100 证据；**J4125 仍禁止刷** |
 
@@ -582,3 +584,37 @@ r17 及更早的镜像只挂在 Actions 的 artifact 上：**14 天过期**，�
 - **kmod 与用户态的区别**：htop/strace 可 opkg/商店装回；kmod 与固件内核 ABI 绑定，恢复方式是从 seed 撤行重编。
 
 后续 AI：r20 构建后先看审计——「预期连带消失」没消失、或「seed 没写却开启」新增本批包名，说明有构建树外（feeds）的隐藏依赖，按报告再修；**不要**把「保留 / 勿动」里的东西当零头再删。
+
+## 二十八、第三批清收：crypto 残留 / Broadcom PHY / USB 外设 / 杂项（2026-10-17，用户指挥执行器重审、Claude 验收）
+
+用户要求「指挥 DeepSeek 重新做一遍审计，Claude 验收」。审计由 opencode 免费模型 `deepseek-v4.1-flash-free` 做（只读，read/glob/grep；它跑不了命令，审计也不需要）。它交回约 40 行候选，Claude **逐条拿本地构建树重新坐实**后，这批落 23 行、保留两组、留一组后续。未用路由器 `opkg whatdepends`，依据是本地构建树反向依赖核查（`+kmod-*` select + `imply`）+ CI 审计兜底，与 §二十六/§二十七 相同。
+
+执行器出网说明：DeepSeek 本轮用 opencode 的沙箱 JS 工具发了网络请求（grep.app/sourcegraph/openwrt downloads 查用户态库反向依赖）。其网取结论 Claude **一律未采信**，只当线索；进本节的 23 行每条都有本仓库 `.mk` 内证据。opencode 的 `permission` 键里没有管沙箱 JS 的项，堵口子改用 `tools` 开关，见 skill 侧 `opencode-delegate.json`。
+
+### 功能视角
+
+| 变更后设备不能再做什么 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| 跑 MPPE/PPTP、NFS-krb5、CIFS、IPsec、rxrpc、无线 TKIP 的内核加密 | `kmod-crypto-{arc4,cts,des,echainiv,fcrypt,michael-mic,pcbc}` | 这些协议本就不在固件（mppe/ipsec/rxrpc/fs-cifs/fs-smb-server/fs-nfs-common-rpcsec/ath10k·11k 均未启用）；WireGuard 用的 crypto 链（curve25519/chacha20/poly1305/ecb/ctr/gcm 等）全保留 |
+| 换 Broadcom 网卡 / 用 BCM84881 PHY | `kmod-phy-bcm84881`、`kmod-phy-broadcom`、`kmod-phylib-broadcom` | tg3/bnx2 已 §二十七 钉关，这三条是配套 PHY 的尾巴；保险网卡（igc/e1000e/igb/r8169/r8125）的 PHY（realtek/microchip 等）保留 |
+| 接 USB VoIP 话机 / USB 打印机 / CP2112 调试桥 / USB 蜂窝棒(QMI·MBIM) / USB 硬件 RNG | `kmod-usb-cm109`、`kmod-usb-printer`、`kmod-usb-hid-cp2112`、`kmod-usb-wdm`、`kmod-chaoskey` | 纯网关无这些外设；熵源用 urngd/getrandom。要时撤行重编（kmod 与内核绑定） |
+| 在 ARM/SoC 用 DWC2/DWC3 USB 控制器 | `kmod-usb-dwc2`、`kmod-usb-dwc3`、`kmod-usb-roles` | x86 USB 走 xhci/ehci/uhci/ohci；dwc 只服务 ARM/SoC target，roles 删 dwc 后成孤儿 |
+| 用 AMD 加密协处理器 / binfmt_misc 注册可执行格式 / GPIO 位拨 MDIO / SPI 挂 MMC 卡 | `kmod-crypto-hw-ccp`、`kmod-fs-binfmt-misc`、`kmod-mdio-gpio`、`kmod-mmc`、`kmod-mmc-spi` | CCP 是 AMD 专用（本机 Intel）；binfmt_misc 是 qemu-user/Java 场景；mdio-gpio/mmc 是嵌入式/无线驱动才用，x86 无 |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 从 config-custom.seed 删除（23 行；seed `=y` 556 → 533） | `kmod-chaoskey`、`kmod-crypto-arc4`、`kmod-crypto-cts`、`kmod-crypto-des`、`kmod-crypto-echainiv`、`kmod-crypto-fcrypt`、`kmod-crypto-hw-ccp`、`kmod-crypto-michael-mic`、`kmod-crypto-pcbc`、`kmod-fs-binfmt-misc`、`kmod-mdio-gpio`、`kmod-mmc`、`kmod-mmc-spi`、`kmod-phy-bcm84881`、`kmod-phy-broadcom`、`kmod-phylib-broadcom`、`kmod-usb-cm109`、`kmod-usb-dwc2`、`kmod-usb-dwc3`、`kmod-usb-hid-cp2112`、`kmod-usb-printer`、`kmod-usb-roles`、`kmod-usb-wdm` |
+| 评估后**保留**（候选但不删） | HID 输入簇 `kmod-hid`/`kmod-hid-generic`/`kmod-usb-hid`/`kmod-input-core`/`kmod-input-evdev`（无头网关虽无键鼠，但保留 USB-HID 兜底能力）；unetd 全家 `unetd`/`unet-cli`/`luci-proto-unet`（与 WireGuard+Tailscale 重叠，但用户选择保留 unet mesh 能力） |
+| 留后续 | `kmod-usb-uhci`、`kmod-usb-ohci`、`kmod-usb-ohci-pci`——真机 J4125 USB 走 xhci/ehci 用不到，但 QEMU 老 i440fx 机型的 USB 控制器是 UHCI/OHCI，删了影响 QEMU 启动验证。等验证流程确认后再定 |
+| 保留 / 勿动（本批核查确认承重） | `kmod-crypto-kpp`——`kmod-crypto-lib-curve25519`（WireGuard 在用）有 `imply PACKAGE_kmod-crypto-kpp`，删了会被 defconfig 回加触发审计阻断；`kmod-net-selftests`（usb-net-asix/smsc95xx 依赖）；`kmod-phy-realtek`/`kmod-phy-microchip`/`kmod-phy-ax88796b`/`kmod-phy-smsc`（保险网卡 PHY） |
+
+### 依据（本地构建树反向依赖核查摘要）
+
+- **crypto 残留 7 条**：`+kmod-crypto-{arc4,cts,des,echainiv,fcrypt,michael-mic,pcbc}` 的引用者——`mppe`(netsupport.mk:698)、`ipsec`(netsupport.mk:213)、`rxrpc`(netsupport.mk:1337/1341)、`fs-cifs`(fs.mk:126)、`fs-smb-server`(fs.mk:377)、`fs-nfs-common-rpcsec`(fs.mk:496-503)、`ath10k/ath11k`(mac80211/ath.mk:312/364)——在 seed 内**无一启用**；其余引用全在别的 target（lantiq/ixp4xx/stm32）不进 x86。七条均无 `imply` 回加路径、不在 x86 `DEVICE_PACKAGES`，是干净删行。
+- **Broadcom PHY 三连**：`+kmod-phy-bcm84881` 与 `+kmod-phy-broadcom` 全树无引用者；`+kmod-phylib-broadcom` 唯一引用者是 `kmod-phy-broadcom`（netdevices.mk:317）——自封闭孤岛。
+- **USB 外设**：`+kmod-usb-wdm` 的引用者 usb-net-qmi-wwan/cdc-mbim/huawei-cdc-ncm 均不在 seed（华为 §二十七 已删）；`+kmod-usb-roles` 只被 dwc2/dwc3（本批删）和 ath79 target 引用；`+kmod-usb-dwc2/dwc3` 引用者全在 ARM/SoC target；cm109/printer/hid-cp2112/chaoskey 无启用引用者。
+- **kpp 陷阱确认**：`curve25519` 在 seed（WireGuard 用），其 `imply PACKAGE_kmod-crypto-kpp`（crypto.mk:628）会把 kpp 回加，故 kpp 不能删——这是 DeepSeek 正确逮住、Claude 坐实的一处。
+
+后续 AI：r20 之后的构建看审计——若「seed 没写却开启」新增本批包名，说明有 feeds 内隐藏依赖，按报告处理；HID 簇与 unetd 是**有意保留**，不要当零头再删；`kmod-usb-uhci/ohci` 待 QEMU 验证流程确认后另议。
