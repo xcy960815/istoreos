@@ -22,6 +22,8 @@
 #   温控(lm-sensors/hwmon-it87/pwmfan)保留——那不是 SMART。见 §三十
 # 2026-10-17: 首页磁盘信息转圈：加回 smartmontools+drivedb（给 smartctl），smartd/mdadm
 #   和侧栏 SMART/RAID 仍不要。见 §三十二
+# 2026-10-18: r30 仍 loading：首页 Promise.all 还等 /raid/list/，加回 mdadm（侧栏
+#   磁盘阵列仍藏）。smartd 不要。见 §三十三
 # 保留: 基础路由栈 + kmod-igc + tailscale(守护进程+LuCI) + iStore 商店(luci-app-store/dkml)
 #       + ddns-go(公网域名，2026-10-09 加回，feed 见 feeds.conf.default 的 ddnsgo)
 #       + openlist/vlmcsd/ttyd/wol 等仍保留的服务
@@ -421,6 +423,7 @@ CONFIG_PACKAGE_luci-proto-ppp=y
 CONFIG_PACKAGE_luci-ssl=y
 CONFIG_PACKAGE_luci-theme-argon=y
 CONFIG_PACKAGE_luci=y
+CONFIG_PACKAGE_mdadm=y
 CONFIG_PACKAGE_mkf2fs=y
 CONFIG_PACKAGE_mount-utils=y
 CONFIG_PACKAGE_mtd=y

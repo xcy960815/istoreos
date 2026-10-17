@@ -8,9 +8,10 @@
 # 不留空位），下载/远程域名整块仍删掉；快捷入口「家长控制」未装 oaf
 # 也显示（点进去再商店装 luci-app-oaf）。侧栏不要「网络存储」下的 RAID /
 # S.M.A.R.T.，也不要 luci-mod-system 的「挂载点」（无数据盘；那个包还带着备份
-# 与更新，只能 menu.d 关掉，不能从 seed 删）。Makefile 只拆 smartd/mdadm（侧栏
-# SMART/RAID 不要）；保留 smartmontools+drivedb，首页磁盘信息要调 smartctl，
-# r29 拆光之后那张卡片一直 loading（§三十二）。auto_setup 允许 gowebdav，
+# 与更新，只能 menu.d 关掉，不能从 seed 删）。Makefile 只拆 smartd（不要后台
+# 轮询）；留下 smartmontools+drivedb+mdadm。首页磁盘信息 Promise.all 同时等
+# /nas/disk/status/ 和 /raid/list/，缺 smartctl 或 mdadm 都会一直 loading
+# （§三十二/§三十三）。侧栏 RAID/SMART 菜单仍删。auto_setup 允许 gowebdav，
 # 拦住 samba/linkease/下载器/Docker/ddnsto。
 #
 # 必须在 feeds install 之后、make defconfig 之前跑（LuCI 符号这时才进 kconfig）。
@@ -55,22 +56,22 @@ grep -q "^PKG_VERSION:=${QS_VERSION}$" "$qs/Makefile" || {
   echo "::error::$qs PKG_VERSION 不是钉死的 ${QS_VERSION}，上游改了要人工复核"
   exit 1
 }
-# 无数据盘：官方 quickstart 硬依赖 SMART/RAID。smartd/mdadm 不能留（侧栏和后台
-# 轮询），但首页磁盘信息要调 smartctl，所以 smartmontools+drivedb 必须留。
+# 无数据盘：官方 quickstart 硬依赖 SMART/RAID。smartd 不能留（后台轮询）。
+# 首页磁盘信息要 smartctl 和 mdadm（Raid.List），侧栏菜单另删。
 python3 - "$qs/Makefile" <<'PY'
 import pathlib, sys
 p = pathlib.Path(sys.argv[1])
 s = p.read_text(encoding="utf-8")
 old = "+smartmontools +smartd +smartmontools-drivedb +mdadm "
-new = "+smartmontools +smartmontools-drivedb "
+new = "+smartmontools +smartmontools-drivedb +mdadm "
 if old in s:
     s = s.replace(old, new, 1)
     p.write_text(s, encoding="utf-8")
-    print("quickstart Makefile: 去掉 smartd/mdadm，保留 smartmontools/drivedb")
-if "smartd" in s or "+mdadm" in s:
-    raise SystemExit("::error::quickstart Makefile 还依赖 smartd/mdadm，拒绝继续")
-if "smartmontools" not in s:
-    raise SystemExit("::error::quickstart Makefile 丢了 smartmontools，首页磁盘信息会 loading")
+    print("quickstart Makefile: 去掉 smartd，保留 smartmontools/drivedb/mdadm")
+if "smartd" in s:
+    raise SystemExit("::error::quickstart Makefile 还依赖 smartd，拒绝继续")
+if "smartmontools" not in s or "+mdadm" not in s:
+    raise SystemExit("::error::quickstart Makefile 丢了 smartmontools/mdadm，首页磁盘信息会 loading")
 PY
 
 luci=package/luci-app-quickstart

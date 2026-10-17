@@ -32,7 +32,9 @@
 
 **后续变更（2026-10-17 夜，§三十一）**：用户要求删侧栏「挂载点」和「文件传输」。seed 删 `luci-app-filetransfer` 两行（514 → **512**）；挂载点在 `luci-mod-system` 里（备份与更新同包，不能删包），由 `pin-quickstart.sh` 写 menu.d 关掉。`block-mount` / sftp 仍留。工作区已改，**未提交、未推送、未构建**。
 
-**后续变更（2026-10-17 夜，§三十二）**：r29 首页「磁盘信息」一直 loading。QuickStart 调 `GET /nas/disk/status/`，预编译守护进程要 `smartctl`；§三十/补漏把 `smartmontools` 也拆掉了。加回 `smartmontools`+`smartmontools-drivedb`（512 → **514**），`smartd`/`mdadm` 和侧栏 SMART/RAID 仍不要。工作区已改，**未提交、未推送、未构建**。
+**后续变更（2026-10-17 夜，§三十二）**：r29 首页「磁盘信息」一直 loading。QuickStart 调 `GET /nas/disk/status/`，预编译守护进程要 `smartctl`；§三十/补漏把 `smartmontools` 也拆掉了。加回 `smartmontools`+`smartmontools-drivedb`（当时 512 → 514），`smartd` 仍不要。r30 已编已刷，**仍 loading**——还缺 `mdadm`，见 §三十三。
+
+**后续变更（2026-10-18，§三十三）**：首页磁盘信息 `Promise.all([Disk.Status, Raid.List])`，RAID 列表要 `mdadm`。r30 只加了 smartctl，U 盘当系统盘不是主因。seed 加回 `mdadm`（514 → **515**），侧栏「磁盘阵列」仍藏、`smartd` 仍不要。工作区已改，**未提交、未推送、未构建**。defconfig 可能顺带加回 `kmod-md-*`，那是 mdadm 依赖，不是侧栏。
 
 | 事实 | 细节 |
 |---|---|
@@ -463,14 +465,14 @@ r17 及更早镜像登录后是 LuCI Argon 概览，不是官方那种彩色首�
 | 磁盘信息 | 保留 | 只读概览，不是 Samba |
 | Docker | 前端已按 `/etc/init.d/dockerd` 是否存在决定；本镜像没有 dockerd，卡片不出现 | 不装 Docker |
 | 固件更新 / 沙箱 | 前端已按 `ota` 二进制、`/ext_overlay` 决定；本镜像都没有 | OTA 已删（§二十一） |
-| 侧栏「网络存储」→ 磁盘阵列 / S.M.A.R.T. | 从 `quickstart.lua` 删除这两条 `entry`，父菜单随子项消失；Makefile 只拆 `+smartd`/`+mdadm`，**留下** `+smartmontools`/`+smartmontools-drivedb` | 无数据盘，不要这些页。r29 把 smartctl 也拆掉后首页磁盘信息一直 loading，见 §三十二 |
+| 侧栏「网络存储」→ 磁盘阵列 / S.M.A.R.T. | 从 `quickstart.lua` 删除这两条 `entry`，父菜单随子项消失；Makefile 只拆 `+smartd`，留下 `smartmontools`/`drivedb`/`mdadm` | 无数据盘，不要这些页。首页磁盘信息仍要 smartctl+mdadm，见 §三十二/§三十三 |
 | 侧栏「系统 → 挂载点」 | `pin-quickstart.sh` 往 luci-app-quickstart 的 menu.d 写 `admin/system/mounts` `enabled: false` | 无数据盘。`luci-mod-system` 不能删（备份与更新在里面）。见 §三十一 |
 | 存储服务 | 模块加回首页；**只留 WebDAV 卡片**，易有云 / Samba 从该模块渲染删除（不留空位） | 2026-10-17 改口：用户只要这块里的 WebDAV。卡片走商店 `gowebdav`（`auto_setup` 允许）；OpenList 自带 WebDAV 仍在，是另一条入口 |
 | 下载服务（Aria2 / Transmission） | 从首页渲染删除 | §二十 |
 | 远程域名（ddnsto） | 从首页渲染删除 | 公网走 DDNS-Go，禁止 ddnsto |
 | 点「快速配置」从商店装回 Samba / 易有云 / 下载器 / Docker / ddnsto | `auto_setup.sh` 拒绝 | 即使用户以后从别处进向导，也不能把已删服务装回来。`gowebdav` 允许 |
 
-`quickstart` 的 Makefile 原本声明依赖 `mdadm`/`smartd` 等磁盘工具。二次裁剪和 §三十 从 seed 拿掉它们之后，r28 仍被 defconfig 加回（clone 的 Makefile 不在 git 里，当时 grep 漏了）。`pin-quickstart.sh` 删掉 RAID/SMART 菜单，Makefile **只拆 smartd/mdadm**；`smartmontools` 必须留，否则首页磁盘信息一直 loading（§三十二）。不要为了「首页」去改 `package/istoreos-files` 源码。
+`quickstart` 的 Makefile 原本声明依赖 `mdadm`/`smartd` 等磁盘工具。二次裁剪和 §三十 从 seed 拿掉它们之后，r28 仍被 defconfig 加回（clone 的 Makefile 不在 git 里，当时 grep 漏了）。`pin-quickstart.sh` 删掉 RAID/SMART **菜单**，Makefile 只拆 `smartd`；`smartmontools` 和 `mdadm` 必须留，否则首页磁盘信息一直 loading（§三十二/§三十三）。不要为了「首页」去改 `package/istoreos-files` 源码。
 
 ### 功能视角
 
@@ -479,7 +481,7 @@ r17 及更早镜像登录后是 LuCI Argon 概览，不是官方那种彩色首�
 | **能**：登录就是官方那种 QuickStart 首页；侧栏有「首页」和「网络向导」 | `quickstart` + `luci-app-quickstart` + 中文包 | 不再默认停在 Argon 状态概览；网络向导走 `admin/network_guide` |
 | **能**：首页看到「存储服务」，里面只有 WebDAV | `pin-quickstart.sh` 加回 storage 模块并删掉易有云/Samba 卡片 | 点配置会走商店 `gowebdav`（未烘焙，刷机后按需装） |
 | **能**：首页快捷入口看到「家长控制」 | 去掉「未装 oaf 不渲染」判断 | 点进去商店装 `luci-app-oaf`；不把 oaf 烘焙进固件 |
-| **仍不能**：侧栏看到「网络存储 / 磁盘阵列 / S.M.A.R.T.」；固件里不该再有 smartd/mdadm | 删 controller 菜单 + 拆 Makefile 的 smartd/mdadm + 审计阻断 | 无数据盘（§三十）。`smartmontools` 要留，给首页磁盘信息（§三十二） |
+| **仍不能**：侧栏看到「网络存储 / 磁盘阵列 / S.M.A.R.T.」；固件里不该再有 smartd | 删 controller 菜单 + 拆 Makefile 的 smartd + 审计阻断 | 无数据盘（§三十）。`smartmontools`/`mdadm` 要留，给首页磁盘信息（§三十二/§三十三） |
 | **仍不能**：侧栏看到「系统 → 挂载点」 | pin-quickstart 写 menu.d 关掉 | 无数据盘（§三十一）；`block-mount` 仍在 |
 | **仍不能**：在首页看到或配置 Samba / 易有云 / Aria2 / Transmission / ddnsto | 这些卡片从渲染删除 + auto_setup 拒绝名单 | 文件服务用 9400F/N100；公网域名用 DDNS-Go；OpenList WebDAV 用 OpenList 自己的页面 |
 | **仍不能**：开箱即有 OpenClash 等其它商店应用 | 未改 app-hub、未改 §十 | 刷机后商店装回，与本次无关 |
@@ -488,9 +490,9 @@ r17 及更早镜像登录后是 LuCI Argon 概览，不是官方那种彩色首�
 
 | 动作 | 内容 |
 |---|---|
-| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-quickstart.sh`：sparse clone `linkease/nas-packages@c82c458b61e5` 的 `network/services/quickstart`（预编译 0.13.0）到 `package/quickstart`；sparse clone `linkease/nas-packages-luci@7e5083e2ca4c` 的 `luci/luci-app-quickstart`（0.12.10-r1）到 `package/luci-app-quickstart`。再改构建树副本：首页保留 diskInfo + storage，从渲染删除 docker/downloadService/remoteDomain；存储服务模块里删除易有云/Samba 卡片，默认打开 WebDAV，「配置存储服务」走 `gowebdav`；设置列表保留 storage、去掉下载/远程域名；快捷入口「家长控制」未装 oaf 也显示；controller 删除 RAID/SMART 菜单；Makefile 只拆 `+smartd`/`+mdadm`，留下 `+smartmontools`/`+smartmontools-drivedb`（§三十二）；menu.d 关掉「系统 → 挂载点」（§三十一）；`auto_setup.sh` 拒绝 samba/linkease/aria2/transmission/docker/ddnsto/unishare，**允许 gowebdav**；`disable_update_check=1` |
+| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-quickstart.sh`：sparse clone `linkease/nas-packages@c82c458b61e5` 的 `network/services/quickstart`（预编译 0.13.0）到 `package/quickstart`；sparse clone `linkease/nas-packages-luci@7e5083e2ca4c` 的 `luci/luci-app-quickstart`（0.12.10-r1）到 `package/luci-app-quickstart`。再改构建树副本：首页保留 diskInfo + storage，从渲染删除 docker/downloadService/remoteDomain；存储服务模块里删除易有云/Samba 卡片，默认打开 WebDAV，「配置存储服务」走 `gowebdav`；设置列表保留 storage、去掉下载/远程域名；快捷入口「家长控制」未装 oaf 也显示；controller 删除 RAID/SMART 菜单；Makefile 只拆 `+smartd`，留下 `smartmontools`/`drivedb`/`mdadm`（§三十二/§三十三）；menu.d 关掉「系统 → 挂载点」（§三十一）；`auto_setup.sh` 拒绝 samba/linkease/aria2/transmission/docker/ddnsto/unishare，**允许 gowebdav**；`disable_update_check=1` |
 | seed 新增 `=y` | `quickstart`、`luci-app-quickstart`、`luci-i18n-quickstart-zh-cn`（seed `CONFIG_PACKAGE_*` 587 → 590） |
-| defconfig 可能自行加回 | `smartd`/`mdadm` 不应再出现（脚本已拆、审计见到就红）；`smartmontools` 现在是有意留下的 |
+| defconfig 可能自行加回 | `smartd` 不应再出现（审计见到就红）；`smartmontools`/`mdadm` 是有意留下的。`mdadm` 可能顺带拉回 `kmod-md-*`，不是侧栏 |
 | 不加 | 整个 nas-packages / app-hub；`app-meta-samba`、linkease、aria2、luci-app-ota、ddnsto |
 
 后续 AI：**不要**把 nas-packages 写成第七/八条 feed；升 QuickStart 版本只改脚本里的 `NAS_COMMIT` / `LUCI_COMMIT` / `QS_VERSION` / `LUCI_VERSION`，前端字符串对不上就让 CI 红、不要猜着补。本地编也必须跑这支脚本，见 `BUILD-CUSTOM.md` 步骤 3d。
@@ -733,14 +735,14 @@ r17 及更早的镜像只挂在 Actions 的 artifact 上：**14 天过期**，�
 
 r29 把 QuickStart Makefile 里 `+smartmontools +smartd +smartmontools-drivedb +mdadm` 四项全拆了，侧栏 SMART/RAID 没了，但首页「磁盘信息」一直转圈。这块调的是守护进程 `GET /nas/disk/status/`，预编译二进制要跑 `smartctl`。r28 磁盘信息能出来，是因为当时这四项被 defconfig 加回去了。
 
-用户要修 loading，不要侧栏 SMART、不要 `smartd` 后台轮询。所以只加回查询工具：`smartmontools`（`smartctl`）和型号库 `smartmontools-drivedb`。`mdadm` 不加（无 RAID）。JS 首页补丁没动过磁盘信息组件，不用改前端。
+用户要修 loading，不要侧栏 SMART、不要 `smartd` 后台轮询。当时只加回 `smartmontools`+`drivedb`，**没加 `mdadm`**。r30 已刷仍 loading，补记于 §三十三。
 
 ### 功能视角
 
 | 变更后设备能做 / 不能做 | 涉及 | 影响 / 替代方案 |
 |---|---|---|
 | **能**：首页「磁盘信息」列出系统盘容量/使用，不再一直 loading | `smartmontools`、`smartmontools-drivedb` | 给 QuickStart 调 `smartctl`；不是侧栏 S.M.A.R.T. 页 |
-| **仍不能**：侧栏「磁盘阵列 / S.M.A.R.T.」；后台 `smartd` 轮询硬盘 | `smartd`、`mdadm` 仍不在固件；菜单仍删 | 无数据盘不需要告警守护 |
+| **仍不能**（当时口径，已被 §三十三 修正）：不装 `mdadm` | r30 因此 RAID 列表一直不返回 | 见 §三十三 |
 
 ### 包名明细
 
@@ -748,7 +750,34 @@ r29 把 QuickStart Makefile 里 `+smartmontools +smartd +smartmontools-drivedb +
 |---|---|
 | 往 config-custom.seed 加回（2 行；seed `=y` 512 → **514**） | `smartmontools`、`smartmontools-drivedb` |
 | 构建脚本 | `pin-quickstart.sh` 把 Makefile 依赖从四项改成只留 `+smartmontools +smartmontools-drivedb` |
-| 审计 | `smartd`/`mdadm`/`luci-app-filetransfer=y` 仍红；`smartmontools`/`smartmontools-drivedb` **必须**是 `=y`，否则红 |
-| 不加 | `smartd`、`mdadm`（侧栏菜单也不加回） |
+| 审计（当时） | 见 §三十三（`mdadm` 改为必须有） |
+| 当时不加 | `smartd`（仍不要）；`mdadm` 已改口加回 |
 
-后续 AI：**不要**为了「无数据盘」再把 `smartmontools` 从 seed 拿掉，首页磁盘信息会再转圈。要藏卡片是另一件事，用户这次要的是修好 loading。
+后续 AI：**不要**为了「无数据盘」再把 `smartmontools` 或 `mdadm` 从 seed 拿掉，首页磁盘信息会再转圈。侧栏 RAID/SMART 菜单仍然不要。
+
+## 三十三、首页磁盘信息仍 loading：加回 mdadm（2026-10-18，用户明确要求）
+
+r30 已含 `smartctl`，N100 从闪迪 U 盘启动后首页仍显示「正在获取磁盘信息...」。用户怀疑是外置 U 盘、不是「系统盘那种接法」。不是：那根闪迪就是系统盘（整盘 dd、从它启动），只是走 USB 口。
+
+首页磁盘信息组件 `Promise.all([G.Nas.Disk.Status.GET(), G.Raid.List.GET()])`，两个都返回才结束 loading。缺 `mdadm` 时 `/raid/list/` 不回来，就会一直转。没数据盘时成功文案是「检测不到挂载的磁盘信息，请先插上磁盘」，和「正在获取」不是同一句。U 盘 SMART 最多让 `smartctl` 变慢，不是这句挂死的主因；J4125 机内盘缺 `mdadm` 同样会转。
+
+侧栏「磁盘阵列」仍然不显示（controller 那条 `entry` 已删）。只把查询工具 `mdadm` 加回 seed。`smartd` 仍不要。
+
+### 功能视角
+
+| 变更后设备能做 / 不能做 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| **能**：首页磁盘信息等 RAID 列表也能返回，不再因 `/raid/list/` 一直 loading | `mdadm` | 给 QuickStart 调空阵列列表；不是侧栏磁盘阵列页，也不能组 RAID |
+| **仍不能**：侧栏「磁盘阵列 / S.M.A.R.T.」；后台 `smartd` 轮询 | 菜单仍删；`smartd` 不在 seed | 无数据盘不需要告警守护 |
+| **可能**：成功后仍看到「请先插上磁盘」 | 首页按 NAS 找额外数据盘，系统盘（USB 或机内）常被排除 | 网关不插数据盘时这是空状态，不是 loading |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 往 config-custom.seed 加回（1 行；seed `=y` 514 → **515**） | `mdadm` |
+| 构建脚本 | `pin-quickstart.sh` Makefile 依赖改为 `+smartmontools +smartmontools-drivedb +mdadm`（仍去掉 `+smartd`） |
+| 审计 | `smartd`/`luci-app-filetransfer=y` 仍红；`smartmontools`/`smartmontools-drivedb`/`mdadm` **必须**是 `=y` |
+| 不加 | `smartd`；侧栏 RAID/SMART 菜单；不主动写 `kmod-md-*`（mdadm 的 DEPENDS 可能被 defconfig 加回，属查询底座不是组 RAID 页） |
+
+后续 AI：**不要**再把 `mdadm` 当「无盘所以多余」删掉；**不要**为了 `mdadm` 把侧栏磁盘阵列加回来。工作区改完时尚未推送构建。
