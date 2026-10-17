@@ -7,8 +7,11 @@
 # 磁盘信息 + 存储服务（模块里只留 WebDAV 卡片，易有云/Samba 从渲染删除
 # 不留空位），下载/远程域名整块仍删掉；快捷入口「家长控制」未装 oaf
 # 也显示（点进去再商店装 luci-app-oaf）。侧栏不要「网络存储」下的 RAID /
-# S.M.A.R.T.，并拆掉 Makefile 对 smartd/mdadm 的硬依赖（否则 defconfig 会把
-# seed 已删的包加回）。auto_setup 允许 gowebdav，拦住 samba/linkease/下载器/Docker/ddnsto。
+# S.M.A.R.T.，也不要 luci-mod-system 的「挂载点」（无数据盘；那个包还带着备份
+# 与更新，只能 menu.d 关掉，不能从 seed 删）。Makefile 只拆 smartd/mdadm（侧栏
+# SMART/RAID 不要）；保留 smartmontools+drivedb，首页磁盘信息要调 smartctl，
+# r29 拆光之后那张卡片一直 loading（§三十二）。auto_setup 允许 gowebdav，
+# 拦住 samba/linkease/下载器/Docker/ddnsto。
 #
 # 必须在 feeds install 之后、make defconfig 之前跑（LuCI 符号这时才进 kconfig）。
 # clone 的副本不进 git，不算改源码。见 docs/CUSTOM-TRIMMING.md §二十三
@@ -52,18 +55,22 @@ grep -q "^PKG_VERSION:=${QS_VERSION}$" "$qs/Makefile" || {
   echo "::error::$qs PKG_VERSION 不是钉死的 ${QS_VERSION}，上游改了要人工复核"
   exit 1
 }
-# 无数据盘：官方 quickstart 硬依赖 SMART/RAID。seed 删了这几行不够，defconfig 会加回。
+# 无数据盘：官方 quickstart 硬依赖 SMART/RAID。smartd/mdadm 不能留（侧栏和后台
+# 轮询），但首页磁盘信息要调 smartctl，所以 smartmontools+drivedb 必须留。
 python3 - "$qs/Makefile" <<'PY'
 import pathlib, sys
 p = pathlib.Path(sys.argv[1])
 s = p.read_text(encoding="utf-8")
 old = "+smartmontools +smartd +smartmontools-drivedb +mdadm "
+new = "+smartmontools +smartmontools-drivedb "
 if old in s:
-    s = s.replace(old, "", 1)
+    s = s.replace(old, new, 1)
     p.write_text(s, encoding="utf-8")
-    print("quickstart Makefile: 去掉 smartmontools/smartd/drivedb/mdadm 依赖")
-if "smartmontools" in s or "smartd" in s or "+mdadm" in s:
-    raise SystemExit("::error::quickstart Makefile 还依赖 SMART/RAID，拒绝继续")
+    print("quickstart Makefile: 去掉 smartd/mdadm，保留 smartmontools/drivedb")
+if "smartd" in s or "+mdadm" in s:
+    raise SystemExit("::error::quickstart Makefile 还依赖 smartd/mdadm，拒绝继续")
+if "smartmontools" not in s:
+    raise SystemExit("::error::quickstart Makefile 丢了 smartmontools，首页磁盘信息会 loading")
 PY
 
 luci=package/luci-app-quickstart
@@ -113,6 +120,21 @@ if 'admin", "nas", "raid"' in s or 'admin", "nas", "smart"' in s:
 if 'admin", "network_guide"' not in s:
     raise SystemExit("::error::删 RAID/SMART 时把网络向导弄丢了")
 PY
+# luci-mod-system 不能删（备份与更新在里面）。无数据盘，侧栏「挂载点」用 menu.d 关掉。
+menu_dir=$luci/root/usr/share/luci/menu.d
+mkdir -p "$menu_dir"
+cat > "$menu_dir/drop-system-mounts.json" <<'EOF'
+{
+	"admin/system/mounts": {
+		"enabled": false
+	}
+}
+EOF
+grep -q '"admin/system/mounts"' "$menu_dir/drop-system-mounts.json" || {
+  echo "::error::没写出挂载点菜单覆盖"
+  exit 1
+}
+echo "luci-app-quickstart menu.d: 侧栏关掉系统 → 挂载点"
 
 js=$luci/htdocs/luci-static/quickstart/index.js
 [ -f "$js" ] || {

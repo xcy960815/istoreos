@@ -20,6 +20,8 @@
 #   远程只走 Tailscale，530→517。见 §二十九
 # 2026-10-17: 无数据盘，删 SMART 三件套(smartd/smartmontools/drivedb) 3 行，517→514。
 #   温控(lm-sensors/hwmon-it87/pwmfan)保留——那不是 SMART。见 §三十
+# 2026-10-17: 首页磁盘信息转圈：加回 smartmontools+drivedb（给 smartctl），smartd/mdadm
+#   和侧栏 SMART/RAID 仍不要。见 §三十二
 # 保留: 基础路由栈 + kmod-igc + tailscale(守护进程+LuCI) + iStore 商店(luci-app-store/dkml)
 #       + ddns-go(公网域名，2026-10-09 加回，feed 见 feeds.conf.default 的 ddnsgo)
 #       + openlist/vlmcsd/ttyd/wol 等仍保留的服务
@@ -375,7 +377,6 @@ CONFIG_PACKAGE_lscpu=y
 CONFIG_PACKAGE_lua=y
 CONFIG_PACKAGE_luci-app-argon-config=y
 CONFIG_PACKAGE_luci-app-ddns-go=y
-CONFIG_PACKAGE_luci-app-filetransfer=y
 CONFIG_PACKAGE_luci-app-firewall=y
 CONFIG_PACKAGE_luci-app-openlist=y
 CONFIG_PACKAGE_luci-app-package-manager=y
@@ -391,7 +392,6 @@ CONFIG_PACKAGE_luci-i18n-argon-config-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-argon-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y
-CONFIG_PACKAGE_luci-i18n-filetransfer-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-openlist-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-package-manager-zh-cn=y
@@ -531,6 +531,8 @@ CONFIG_PACKAGE_shadow-usermod=y
 CONFIG_PACKAGE_shadow-utils=y
 CONFIG_PACKAGE_shadow-vipw=y
 CONFIG_PACKAGE_shadow=y
+CONFIG_PACKAGE_smartmontools-drivedb=y
+CONFIG_PACKAGE_smartmontools=y
 CONFIG_PACKAGE_sqlite3-cli=y
 CONFIG_PACKAGE_swap-utils=y
 CONFIG_PACKAGE_sysfsutils=y
