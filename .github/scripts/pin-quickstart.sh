@@ -3,9 +3,10 @@
 #
 # 六个默认 feed 里没有 luci-app-quickstart。写成 seed 是死行（§九）。
 # 官方带首页是因为商店运行时装了它；本 fork 要开箱首页，但 Samba/易有云/
-# 下载器/OTA/Docker/ddnsto 仍然禁止加回。做法：只 clone 两个包，从首页
-# 渲染里删掉存储/下载/远程域名整块（不是开关隐藏，免得留空位），并拦住
-# auto_setup 从商店把它们装回来。
+# 下载器/OTA/Docker/ddnsto 仍然禁止加回。做法：只 clone 两个包，首页保留
+# 磁盘信息 + 存储服务（模块里只留 WebDAV 卡片，易有云/Samba 从渲染删除
+# 不留空位），下载/远程域名整块仍删掉；auto_setup 允许 gowebdav，拦住
+# samba/linkease/下载器/Docker/ddnsto。
 #
 # 必须在 feeds install 之后、make defconfig 之前跑（LuCI 符号这时才进 kconfig）。
 # clone 的副本不进 git，不算改源码。见 docs/CUSTOM-TRIMMING.md §二十三
@@ -90,44 +91,107 @@ import pathlib, sys
 p = pathlib.Path(sys.argv[1])
 s = p.read_text(encoding="utf-8")
 
-# 从首页格子里删掉整块，不是改成 hidden。剩下的磁盘信息按可见数量重新算宽度。
-old_push = 'f.value.diskInfo&&R.push({key:"diskInfo",component:$g}),f.value.storage&&R.push({key:"storage",component:jf}),Qt("dockerd")&&f.value.docker&&R.push({key:"docker",component:Wv}),f.value.downloadService&&R.push({key:"downloadService",component:n1}),f.value.remoteDomain&&R.push({key:"remoteDomain",component:s5}),R'
-new_push = 'f.value.diskInfo&&R.push({key:"diskInfo",component:$g}),R'
-if s.count(old_push) == 1:
+# 首页：磁盘信息 + 存储服务留下；docker/下载/远程域名从渲染删除（不是 hidden）。
+orig_push = 'f.value.diskInfo&&R.push({key:"diskInfo",component:$g}),f.value.storage&&R.push({key:"storage",component:jf}),Qt("dockerd")&&f.value.docker&&R.push({key:"docker",component:Wv}),f.value.downloadService&&R.push({key:"downloadService",component:n1}),f.value.remoteDomain&&R.push({key:"remoteDomain",component:s5}),R'
+old_push = 'f.value.diskInfo&&R.push({key:"diskInfo",component:$g}),R'
+new_push = 'f.value.diskInfo&&R.push({key:"diskInfo",component:$g}),f.value.storage&&R.push({key:"storage",component:jf}),R'
+if s.count(orig_push) == 1:
+    s = s.replace(orig_push, new_push, 1)
+    print("index.js: 首页保留 diskInfo + storage，去掉 docker / download / remoteDomain")
+elif s.count(old_push) == 1 and "f.value.storage&&R.push" not in s:
     s = s.replace(old_push, new_push, 1)
-    print("index.js: 从首页渲染去掉 storage / docker / downloadService / remoteDomain")
-elif s.count(new_push) == 1 and "f.value.storage&&R.push" not in s:
-    print("index.js 首页渲染已去掉存储/下载/远程域名")
+    print("index.js: 从旧裁剪加回 storage 模块")
+elif s.count(new_push) == 1 and "f.value.downloadService&&R.push" not in s:
+    print("index.js 首页已是 diskInfo + storage")
 else:
     raise SystemExit("::error::index.js 首页模块 push 对不上，前端改版了要人工复核")
 
-# 模块表里也不留这几项，避免「关掉但还占设置位」
-for frag in (
-    ",storage:!0,docker:!0,downloadService:!0,remoteDomain:!0",
-    ",storage:!1,docker:!1,downloadService:!1,remoteDomain:!1",
+# 默认开关留下 storage，去掉 docker/download/remoteDomain
+for a, b in (
+    (",storage:!0,docker:!0,downloadService:!0,remoteDomain:!0", ",storage:!0"),
+    (",storage:!1,docker:!1,downloadService:!1,remoteDomain:!1", ",storage:!1"),
+    ("diskInfo:!0,systemInfo:!0", "diskInfo:!0,storage:!0,systemInfo:!0"),
+    ("diskInfo:!1,systemInfo:!1", "diskInfo:!1,storage:!1,systemInfo:!1"),
 ):
-    s = s.replace(frag, "")
-if ",storage:!" in s or "downloadService:!" in s or "remoteDomain:!" in s:
-    raise SystemExit("::error::index.js 仍有存储/下载/远程域名开关，拒绝半成品补丁")
+    if a in s:
+        s = s.replace(a, b)
+if "downloadService:!" in s or "remoteDomain:!" in s or ",docker:!" in s:
+    raise SystemExit("::error::index.js 仍有下载/远程域名/Docker 开关，拒绝半成品补丁")
+if "storage:!0" not in s:
+    raise SystemExit("::error::index.js 没有 storage 默认开，首页会不显示存储服务")
 
-blobs = (
-    '{key:"storage",title:n("\\u5B58\\u50A8\\u670D\\u52A1"),description:n("\\u5171\\u4EAB\\u4E0E\\u5B58\\u50A8\\u670D\\u52A1\\u6982\\u89C8")},',
+storage_blob = '{key:"storage",title:n("\\u5B58\\u50A8\\u670D\\u52A1"),description:n("\\u5171\\u4EAB\\u4E0E\\u5B58\\u50A8\\u670D\\u52A1\\u6982\\u89C8")},'
+disk_blob = '{key:"diskInfo",title:n("\\u78C1\\u76D8\\u4FE1\\u606F"),description:n("\\u78C1\\u76D8\\u4F7F\\u7528\\u60C5\\u51B5\\u4E0E\\u5BB9\\u91CF\\u6982\\u89C8")},'
+for blob in (
     '{key:"downloadService",title:n("\\u4E0B\\u8F7D\\u670D\\u52A1"),description:n("\\u4E0B\\u8F7D\\u4EFB\\u52A1\\u4E0E\\u670D\\u52A1\\u72B6\\u6001")},',
     '{key:"remoteDomain",title:n("\\u8FDC\\u7A0B\\u57DF\\u540D"),description:n("\\u8FDC\\u7A0B\\u8BBF\\u95EE\\u57DF\\u540D\\u7BA1\\u7406")},',
-)
-missing = [b for b in blobs if s.count(b) == 0]
-present = [b for b in blobs if s.count(b) == 1]
-wrong = [b for b in blobs if s.count(b) > 1]
-if wrong:
-    raise SystemExit("::error::index.js 设置列表项重复，前端改版了要人工复核")
-if present and missing:
-    raise SystemExit("::error::index.js 设置列表只删了一部分，拒绝半成品补丁")
-if present:
-    for blob in present:
+):
+    c = s.count(blob)
+    if c > 1:
+        raise SystemExit("::error::index.js 设置列表项重复，前端改版了要人工复核")
+    if c == 1:
         s = s.replace(blob, "", 1)
-    print("index.js: 从设置列表删除 storage / downloadService / remoteDomain")
+if storage_blob not in s:
+    if disk_blob not in s:
+        raise SystemExit("::error::index.js 找不到磁盘信息设置项，无法加回存储服务")
+    s = s.replace(disk_blob, disk_blob + storage_blob, 1)
+    print("index.js: 设置列表加回 storage")
 else:
-    print("index.js 设置列表已去掉存储/下载/远程域名")
+    print("index.js 设置列表保留 storage")
+
+cloud_item = 't("div",{class:lt(["item cloud",{active:m.value==0}]),onClick:F[1]||(F[1]=H=>y(0))},[Y(qp,{color:"#155dfc",class:"icon2"}),t("div",Mf,i(e(n)("\\u6613\\u6709\\u4E91")),1),(h=(w=l.value)==null?void 0:w.linkease)!=null&&h.enabel?(r(),s("span",Lf,i(e(n)("\\u5DF2\\u914D\\u7F6E")),1)):(r(),s("span",Of,i(e(n)("\\u672A\\u914D\\u7F6E")),1))],2),'
+samba_item = 't("div",{class:lt(["item memory",{active:m.value==1}]),onClick:F[2]||(F[2]=H=>y(1))},[Y(eo,{color:"#0bab47",class:"icon2"}),Nf,t("span",null,i((x=(_=l.value)==null?void 0:_.sambas)!=null&&x.length?e(n)("\\u5DF2\\u542F\\u7528"):e(n)("\\u672A\\u542F\\u7528")),1)],2),'
+samba_menu = 't("div",null,[t("a",Pf,i(e(n)("SAMBA\\u9AD8\\u7EA7\\u914D\\u7F6E")),1)]),'
+webdav_item = 't("div",{class:lt(["item network",{active:m.value==2}]),onClick:F[3]||(F[3]=H=>y(2))},[Y(xe,{color:"#9810fa",class:"icon2"}),Vf,'
+m_pick = 'm=E(0),v=E(!1),b=()=>{var w,h,_,x,C,S;if(v.value)return;const F=[Boolean((h=(w=l.value)==null?void 0:w.linkease)==null?void 0:h.enabel),Boolean((x=(_=l.value)==null?void 0:_.sambas)==null?void 0:x.length),Boolean((S=(C=l.value)==null?void 0:C.webdav)==null?void 0:S.path)].findIndex(Boolean);m.value=F===-1?0:F}'
+m_webdav = 'm=E(2),v=E(!1),b=()=>{if(v.value)return;m.value=2}'
+cfg_old = 'const k=()=>{Wa({setup:0})},g=()=>{a.value=!a.value},p=()=>{g(),zt.installAndGo("app-meta-gowebdav"'
+cfg_new = 'const k=()=>{zt.installAndGo("app-meta-gowebdav","GoWebDAV","/cgi-bin/luci/admin/nas/gowebdav")},g=()=>{a.value=!a.value},p=()=>{g(),zt.installAndGo("app-meta-gowebdav"'
+
+if s.count(cloud_item) == 1:
+    s = s.replace(cloud_item, "", 1)
+    print("index.js: 存储服务里去掉易有云卡片")
+elif s.count(cloud_item) == 0 and webdav_item in s:
+    print("index.js 存储服务已无易有云卡片")
+else:
+    raise SystemExit("::error::index.js 易有云卡片删不掉，前端改版了要人工复核")
+
+if s.count(samba_item) == 1:
+    s = s.replace(samba_item, "", 1)
+    print("index.js: 存储服务里去掉 Samba 卡片")
+elif s.count(samba_item) == 0 and webdav_item in s:
+    print("index.js 存储服务已无 Samba 卡片")
+else:
+    raise SystemExit("::error::index.js Samba 卡片删不掉，前端改版了要人工复核")
+
+if s.count(samba_menu) == 1:
+    s = s.replace(samba_menu, "", 1)
+    print("index.js: 去掉 SAMBA 高级配置")
+elif s.count(samba_menu) == 0:
+    print("index.js 已无 SAMBA 高级配置")
+else:
+    raise SystemExit("::error::index.js SAMBA 高级配置删不掉")
+
+if s.count(m_pick) == 1:
+    s = s.replace(m_pick, m_webdav, 1)
+    print("index.js: 存储服务默认打开 WebDAV")
+elif m_webdav in s:
+    print("index.js 存储服务已默认 WebDAV")
+else:
+    raise SystemExit("::error::index.js 默认页签改不了，前端改版了要人工复核")
+
+if s.count(cfg_old) == 1:
+    s = s.replace(cfg_old, cfg_new, 1)
+    print("index.js: 配置存储服务改走 GoWebDAV")
+elif 'k=()=>{zt.installAndGo("app-meta-gowebdav"' in s:
+    print("index.js 配置存储服务已走 GoWebDAV")
+else:
+    raise SystemExit("::error::index.js 配置存储服务入口改不了")
+
+if new_push not in s or webdav_item not in s or storage_blob not in s:
+    raise SystemExit("::error::首页存储服务/WebDAV 没有留下")
+if cloud_item in s or samba_item in s or "f.value.downloadService&&R.push" in s:
+    raise SystemExit("::error::易有云/Samba/下载服务还在首页")
 p.write_text(s, encoding="utf-8")
 PY
 
@@ -140,8 +204,15 @@ python3 - "$setup" <<'PY'
 import pathlib, sys
 p = pathlib.Path(sys.argv[1])
 s = p.read_text(encoding="utf-8")
-if "trimmed firmware, not in this image" in s:
-    print("auto_setup.sh 已有裁剪拦截，跳过")
+old_case = "samba|samba4|linkease|aria2|transmission|qbittorrent|docker|dockerd|dpanel|ddnsto|unishare|gowebdav|webdav2"
+new_case = "samba|samba4|linkease|aria2|transmission|qbittorrent|docker|dockerd|dpanel|ddnsto|unishare"
+if old_case in s:
+    s = s.replace(old_case, new_case, 1)
+    p.write_text(s, encoding="utf-8")
+    print("auto_setup.sh: 允许 gowebdav，仍拒绝 Samba/易有云/下载器/Docker/ddnsto")
+    sys.exit(0)
+if "trimmed firmware, not in this image" in s and new_case in s:
+    print("auto_setup.sh 已有裁剪拦截（允许 gowebdav），跳过")
     sys.exit(0)
 needle = "auto_setup_app() {\n    local pkg=$1\n    is-opkg install"
 if needle not in s:
@@ -149,14 +220,14 @@ if needle not in s:
 insert = """auto_setup_app() {
     local pkg=$1
     case "$pkg" in
-        samba|samba4|linkease|aria2|transmission|qbittorrent|docker|dockerd|dpanel|ddnsto|unishare|gowebdav|webdav2)
+        samba|samba4|linkease|aria2|transmission|qbittorrent|docker|dockerd|dpanel|ddnsto|unishare)
             echo "Refusing $pkg (trimmed firmware, not in this image)" >&2
             return 1
             ;;
     esac
     is-opkg install"""
 p.write_text(s.replace(needle, insert, 1), encoding="utf-8")
-print("auto_setup.sh: 拒绝从商店装回 Samba/易有云/下载器/Docker/ddnsto")
+print("auto_setup.sh: 拒绝从商店装回 Samba/易有云/下载器/Docker/ddnsto；允许 gowebdav")
 PY
 
 cfg=$qs/files/quickstart.config

@@ -26,6 +26,8 @@
 
 **后续 seed 变更（2026-10-17，§二十八）**：用户指挥执行器重做一遍审计、Claude 验收。第三批清收删 **26 行**（seed 556 → **530**）——crypto 残留 7 条（arc4/cts/des/echainiv/fcrypt/michael-mic/pcbc，消费者 mppe·ipsec·rxrpc·NFS·CIFS·无线全不在固件且无 imply 回加）/Broadcom PHY 三连（bcm84881·broadcom·phylib-broadcom，tg3·bnx2 钉关后的尾巴）/USB 外设 8 个（cm109·printer·hid-cp2112·dwc2·dwc3·roles·wdm·chaoskey）/AMD CCP·binfmt-misc·mdio-gpio·mmc＋mmc-spi。**r21 构建审计暴露 3 行孤儿连带**（crypto-rsa 随 CCP、asn1-encoder 随 §二十六 的 tpm、裸 mdio 随 broadcom 链一起没了消费者），同轮一并删（见本节末「r21 连带」）。HID 输入簇与 unetd 全家经评估**保留**；`kmod-usb-uhci/ohci`（QEMU 老机型 USB）留后续。**r21 审计阶段红、未出镜像**，修后重触发。
 
+**后续变更（2026-10-17，§二十三改口）**：用户只要首页「磁盘信息 + 存储服务里的 WebDAV」。`pin-quickstart.sh` 把「存储服务」模块加回首页，模块内**只留 WebDAV 卡片**（易有云 / Samba 仍从渲染删除，不留空位）。下载 / Docker / ddnsto 仍不显示。`auto_setup` 允许从商店装 `gowebdav`，仍拒绝 samba/linkease。r22 及更早镜像没有这块，要重编。
+
 | 事实 | 细节 |
 |---|---|
 | 可用固件 | GitHub Actions **r17** 成功（run [`38561237293`](https://github.com/xcy960815/istoreos/actions/runs/38561237293)，提交 `597a40aba3`），产物 `istoreos-x86_64-trimmed-r17`。刷 **EFI img**：gz 解压后的 `*-squashfs-combined-efi.img` 整盘 dd。r10 已过时，别再刷 |
@@ -72,7 +74,7 @@
 - **tailscale + luci-app-tailscale**：家人设备远程入口，路由器是 exit node（与公网 DDNS 并行，不是二选一）。**2026-10-14 起开箱即有**：官方 1.104.1 amd64 + asvow LuCI，见 §二十二。不要再写成「刷机后商店装 `luci-app-tailscale-community`」
 - **openlist / vlmcsd / eqos / oaf / ttyd / wol(etherwake) / cpufreq / luci-fan / fastnet / floatip**：保留；2026-10-10 用户再次明确 OpenList 和它自带的 WebDAV 要留，不能随下载器删除
 - **Aria2 / Transmission 已退出保留清单**：2026-10-10 用户明确不需要，连同管理页面和首页入口一起去掉，见 §二十。旧配置行数不再作为保留依据
-- **istore / luci-app-store / argon 主题 / QuickStart 首页**：系统管理骨架，勿动。首页方案见 §二十三（r17 还没有；改动已推送、r19 构建中）；Samba/易有云/下载器/ddnsto 卡片要从页面去掉，不要加回 Bootstrap（§二十四）
+- **istore / luci-app-store / argon 主题 / QuickStart 首页**：系统管理骨架，勿动。首页方案见 §二十三（磁盘信息 + 存储服务仅 WebDAV；Samba/易有云/下载器/ddnsto 卡片去掉）；不要加回 Bootstrap（§二十四）
 - **kmod-igc**：四个 2.5G i226-V 网卡的驱动，删了机器变砖
 - **irqbalance**：定制新增，为四张 2.5G 网卡分摊中断
 
@@ -455,10 +457,10 @@ r17 及更早镜像登录后是 LuCI Argon 概览，不是官方那种彩色首�
 | 磁盘信息 | 保留 | 只读概览，不是 Samba |
 | Docker | 前端已按 `/etc/init.d/dockerd` 是否存在决定；本镜像没有 dockerd，卡片不出现 | 不装 Docker |
 | 固件更新 / 沙箱 | 前端已按 `ota` 二进制、`/ext_overlay` 决定；本镜像都没有 | OTA 已删（§二十一） |
-| 存储服务（易有云 / Samba / WebDAV） | 从首页渲染和模块表删除，格子让给磁盘信息 | 文件服务归 9400F/N100；OpenList 自带的 WebDAV 走它自己的页面，不是这块 NAS 向导 |
-| 下载服务（Aria2 / Transmission） | 同上删除 | §二十 |
-| 远程域名（ddnsto） | 同上删除 | 公网走 DDNS-Go，禁止 ddnsto |
-| 点「快速配置」从商店装回上述包 | `auto_setup.sh` 直接拒绝 | 即使用户以后从别处进向导，也不能把已删服务装回来 |
+| 存储服务 | 模块加回首页；**只留 WebDAV 卡片**，易有云 / Samba 从该模块渲染删除（不留空位） | 2026-10-17 改口：用户只要这块里的 WebDAV。卡片走商店 `gowebdav`（`auto_setup` 允许）；OpenList 自带 WebDAV 仍在，是另一条入口 |
+| 下载服务（Aria2 / Transmission） | 从首页渲染删除 | §二十 |
+| 远程域名（ddnsto） | 从首页渲染删除 | 公网走 DDNS-Go，禁止 ddnsto |
+| 点「快速配置」从商店装回 Samba / 易有云 / 下载器 / Docker / ddnsto | `auto_setup.sh` 拒绝 | 即使用户以后从别处进向导，也不能把已删服务装回来。`gowebdav` 允许 |
 
 `quickstart` 的 Makefile 声明依赖 `mdadm` 等磁盘工具。二次裁剪曾从 seed 拿掉 mdadm（§六 B，单盘无 RAID）；这次 defconfig 会把它作为依赖加回二进制，**不是**把 Samba 加回来。不要为了「首页」去改 `package/istoreos-files` 源码。
 
@@ -467,14 +469,15 @@ r17 及更早镜像登录后是 LuCI Argon 概览，不是官方那种彩色首�
 | 变更后设备能做 / 不能做 | 涉及 | 影响 / 替代方案 |
 |---|---|---|
 | **能**：登录就是官方那种 QuickStart 首页；侧栏有「首页」和「网络向导」 | `quickstart` + `luci-app-quickstart` + 中文包 | 不再默认停在 Argon 状态概览；网络向导走 `admin/network_guide` |
-| **仍不能**：在首页看到或配置 Samba / 易有云 / NAS WebDAV / Aria2 / Transmission / ddnsto | 首页渲染删除这些模块 + auto_setup 拒绝名单 | 文件服务用 9400F/N100；公网域名用 DDNS-Go；OpenList WebDAV 用 OpenList 自己的页面 |
+| **能**：首页看到「存储服务」，里面只有 WebDAV | `pin-quickstart.sh` 加回 storage 模块并删掉易有云/Samba 卡片 | 点配置会走商店 `gowebdav`（未烘焙，刷机后按需装） |
+| **仍不能**：在首页看到或配置 Samba / 易有云 / Aria2 / Transmission / ddnsto | 这些卡片从渲染删除 + auto_setup 拒绝名单 | 文件服务用 9400F/N100；公网域名用 DDNS-Go；OpenList WebDAV 用 OpenList 自己的页面 |
 | **仍不能**：开箱即有 OpenClash 等其它商店应用 | 未改 app-hub、未改 §十 | 刷机后商店装回，与本次无关 |
 
 ### 包名明细
 
 | 动作 | 内容 |
 |---|---|
-| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-quickstart.sh`：sparse clone `linkease/nas-packages@c82c458b61e5` 的 `network/services/quickstart`（预编译 0.13.0）到 `package/quickstart`；sparse clone `linkease/nas-packages-luci@7e5083e2ca4c` 的 `luci/luci-app-quickstart`（0.12.10-r1）到 `package/luci-app-quickstart`。再改构建树副本：从首页渲染删除 storage/downloadService/remoteDomain（含 Docker 块），模块表和设置列表也不留这几项，剩下的卡片按数量重新占宽；`auto_setup.sh` 拒绝 samba/linkease/aria2/transmission/docker/ddnsto 等，`disable_update_check=1` |
+| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-quickstart.sh`：sparse clone `linkease/nas-packages@c82c458b61e5` 的 `network/services/quickstart`（预编译 0.13.0）到 `package/quickstart`；sparse clone `linkease/nas-packages-luci@7e5083e2ca4c` 的 `luci/luci-app-quickstart`（0.12.10-r1）到 `package/luci-app-quickstart`。再改构建树副本：首页保留 diskInfo + storage，从渲染删除 docker/downloadService/remoteDomain；存储服务模块里删除易有云/Samba 卡片，默认打开 WebDAV，「配置存储服务」走 `gowebdav`；设置列表保留 storage、去掉下载/远程域名；`auto_setup.sh` 拒绝 samba/linkease/aria2/transmission/docker/ddnsto/unishare，**允许 gowebdav**；`disable_update_check=1` |
 | seed 新增 `=y` | `quickstart`、`luci-app-quickstart`、`luci-i18n-quickstart-zh-cn`（seed `CONFIG_PACKAGE_*` 587 → 590） |
 | defconfig 可能自行加回 | `mdadm` 等 `quickstart` 的 DEPENDS（seed 里没有这些行也不算死行） |
 | 不加 | 整个 nas-packages / app-hub；`app-meta-samba`、linkease、aria2、luci-app-ota、ddnsto |
