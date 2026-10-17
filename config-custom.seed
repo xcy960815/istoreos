@@ -18,6 +18,8 @@
 #   (crypto-rsa/asn1-encoder/mdio)，533→530。见 §二十八
 # 2026-10-17: 删 WireGuard+unetd 全家 13 行(含级联 udptunnel4/6·chacha20poly1305·curve25519·kpp)，
 #   远程只走 Tailscale，530→517。见 §二十九
+# 2026-10-17: 无数据盘，删 SMART 三件套(smartd/smartmontools/drivedb) 3 行，517→514。
+#   温控(lm-sensors/hwmon-it87/pwmfan)保留——那不是 SMART。见 §三十
 # 保留: 基础路由栈 + kmod-igc + tailscale(守护进程+LuCI) + iStore 商店(luci-app-store/dkml)
 #       + ddns-go(公网域名，2026-10-09 加回，feed 见 feeds.conf.default 的 ddnsgo)
 #       + openlist/vlmcsd/ttyd/wol 等仍保留的服务
@@ -529,9 +531,6 @@ CONFIG_PACKAGE_shadow-usermod=y
 CONFIG_PACKAGE_shadow-utils=y
 CONFIG_PACKAGE_shadow-vipw=y
 CONFIG_PACKAGE_shadow=y
-CONFIG_PACKAGE_smartd=y
-CONFIG_PACKAGE_smartmontools-drivedb=y
-CONFIG_PACKAGE_smartmontools=y
 CONFIG_PACKAGE_sqlite3-cli=y
 CONFIG_PACKAGE_swap-utils=y
 CONFIG_PACKAGE_sysfsutils=y

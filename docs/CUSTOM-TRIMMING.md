@@ -26,7 +26,7 @@
 
 **后续 seed 变更（2026-10-17，§二十八）**：用户指挥执行器重做一遍审计、Claude 验收。第三批清收删 **26 行**（seed 556 → **530**）——crypto 残留 7 条（arc4/cts/des/echainiv/fcrypt/michael-mic/pcbc，消费者 mppe·ipsec·rxrpc·NFS·CIFS·无线全不在固件且无 imply 回加）/Broadcom PHY 三连（bcm84881·broadcom·phylib-broadcom，tg3·bnx2 钉关后的尾巴）/USB 外设 8 个（cm109·printer·hid-cp2112·dwc2·dwc3·roles·wdm·chaoskey）/AMD CCP·binfmt-misc·mdio-gpio·mmc＋mmc-spi。**r21 构建审计暴露 3 行孤儿连带**（crypto-rsa 随 CCP、asn1-encoder 随 §二十六 的 tpm、裸 mdio 随 broadcom 链一起没了消费者），同轮一并删（见本节末「r21 连带」）。HID 输入簇与 unetd 全家经评估**保留**；`kmod-usb-uhci/ohci`（QEMU 老机型 USB）留后续。**r21 审计阶段红、未出镜像**，修后重触发。
 
-**后续变更（2026-10-17，§二十三改口）**：用户只要首页「磁盘信息 + 存储服务里的 WebDAV」。`pin-quickstart.sh` 把「存储服务」模块加回首页，模块内**只留 WebDAV 卡片**（易有云 / Samba 仍从渲染删除，不留空位）。下载 / Docker / ddnsto 仍不显示。`auto_setup` 允许从商店装 `gowebdav`，仍拒绝 samba/linkease。r22 及更早镜像没有这块，要重编。
+**后续变更（2026-10-17，§二十三改口）**：用户只要首页「磁盘信息 + 存储服务里的 WebDAV」。`pin-quickstart.sh` 把「存储服务」模块加回首页，模块内**只留 WebDAV 卡片**（易有云 / Samba 仍从渲染删除，不留空位）。下载 / Docker / ddnsto 仍不显示。`auto_setup` 允许从商店装 `gowebdav`，仍拒绝 samba/linkease。同日再改口：快捷入口「家长控制」未装 `luci-app-oaf` 也要显示（点进去再商店装应用过滤）。r22 及更早、以及只含 WebDAV 那次构建都没有家长控制这块，要重编。
 
 | 事实 | 细节 |
 |---|---|
@@ -36,7 +36,7 @@
 | **禁止** | **不要刷正在用的 J4125**（和 N100 都是 `192.168.100.1`）。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100 |
 | N100 | **已经用这根 U 盘开过机**，能进 LuCI。双网口、无显示器、机内 16G 傲腾（RST 缓存条当不了系统盘就别写）。BIOS：U 盘优先、Secure Boot 关。Mac 无内置网口：网线接 N100 **第二口**，`192.168.100.2/24`、**网关留空**。家里关 Wi‑Fi；公司 USB 网卡（用过 AX88179A）必须排在 Wi‑Fi 下面，否则 `192.168.100.1` 会被公司网抢走 |
 | 官方截图 | 家里 **J4125** 上的官方整包 QuickStart（Samba/易有云/固件更新卡片），不是 r17，也不是选错分支。`custom-24.10` 跟踪的就是 `istoreos-24.10` |
-| 已推送未构建 | seed **533**。已推送三块都在 `origin/custom-24.10`：① `5612b37936`——`pin-quickstart.sh` 烘焙首页（删 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导，§二十三）＋`drop-luci-theme-bootstrap.sh` 去第二主题（§二十四）；② 杂项零头 7 行（§二十六）；③ 第二批清收 26 删 8 钉（§二十七）。r19 基于 `9d5f97ef56` **构建中**（只含①）；②③编入 **r20**（排队在 r19 后自动开跑）。出镜像后自动进 Releases（§二十五）。④ 第三批清收 26 行（§二十八，556→530）已随 r22 构建成功出镜像、审计干净（丢失仅 thermal/xdp 两已知项）。⑤ 删 WireGuard+unetd 全家 13 行（§二十九，530→**517**，远程只走 Tailscale）在**本地工作树**，待提交构建 |
+| 已推送未构建 | seed **533**。已推送三块都在 `origin/custom-24.10`：① `5612b37936`——`pin-quickstart.sh` 烘焙首页（删 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导，§二十三）＋`drop-luci-theme-bootstrap.sh` 去第二主题（§二十四）；② 杂项零头 7 行（§二十六）；③ 第二批清收 26 删 8 钉（§二十七）。r19 基于 `9d5f97ef56` **构建中**（只含①）；②③编入 **r20**（排队在 r19 后自动开跑）。出镜像后自动进 Releases（§二十五）。④ 第三批清收 26 行（§二十八，556→530）已随 **r22** 构建成功出镜像、审计干净（丢失仅 thermal/xdp 两已知项）。⑤ 删 WireGuard+unetd 全家 13 行（§二十九，530→517，远程只走 Tailscale）已提交，**r24 构建中**。⑥ 无盘删 SMART 三件套 3 行（§三十，517→**514**）已提交，编入 r24 之后的下一轮 |
 | 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu |
 | 还没做 | r19 出镜像后写 U 盘验首页（随后 r20 验两批清收：审计里显示栈/摄像头/隧道/交换机/br-netfilter 等应消失、「seed 没写却开启」不应新增）；D 档剩余项（ruby/git/taskd/sqlite3-cli/lm-sensors-detect、冷门 fs，§十六）等 N100 证据；**J4125 仍禁止刷** |
 
@@ -114,7 +114,7 @@
 本节写于 r4 审计之前，当时把"路由器在用的功能"和"固件里已烘焙的包"混为一谈，按 §九/§十 的口径重列。以下清单已按 §二十 更新为当前 seed 的预期，r10 等旧镜像仍含 Aria2/Transmission：
 
 - **固件里确实有（r17）**：**tailscale 1.104.1 + luci-app-tailscale（见 §二十二）**、**ddns-go + luci-app-ddns-go（见 §十五）**、openlist（含 WebDAV）、
-  vlmcsd、ttyd、wol、iStore 商店本体（`luci-app-store`+`dkml`）、argon 主题、zram、smartd+lm-sensors（温控）、
+  vlmcsd、ttyd、wol、iStore 商店本体（`luci-app-store`+`dkml`）、argon 主题、zram、lm-sensors（CPU/风扇温控）、smartd（**r17 有；2026-10-17 无盘删除，见 §三十；注意 smartd 是硬盘 SMART、不是温控，温控是 lm-sensors**）、
   wireguard（**r17 有；2026-10-17 起从 seed 删除，见 §二十九**）、dnsmasq-full、flow offload（kmod-nf-flow）
 - **不在固件里、刷机后要从商店装回**：openclash、eqos、oaf、cpufreq、luci-app-fan、fastnet、floatip、
   gowebdav——它们从来不是构建期候选，包名与证据见 §十。**Tailscale LuCI 已不在此列**。**QuickStart 也不该再写成商店装，但 r17 还没有，等 §二十三 那轮构建**
@@ -453,7 +453,7 @@ r17 及更早镜像登录后是 LuCI Argon 概览，不是官方那种彩色首�
 | 区块 | 做法 | 原因 |
 |---|---|---|
 | 左侧菜单「网络向导」 | 保留（`luci-app-quickstart` 自带 `admin/network_guide`，补丁禁止动 controller） | 官方侧栏第二项；r17 没有 QuickStart 才看不见 |
-| 首页卡片：网络向导 / 局域网设备 / 测速 / 商店 / 内网·DNS·日志·终端 | 保留 | 这就是用户要的首页 |
+| 首页卡片：网络向导 / 局域网设备 / 测速 / **家长控制** / 商店 / 内网·DNS·日志·终端 | 保留。家长控制官方要等 `luci-app-oaf` 装上才画，补丁改成始终显示 | 2026-10-17 用户明确这块有用。点击仍走商店装 `luci-app-oaf`（应用过滤），不烘焙 |
 | 磁盘信息 | 保留 | 只读概览，不是 Samba |
 | Docker | 前端已按 `/etc/init.d/dockerd` 是否存在决定；本镜像没有 dockerd，卡片不出现 | 不装 Docker |
 | 固件更新 / 沙箱 | 前端已按 `ota` 二进制、`/ext_overlay` 决定；本镜像都没有 | OTA 已删（§二十一） |
@@ -470,6 +470,7 @@ r17 及更早镜像登录后是 LuCI Argon 概览，不是官方那种彩色首�
 |---|---|---|
 | **能**：登录就是官方那种 QuickStart 首页；侧栏有「首页」和「网络向导」 | `quickstart` + `luci-app-quickstart` + 中文包 | 不再默认停在 Argon 状态概览；网络向导走 `admin/network_guide` |
 | **能**：首页看到「存储服务」，里面只有 WebDAV | `pin-quickstart.sh` 加回 storage 模块并删掉易有云/Samba 卡片 | 点配置会走商店 `gowebdav`（未烘焙，刷机后按需装） |
+| **能**：首页快捷入口看到「家长控制」 | 去掉「未装 oaf 不渲染」判断 | 点进去商店装 `luci-app-oaf`；不把 oaf 烘焙进固件 |
 | **仍不能**：在首页看到或配置 Samba / 易有云 / Aria2 / Transmission / ddnsto | 这些卡片从渲染删除 + auto_setup 拒绝名单 | 文件服务用 9400F/N100；公网域名用 DDNS-Go；OpenList WebDAV 用 OpenList 自己的页面 |
 | **仍不能**：开箱即有 OpenClash 等其它商店应用 | 未改 app-hub、未改 §十 | 刷机后商店装回，与本次无关 |
 
@@ -477,7 +478,7 @@ r17 及更早镜像登录后是 LuCI Argon 概览，不是官方那种彩色首�
 
 | 动作 | 内容 |
 |---|---|
-| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-quickstart.sh`：sparse clone `linkease/nas-packages@c82c458b61e5` 的 `network/services/quickstart`（预编译 0.13.0）到 `package/quickstart`；sparse clone `linkease/nas-packages-luci@7e5083e2ca4c` 的 `luci/luci-app-quickstart`（0.12.10-r1）到 `package/luci-app-quickstart`。再改构建树副本：首页保留 diskInfo + storage，从渲染删除 docker/downloadService/remoteDomain；存储服务模块里删除易有云/Samba 卡片，默认打开 WebDAV，「配置存储服务」走 `gowebdav`；设置列表保留 storage、去掉下载/远程域名；`auto_setup.sh` 拒绝 samba/linkease/aria2/transmission/docker/ddnsto/unishare，**允许 gowebdav**；`disable_update_check=1` |
+| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-quickstart.sh`：sparse clone `linkease/nas-packages@c82c458b61e5` 的 `network/services/quickstart`（预编译 0.13.0）到 `package/quickstart`；sparse clone `linkease/nas-packages-luci@7e5083e2ca4c` 的 `luci/luci-app-quickstart`（0.12.10-r1）到 `package/luci-app-quickstart`。再改构建树副本：首页保留 diskInfo + storage，从渲染删除 docker/downloadService/remoteDomain；存储服务模块里删除易有云/Samba 卡片，默认打开 WebDAV，「配置存储服务」走 `gowebdav`；设置列表保留 storage、去掉下载/远程域名；快捷入口「家长控制」未装 oaf 也显示；`auto_setup.sh` 拒绝 samba/linkease/aria2/transmission/docker/ddnsto/unishare，**允许 gowebdav**；`disable_update_check=1` |
 | seed 新增 `=y` | `quickstart`、`luci-app-quickstart`、`luci-i18n-quickstart-zh-cn`（seed `CONFIG_PACKAGE_*` 587 → 590） |
 | defconfig 可能自行加回 | `mdadm` 等 `quickstart` 的 DEPENDS（seed 里没有这些行也不算死行） |
 | 不加 | 整个 nas-packages / app-hub；`app-meta-samba`、linkease、aria2、luci-app-ota、ddnsto |
@@ -663,3 +664,31 @@ r17 及更早的镜像只挂在 Actions 的 artifact 上：**14 天过期**，�
 - **Tailscale 不受影响**：`tailscale` 包（官方 amd64 预编译，§二十二）不依赖 `kmod-wireguard`，远程入口照常。
 
 后续 AI：**不要**再据 §二十一/§六 旧表述把 WireGuard 加回；§二十六/§二十七/§二十八 里「`kmod-udptunnel4/6` 是 WireGuard 硬依赖、勿动」「`kmod-crypto-kpp` 勿删」的注记**已被本节取代**（WireGuard 没了，它们随之删）。远程能力若要恢复 WireGuard，须用户再次明确要求，并连 13 行一起加回。
+
+## 三十、删除 SMART 三件套：网关无数据盘（2026-10-17，用户确认不插盘）
+
+用户确认 J4125 网关**除系统盘外不插任何数据硬盘**（文件服务全在 9400F/N100，WebDAV 存的 Clash 等配置体积小、靠备份而非盘健康监控保护）。`smartd` 是监控物理硬盘 SMART 健康/温度的后台守护，无盘场景下它天天轮询一块不存在或不在乎的盘，是纯冗余。删除三件套。
+
+**辨析**：smartd 管「盘会不会坏」（硬件寿命预警），**不**保护「数据不丢」（那靠备份）；也**不是**温控——温控是 `lm-sensors`+`kmod-hwmon-it87/pwmfan`（读 CPU/主板/风扇），本批**全保留**。
+
+### 功能视角
+
+| 变更后设备不能再做什么 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| 后台监控硬盘 SMART 健康、温度，坏盘前告警 | `smartd` | 无数据盘，无监控对象；将来真插盘要监控，从 opkg/iStore 装回 `smartmontools`（含 smartd） |
+| 手动 `smartctl` 查盘健康、按型号数据库解读属性 | `smartmontools`、`smartmontools-drivedb` | 同上，装回即有 |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 从 config-custom.seed 删除（3 行；seed `=y` 517 → **514**） | `smartd`、`smartmontools`、`smartmontools-drivedb` |
+| 保留 / 勿动 | `lm-sensors`+`lm-sensors-detect`、`kmod-hwmon-{core,it87,pwmfan,vid}`、`kmod-thermal`（CPU/风扇温控，与硬盘无关）；`kmod-ata-ahci`/`kmod-scsi-core`（SATA 控制器驱动，无盘也留——ISO LiveCD 与将来插盘需要）|
+| 关联候选（无盘，本批**未删**，列备后续） | `kmod-hwmon-drivetemp`（硬盘温度传感器，无盘闲置）；`libcap-ng`（疑似 smartmontools 在固件内唯一消费者，但 feeds 未装、本地读不到其 Makefile，属 §二十八「需 N100 `opkg whatdepends` 验证」档，不盲删）|
+
+### 依据
+
+- 三件套**无外部消费者**：全树 grep 无 `+smartmontools`/`+smartd` 的 DEPENDS，quickstart/istoreos-files/luci 均不拉。它们是普通用户态包、显式 `=y`，删 3 行即净减，不触发 r21 式 HIDDEN 库级联（HIDDEN 库才会因失去 selector 变 lost，普通包不会）。
+- `libcap-ng` 即便真成「编进去没人用」，也是普通包 `=y`、保持开启，**不会**让审计红——所以它是独立的下一步清理候选，不是本批阻断项，等 N100 `opkg whatdepends libcap-ng` 为空再删。
+
+后续 AI：**不要**把 `lm-sensors`/`hwmon-it87`/`pwmfan` 当 SMART 一起删（那是 CPU/风扇温控，不是硬盘）；将来 J4125 若插数据盘，从商店装回 smartmontools 即可，无需改 seed 重编。
