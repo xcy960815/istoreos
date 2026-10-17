@@ -14,7 +14,10 @@
 #   非保险网卡(tg3/ixgbe/bnx2/amd-xgbe/amazon-ena/forcedeth/dwmac-intel)与 i915 钉关。见 §二十七
 # 2026-10-17: 第三批清收 23 行：crypto 残留(arc4/cts/des/echainiv/fcrypt/michael-mic/pcbc)/
 #   Broadcom PHY 三连/USB 外设(cm109/printer/hid-cp2112/dwc2/dwc3/roles/wdm/chaoskey)/
-#   AMD CCP/binfmt-misc/mdio-gpio/mmc+mmc-spi 删除，seed 556→533。见 §二十八
+#   AMD CCP/binfmt-misc/mdio-gpio/mmc+mmc-spi 删除，seed 556→533；r21 审计再清 3 行孤儿
+#   (crypto-rsa/asn1-encoder/mdio)，533→530。见 §二十八
+# 2026-10-17: 删 WireGuard+unetd 全家 13 行(含级联 udptunnel4/6·chacha20poly1305·curve25519·kpp)，
+#   远程只走 Tailscale，530→517。见 §二十九
 # 保留: 基础路由栈 + kmod-igc + tailscale(守护进程+LuCI) + iStore 商店(luci-app-store/dkml)
 #       + ddns-go(公网域名，2026-10-09 加回，feed 见 feeds.conf.default 的 ddnsgo)
 #       + openlist/vlmcsd/ttyd/wol 等仍保留的服务
@@ -130,11 +133,6 @@ CONFIG_PACKAGE_kmod-crypto-gf128=y
 CONFIG_PACKAGE_kmod-crypto-ghash=y
 CONFIG_PACKAGE_kmod-crypto-hash=y
 CONFIG_PACKAGE_kmod-crypto-hmac=y
-CONFIG_PACKAGE_kmod-crypto-kpp=y
-CONFIG_PACKAGE_kmod-crypto-lib-chacha20=y
-CONFIG_PACKAGE_kmod-crypto-lib-chacha20poly1305=y
-CONFIG_PACKAGE_kmod-crypto-lib-curve25519=y
-CONFIG_PACKAGE_kmod-crypto-lib-poly1305=y
 CONFIG_PACKAGE_kmod-crypto-manager=y
 CONFIG_PACKAGE_kmod-crypto-md5=y
 CONFIG_PACKAGE_kmod-crypto-null=y
@@ -284,8 +282,6 @@ CONFIG_PACKAGE_kmod-slhc=y
 # CONFIG_PACKAGE_kmod-tg3 is not set
 CONFIG_PACKAGE_kmod-thermal=y
 CONFIG_PACKAGE_kmod-tun=y
-CONFIG_PACKAGE_kmod-udptunnel4=y
-CONFIG_PACKAGE_kmod-udptunnel6=y
 CONFIG_PACKAGE_kmod-usb-core=y
 CONFIG_PACKAGE_kmod-usb-ehci=y
 CONFIG_PACKAGE_kmod-usb-hid=y
@@ -320,7 +316,6 @@ CONFIG_PACKAGE_kmod-usb-xhci-hcd=y
 CONFIG_PACKAGE_kmod-usb2-pci=y
 CONFIG_PACKAGE_kmod-usb2=y
 CONFIG_PACKAGE_kmod-usb3=y
-CONFIG_PACKAGE_kmod-wireguard=y
 CONFIG_PACKAGE_kmod-xdp-sockets-diag=y
 CONFIG_PACKAGE_kmod-zram=y
 CONFIG_PACKAGE_libacl=y
@@ -421,8 +416,6 @@ CONFIG_PACKAGE_luci-mod-system=y
 CONFIG_PACKAGE_luci-proto-external=y
 CONFIG_PACKAGE_luci-proto-ipv6=y
 CONFIG_PACKAGE_luci-proto-ppp=y
-CONFIG_PACKAGE_luci-proto-unet=y
-CONFIG_PACKAGE_luci-proto-wireguard=y
 CONFIG_PACKAGE_luci-ssl=y
 CONFIG_PACKAGE_luci-theme-argon=y
 CONFIG_PACKAGE_luci=y
@@ -568,8 +561,6 @@ CONFIG_PACKAGE_ucode-mod-uloop=y
 CONFIG_PACKAGE_ucode=y
 CONFIG_PACKAGE_uhttpd-mod-ubus=y
 CONFIG_PACKAGE_uhttpd=y
-CONFIG_PACKAGE_unet-cli=y
-CONFIG_PACKAGE_unetd=y
 CONFIG_PACKAGE_unzip=y
 CONFIG_PACKAGE_urandom-seed=y
 CONFIG_PACKAGE_urngd=y
@@ -578,7 +569,6 @@ CONFIG_PACKAGE_usbutils=y
 CONFIG_PACKAGE_usign=y
 CONFIG_PACKAGE_vlmcsd=y
 CONFIG_PACKAGE_wget-ssl=y
-CONFIG_PACKAGE_wireguard-tools=y
 CONFIG_PACKAGE_xtables-nft=y
 CONFIG_PACKAGE_xz-utils=y
 CONFIG_PACKAGE_xz=y

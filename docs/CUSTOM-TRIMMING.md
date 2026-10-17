@@ -34,7 +34,7 @@
 | **禁止** | **不要刷正在用的 J4125**（和 N100 都是 `192.168.100.1`）。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100 |
 | N100 | **已经用这根 U 盘开过机**，能进 LuCI。双网口、无显示器、机内 16G 傲腾（RST 缓存条当不了系统盘就别写）。BIOS：U 盘优先、Secure Boot 关。Mac 无内置网口：网线接 N100 **第二口**，`192.168.100.2/24`、**网关留空**。家里关 Wi‑Fi；公司 USB 网卡（用过 AX88179A）必须排在 Wi‑Fi 下面，否则 `192.168.100.1` 会被公司网抢走 |
 | 官方截图 | 家里 **J4125** 上的官方整包 QuickStart（Samba/易有云/固件更新卡片），不是 r17，也不是选错分支。`custom-24.10` 跟踪的就是 `istoreos-24.10` |
-| 已推送未构建 | seed **533**。已推送三块都在 `origin/custom-24.10`：① `5612b37936`——`pin-quickstart.sh` 烘焙首页（删 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导，§二十三）＋`drop-luci-theme-bootstrap.sh` 去第二主题（§二十四）；② 杂项零头 7 行（§二十六）；③ 第二批清收 26 删 8 钉（§二十七）。r19 基于 `9d5f97ef56` **构建中**（只含①）；②③编入 **r20**（排队在 r19 后自动开跑）。出镜像后自动进 Releases（§二十五）。④ 第三批清收 26 行（§二十八，556→530，含 r21 审计暴露的 3 行孤儿连带）已提交，r21 审计阶段红（3 行孤儿未删），修后重触发 |
+| 已推送未构建 | seed **533**。已推送三块都在 `origin/custom-24.10`：① `5612b37936`——`pin-quickstart.sh` 烘焙首页（删 Docker/下载/存储/ddnsto 卡片，保留侧栏网络向导，§二十三）＋`drop-luci-theme-bootstrap.sh` 去第二主题（§二十四）；② 杂项零头 7 行（§二十六）；③ 第二批清收 26 删 8 钉（§二十七）。r19 基于 `9d5f97ef56` **构建中**（只含①）；②③编入 **r20**（排队在 r19 后自动开跑）。出镜像后自动进 Releases（§二十五）。④ 第三批清收 26 行（§二十八，556→530）已随 r22 构建成功出镜像、审计干净（丢失仅 thermal/xdp 两已知项）。⑤ 删 WireGuard+unetd 全家 13 行（§二十九，530→**517**，远程只走 Tailscale）在**本地工作树**，待提交构建 |
 | 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu |
 | 还没做 | r19 出镜像后写 U 盘验首页（随后 r20 验两批清收：审计里显示栈/摄像头/隧道/交换机/br-netfilter 等应消失、「seed 没写却开启」不应新增）；D 档剩余项（ruby/git/taskd/sqlite3-cli/lm-sensors-detect、冷门 fs，§十六）等 N100 证据；**J4125 仍禁止刷** |
 
@@ -101,7 +101,7 @@
 | 接显示器看图形界面、GPU 工具 | i915/amdgpu/radeon 固件、DRM/fb 全系、nvtop | 无头设备无影响；GRUB 菜单和 VGA 文本控制台仍可用，QEMU 验证不受影响 |
 | 当 NFS/Samba 服务器；用 cifsmount/davfs2 挂载别人的网络盘 | NFS 服务端全家、cifsmount、davfs2（Samba 首轮已删） | OpenList 及其自带 WebDAV 保留；独立的 gowebdav/webdav2 仍不在构建期 |
 | RAID / 多盘合并 / 硬盘休眠 / iSCSI / USB over IP | mdadm+kmod-md、kmod-dm、mergerfs、hd-idle、iscsi/aoe、usbip | 单盘直用完全不受影响 |
-| L2TP/PPTP/SSTP VPN 拨号、GRE/IPIP 隧道、IPsec、链路聚合、中继 | 各协议 kmod+用户态、bonding、relayd | 不用这些拨号协议；远程走 Tailscale 或公网端口转发。**WireGuard 完整保留** |
+| L2TP/PPTP/SSTP VPN 拨号、GRE/IPIP 隧道、IPsec、链路聚合、中继 | 各协议 kmod+用户态、bonding、relayd | 不用这些拨号协议；远程走 Tailscale 或公网端口转发。~~WireGuard 完整保留~~ **（2026-10-17 已删 WireGuard+unetd 全家，远程只走 Tailscale，见 §二十九）** |
 | 跑 KVM 虚拟机 | kvm/vfio/vhost（容器首轮已删） | 虚拟化归 9400F/N100 |
 | 识别老式/服务器级网卡（万兆、FC、古董 PCI） | 对应驱动+固件 | 常用保险已留：**igc + e1000/e1000e/igb/r8169/r8125** + 主流 USB 网卡（asix/ax88179/aqc111/rtl8152） |
 | ISDN/ATM 电话线拨号 | misdn/hfc/atm/solos | 古董功能，无影响 |
@@ -113,7 +113,7 @@
 
 - **固件里确实有（r17）**：**tailscale 1.104.1 + luci-app-tailscale（见 §二十二）**、**ddns-go + luci-app-ddns-go（见 §十五）**、openlist（含 WebDAV）、
   vlmcsd、ttyd、wol、iStore 商店本体（`luci-app-store`+`dkml`）、argon 主题、zram、smartd+lm-sensors（温控）、
-  wireguard、dnsmasq-full、flow offload（kmod-nf-flow）
+  wireguard（**r17 有；2026-10-17 起从 seed 删除，见 §二十九**）、dnsmasq-full、flow offload（kmod-nf-flow）
 - **不在固件里、刷机后要从商店装回**：openclash、eqos、oaf、cpufreq、luci-app-fan、fastnet、floatip、
   gowebdav——它们从来不是构建期候选，包名与证据见 §十。**Tailscale LuCI 已不在此列**。**QuickStart 也不该再写成商店装，但 r17 还没有，等 §二十三 那轮构建**
 
@@ -394,7 +394,7 @@ app-meta-aria2、app-meta-transmission、aria2-entry-deps、transmission-daemon-
 
 本仓库已脱离官方发布节奏，固件只从自己的 CI 出。`luci-app-ota` 检查和下载的是 `fw.koolcenter.com` 上的**官方完整版**，在裁剪版上点「升级」会把整台机器刷回官方镜像，裁剪全部作废——留着它不仅没用，还是一个误操作入口。
 
-用户同时问过 WireGuard、网络唤醒、备份与升级：这三项与上游同步无关，**全部保留**。WireGuard 是公网 DDNS-Go 之外的另一条远程入口（Tailscale 自带 userspace WireGuard，不依赖它）；网络唤醒用来叫醒 9400F/N100；备份与升级是 `luci-mod-system` 自带页面，刷机前导出 `/etc/config`、本地上传自编镜像都靠它。
+用户同时问过 WireGuard、网络唤醒、备份与升级：这三项与上游同步无关，当时**全部保留**。网络唤醒用来叫醒 9400F/N100；备份与升级是 `luci-mod-system` 自带页面，刷机前导出 `/etc/config`、本地上传自编镜像都靠它。**（WireGuard 已于 2026-10-17 删除——用户改口远程只走 Tailscale，见 §二十九；下表「保留」行的 kmod-wireguard/wireguard-tools/luci-proto-wireguard 同此。）**
 
 ### 功能视角
 
@@ -609,7 +609,7 @@ r17 及更早的镜像只挂在 Actions 的 artifact 上：**14 天过期**，�
 | r21 审计连带再删（3 行；seed `=y` 533 → 530） | `kmod-crypto-rsa`（selector 只有 crypto-engine〔不在 seed〕和本批删的 crypto-hw-ccp）、`kmod-asn1-encoder`（唯一 selector 是 §二十六 删的 kmod-tpm）、`kmod-mdio`（裸 mdio，selector 全是老式网卡与本批删的 broadcom 链；保险网卡 r8169 用 `kmod-mdio-devres`、igb/igc/e1000e 不碰 mdio） |
 | 评估后**保留**（候选但不删） | HID 输入簇 `kmod-hid`/`kmod-hid-generic`/`kmod-usb-hid`/`kmod-input-core`/`kmod-input-evdev`（无头网关虽无键鼠，但保留 USB-HID 兜底能力）；unetd 全家 `unetd`/`unet-cli`/`luci-proto-unet`（与 WireGuard+Tailscale 重叠，但用户选择保留 unet mesh 能力） |
 | 留后续 | `kmod-usb-uhci`、`kmod-usb-ohci`、`kmod-usb-ohci-pci`——真机 J4125 USB 走 xhci/ehci 用不到，但 QEMU 老 i440fx 机型的 USB 控制器是 UHCI/OHCI，删了影响 QEMU 启动验证。等验证流程确认后再定 |
-| 保留 / 勿动（本批核查确认承重） | `kmod-crypto-kpp`——`kmod-crypto-lib-curve25519`（WireGuard 在用）有 `imply PACKAGE_kmod-crypto-kpp`，删了会被 defconfig 回加触发审计阻断；`kmod-net-selftests`（usb-net-asix/smsc95xx 依赖）；`kmod-phy-realtek`/`kmod-phy-microchip`/`kmod-phy-ax88796b`/`kmod-phy-smsc`（保险网卡 PHY） |
+| 保留 / 勿动（本批核查确认承重） | ~~`kmod-crypto-kpp`——`kmod-crypto-lib-curve25519`（WireGuard 在用）有 `imply`，删了会被回加~~ **（§二十九 删 WireGuard 后 curve25519 一并删、imply 失效，kpp 已随之删除）**；`kmod-net-selftests`（usb-net-asix/smsc95xx 依赖）；`kmod-phy-realtek`/`kmod-phy-microchip`/`kmod-phy-ax88796b`/`kmod-phy-smsc`（保险网卡 PHY） |
 
 ### 依据（本地构建树反向依赖核查摘要）
 
@@ -627,3 +627,36 @@ r17 及更早的镜像只挂在 Actions 的 artifact 上：**14 天过期**，�
 **确认无二次级联**：`kmod-asn1-decoder` 仍被 seed 内的 `kmod-nf-nathelper-extra`（netfilter.mk:617）拉住、`kmod-oid-registry` 被 `kmod-fs-nfs-common`（fs.mk:470，可独立开启）拉住，删 rsa/asn1-encoder 后它们不变孤儿，下一轮审计应只剩 `kmod-thermal`/`kmod-xdp-sockets-diag` 两个已知项（不阻断）。
 
 后续 AI：删「被 select 才出现」的 kmod（crypto-*、phy-*、asn1-*、库类）时，要同查它反向拉入的下层库是否也随之失去全部消费者，一并清掉，别留 `=y` 孤儿等审计来报；HID 簇与 unetd 是**有意保留**，不要当零头再删；`kmod-usb-uhci/ohci` 待 QEMU 验证流程确认后另议。
+
+## 二十九、删除 WireGuard + unetd 全家：远程只走 Tailscale（2026-10-17，用户明确拍板）
+
+§二十一/§六 曾把 WireGuard 列为「Tailscale 之外的另一条远程入口，完整保留」。2026-10-17 用户复核后改口：**远程只走 Tailscale**，内核 WireGuard 与 unetd 组网都不再需要（Tailscale 自带 userspace WireGuard，删内核 WireGuard 不影响它）。这触及远程访问能力（本文档「必须先确认」范围），由用户明确拍板。
+
+这是一次级联删除，典型的「删 `kmod-wireguard` 一行会被 unetd 的依赖回加、且连带一串 HIDDEN 库变孤儿」。一次删干净需 **13 行**（显式 6 + 级联 7），逐条反向依赖均已在本地构建树坐实无其他启用消费者。
+
+### 功能视角
+
+| 变更后设备不能再做什么 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| 在路由器上建 WireGuard 服务端/接口、家人设备用 WireGuard 客户端直连回家 | `kmod-wireguard`、`wireguard-tools`、`luci-proto-wireguard` | 远程改走 **Tailscale**（exit node，已烘焙 §二十二）；公网仍有 DDNS-Go + 防火墙手动端口转发 |
+| 用 unetd 做 WireGuard-based mesh 组网 | `unetd`、`unet-cli`、`luci-proto-unet` | 与 Tailscale 功能重叠，不再保留；要组网用 Tailscale |
+| 内核态 WireGuard 的加解密/隧道底座 | 级联库 `kmod-udptunnel4/6`、`kmod-crypto-lib-{chacha20poly1305,chacha20,poly1305,curve25519}`、`kmod-crypto-kpp` | 这些都是 WireGuard 在本固件里唯一消费者的 HIDDEN 库，随之删除 |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 从 config-custom.seed 删除（13 行；seed `=y` 530 → **517**） | 显式 6：`kmod-wireguard`、`wireguard-tools`、`luci-proto-wireguard`、`unetd`、`unet-cli`、`luci-proto-unet`；级联 7：`kmod-udptunnel4`、`kmod-udptunnel6`、`kmod-crypto-lib-chacha20poly1305`、`kmod-crypto-lib-chacha20`、`kmod-crypto-lib-poly1305`、`kmod-crypto-lib-curve25519`、`kmod-crypto-kpp` |
+| 保留 / 勿动 | `tailscale`＋`luci-app-tailscale`（远程唯一入口，§二十二）、`ddns-go`（公网，§十五）、`firewall4`（端口转发底座）、WireGuard 之外仍有消费者的 crypto 链（ecb/ctr/gcm/sha* 等，被 IPsec 外的多处用）|
+
+### 依据（本地构建树反向依赖核查）
+
+- **显式 6 无外部消费者**：`+kmod-wireguard` 只被 `wireguard-tools`(utils/wireguard-tools:40) 与 `unetd`(services/unetd:35) 引用，两者都在删除集；`+unetd` 只被 `unet-cli`(unetd:58) 引用，也在删除集。删这 6 个不会被谁回加。
+- **级联 7 全是 HIDDEN 库、WireGuard 是唯一在固件里的消费者**：
+  - `kmod-udptunnel4/6`：其余消费者 vxlan/geneve/fou/l2tp/sctp/rxrpc（netsupport.mk:110/131/421/1188/1256/1342）**无一在 seed**；
+  - `kmod-crypto-lib-chacha20poly1305`、`kmod-crypto-lib-curve25519`：全树除 wireguard 外无 `+` 引用者；
+  - `kmod-crypto-lib-chacha20`、`kmod-crypto-lib-poly1305`：仅被 chacha20poly1305（本批删）引用；
+  - `kmod-crypto-kpp`：真 DEPENDS 消费者 crypto-ecdh/crypto-akcipher/crypto-rsa 均不在 seed，唯一 lifeline 是 `curve25519` 的 `imply`（crypto.mk:628）——curve25519 本批删后 imply 失效，kpp 不再被回加，故一并删（反而消解了 §二十八「kpp 勿删」的前提）。
+- **Tailscale 不受影响**：`tailscale` 包（官方 amd64 预编译，§二十二）不依赖 `kmod-wireguard`，远程入口照常。
+
+后续 AI：**不要**再据 §二十一/§六 旧表述把 WireGuard 加回；§二十六/§二十七/§二十八 里「`kmod-udptunnel4/6` 是 WireGuard 硬依赖、勿动」「`kmod-crypto-kpp` 勿删」的注记**已被本节取代**（WireGuard 没了，它们随之删）。远程能力若要恢复 WireGuard，须用户再次明确要求，并连 13 行一起加回。
