@@ -6,8 +6,9 @@
 # 下载器/OTA/Docker/ddnsto 仍然禁止加回。做法：只 clone 两个包，首页保留
 # 磁盘信息 + 存储服务（模块里只留 WebDAV 卡片，易有云/Samba 从渲染删除
 # 不留空位），下载/远程域名整块仍删掉；快捷入口「家长控制」未装 oaf
-# 也显示（点进去再商店装 luci-app-oaf）。auto_setup 允许 gowebdav，拦住
-# samba/linkease/下载器/Docker/ddnsto。
+# 也显示（点进去再商店装 luci-app-oaf）。侧栏不要「网络存储」下的 RAID /
+# S.M.A.R.T.，并拆掉 Makefile 对 smartd/mdadm 的硬依赖（否则 defconfig 会把
+# seed 已删的包加回）。auto_setup 允许 gowebdav，拦住 samba/linkease/下载器/Docker/ddnsto。
 #
 # 必须在 feeds install 之后、make defconfig 之前跑（LuCI 符号这时才进 kconfig）。
 # clone 的副本不进 git，不算改源码。见 docs/CUSTOM-TRIMMING.md §二十三
@@ -51,6 +52,19 @@ grep -q "^PKG_VERSION:=${QS_VERSION}$" "$qs/Makefile" || {
   echo "::error::$qs PKG_VERSION 不是钉死的 ${QS_VERSION}，上游改了要人工复核"
   exit 1
 }
+# 无数据盘：官方 quickstart 硬依赖 SMART/RAID。seed 删了这几行不够，defconfig 会加回。
+python3 - "$qs/Makefile" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+s = p.read_text(encoding="utf-8")
+old = "+smartmontools +smartd +smartmontools-drivedb +mdadm "
+if old in s:
+    s = s.replace(old, "", 1)
+    p.write_text(s, encoding="utf-8")
+    print("quickstart Makefile: 去掉 smartmontools/smartd/drivedb/mdadm 依赖")
+if "smartmontools" in s or "smartd" in s or "+mdadm" in s:
+    raise SystemExit("::error::quickstart Makefile 还依赖 SMART/RAID，拒绝继续")
+PY
 
 luci=package/luci-app-quickstart
 if [ -f "$luci/Makefile" ]; then
@@ -80,6 +94,25 @@ grep -q 'msgstr "网络向导"' "$luci/po/zh-cn/quickstart.po" || {
   echo "::error::中文包没有「网络向导」，侧栏会显示英文"
   exit 1
 }
+python3 - "$ctrl" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+s = p.read_text(encoding="utf-8")
+raid = '        entry({"admin", "nas", "raid"}, call("quickstart_index", {index={"admin", "nas"}}), _("RAID"), 10).leaf = true\n'
+smart = '        entry({"admin", "nas", "smart"}, call("quickstart_index", {index={"admin", "nas"}}), _("S.M.A.R.T."), 11).leaf = true\n'
+changed = False
+for line in (raid, smart):
+    if line in s:
+        s = s.replace(line, "", 1)
+        changed = True
+if changed:
+    p.write_text(s, encoding="utf-8")
+    print("quickstart.lua: 去掉侧栏 RAID / S.M.A.R.T.（网络存储父菜单随子项消失）")
+if 'admin", "nas", "raid"' in s or 'admin", "nas", "smart"' in s:
+    raise SystemExit("::error::controller 还注册 RAID/SMART 菜单，拒绝继续")
+if 'admin", "network_guide"' not in s:
+    raise SystemExit("::error::删 RAID/SMART 时把网络向导弄丢了")
+PY
 
 js=$luci/htdocs/luci-static/quickstart/index.js
 [ -f "$js" ] || {
