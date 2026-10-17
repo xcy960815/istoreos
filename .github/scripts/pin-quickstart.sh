@@ -5,7 +5,8 @@
 # 官方带首页是因为商店运行时装了它；本 fork 要开箱首页，但 Samba/易有云/
 # 下载器/OTA/Docker/ddnsto 仍然禁止加回。做法：只 clone 两个包，首页保留
 # 磁盘信息 + 存储服务（模块里只留 WebDAV 卡片，易有云/Samba 从渲染删除
-# 不留空位），下载/远程域名整块仍删掉；auto_setup 允许 gowebdav，拦住
+# 不留空位），下载/远程域名整块仍删掉；快捷入口「家长控制」未装 oaf
+# 也显示（点进去再商店装 luci-app-oaf）。auto_setup 允许 gowebdav，拦住
 # samba/linkease/下载器/Docker/ddnsto。
 #
 # 必须在 feeds install 之后、make defconfig 之前跑（LuCI 符号这时才进 kconfig）。
@@ -192,6 +193,19 @@ if new_push not in s or webdav_item not in s or storage_blob not in s:
     raise SystemExit("::error::首页存储服务/WebDAV 没有留下")
 if cloud_item in s or samba_item in s or "f.value.downloadService&&R.push" in s:
     raise SystemExit("::error::易有云/Samba/下载服务还在首页")
+
+# 官方前端：没装 luci-app-oaf 就不画「家长控制」。用户要这块入口，未安装也显示。
+baby_hide = 'ot.icon!=="baby"||v.value?(r(),Z(E4,{key:0,card:ot,onClick:g},null,8,["card"])):D("",!0)'
+baby_show = '(r(),Z(E4,{key:0,card:ot,onClick:g},null,8,["card"]))'
+if s.count(baby_hide) == 1:
+    s = s.replace(baby_hide, baby_show, 1)
+    print("index.js: 家长控制未装 oaf 也显示")
+elif 'ot.icon!=="baby"||v.value' not in s and '{icon:"baby"' in s:
+    print("index.js 家长控制已始终显示")
+else:
+    raise SystemExit("::error::index.js 家长控制显示条件对不上，前端改版了要人工复核")
+if '{icon:"baby"' not in s or "luci-app-oaf" not in s:
+    raise SystemExit("::error::首页没有家长控制入口")
 p.write_text(s, encoding="utf-8")
 PY
 
