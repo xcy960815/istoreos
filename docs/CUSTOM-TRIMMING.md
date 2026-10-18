@@ -4,11 +4,13 @@
 > 用于为家里的 J4125 四口 2.5G 软路由（LAN IP `192.168.100.1`）构建裁剪版固件。
 > 用户在 2026-10-05 明确要求删除下列功能，**除非用户再次明确要求，不得在 seed 中加回**。
 
-## 当前进度（2026-10-18，后续 AI 先读这里）
+## 当前进度（2026-10-18 夜，后续 AI 先读这里）
 
-**N100 对照（2026-10-18）**：**r28** 首页磁盘信息正常（闪迪认成系统根目录），侧栏仍有 RAID/SMART，固件含 **smartd**。**r29** 藏菜单并拆工具 → loading。**r31** 加回 smartctl/mdadm、无 smartd → 空白。**r32** 等到 Disk.Status（§三十四）仍「正在获取磁盘信息...」。本提交按 §三十五 加回 `smartd` 包（侧栏菜单仍藏；**预期修复，待 N100 验证**），seed 515→**516**。推送后构建。试刷 N100 + img，**禁止动 J4125**。
+**N100 已验证 r33**（`680cb032d5`，闪迪 USB 整盘）：首页磁盘信息有系统根目录用量；侧栏**没有**「网络存储 / 磁盘阵列 / S.M.A.R.T.」；存储服务只留 WebDAV、家长控制常显。seed `=y` **516**。下一步验机仍以 r33 为准；**禁止动 J4125**。
 
-**两套状态不要混：** 已成功出镜像并进 Releases 的有 r22 / r28 / r29 / r30 / r31 / r32。N100 网口：双口 Intel I225-V（`kmod-igc`），第一口 WAN、第二口 LAN `192.168.100.1`。r17 是 Argon 概览（没有 QuickStart 首页）。r23～r27 临时构建已取消，从未出包。
+首页磁盘卡片要 `smartd` 包（含 `/etc/smartd.conf`）+ `smartctl` + `mdadm`；侧栏 RAID/SMART 仍从 controller 删除。r28 有菜单+磁盘信息；r29 拆工具后 loading；r31 空白（Raid.List 空数组提前结束转圈）；r32 等到 Disk.Status 仍转圈（无 smartd 包）。**尚未证明必须跑 smartd 后台进程**，不要为了「无盘」再拆这个包。明细 §二十三、§三十一～§三十五。
+
+**两套状态不要混：** Releases 有 r22 / r28～r33。N100 双口 Intel I225-V（`kmod-igc`），第一口 WAN、第二口 LAN `192.168.100.1`。r17 是 Argon 概览（没有 QuickStart 首页）。r23～r27 从未出包。
 
 **后续 seed 变更（2026-10-10，§二十）**：用户已要求移除 Aria2/Transmission 及其页面入口，当前 seed 已关闭 9 个包（596 → 587 个 `=y`）。r12 起的镜像已不含下载器（r10、r11 仍含）。
 
@@ -809,13 +811,15 @@ r29 同一轮既藏菜单又拆掉 `smartctl`/`mdadm`，卡片一直「正在获
 | seed | 当时不动；`smartd` 已由 §三十五 加回 |
 | 不加 | 侧栏 RAID/SMART 菜单 |
 
-后续 AI：**不要**为了磁盘信息把 RAID/SMART 菜单加回；**不要**再把 r31 空白写成「U 盘不是系统盘」。r32 仍转圈见 §三十五。
+后续 AI：**不要**为了磁盘信息把 RAID/SMART 菜单加回；**不要**再把 r31 空白写成「U 盘不是系统盘」。r33 已验证见 §三十五。
 
 ## 三十五、首页磁盘信息仍转圈：加回 smartd 包（2026-10-18，用户明确要求菜单不要、磁盘信息要）
 
 r32 已含 smartctl、mdadm、§三十四 的 loading 补丁，N100 首页仍显示「正在获取磁盘信息...」。说明 `GET /nas/disk/status/` 一直没返回，不是前端假结束。
 
-对照 r28（能出系统根目录用量）和 r32 的 manifest：磁盘相关只差 **`smartd` 这个包**。QuickStart 预编译守护进程会跑 `smartctl`，字符串里还有 `/etc/smartd.conf` 和 `/etc/init.d/smartd`。**更具体的线索是缺 `/etc/smartd.conf`**（这个文件随 `smartd` 包进来）；**尚不能认定必须运行 smartd 后台服务**。本批把包加回 seed、Makefile 不再拆 `+smartd`，是对齐 r28 的预期修复，**待 N100 验证**。侧栏 RAID/SMART 菜单继续从 controller 删除，不加回页面。
+对照 r28（能出系统根目录用量）和 r32 的 manifest：磁盘相关只差 **`smartd` 这个包**。QuickStart 预编译守护进程会跑 `smartctl`，字符串里还有 `/etc/smartd.conf` 和 `/etc/init.d/smartd`。更具体的线索是缺 `/etc/smartd.conf`（随 `smartd` 包进来）；**仍不能认定必须运行 smartd 后台服务**。本批把包加回 seed、Makefile 不再拆 `+smartd`，侧栏 RAID/SMART 仍删。
+
+**2026-10-18 夜 N100 验证 r33**：首页磁盘信息有系统根目录用量，侧栏没有 RAID/SMART。用户确认「可以了」。
 
 旧构建树可能已跳过 clone、Makefile 还停在拆掉 `+smartd` 的裁剪版：`pin-quickstart.sh` 先把 `+smartd` 加回去，再检查官方四项都在。
 
@@ -823,9 +827,9 @@ r32 已含 smartctl、mdadm、§三十四 的 loading 补丁，N100 首页仍显
 
 | 变更后设备能做 / 不能做 | 涉及 | 影响 / 替代方案 |
 |---|---|---|
-| **预期能**（待 N100 验证）：首页磁盘信息列出系统根目录用量（对齐 r28） | `smartd` 包（含 `/etc/smartd.conf`）+ 已有 `smartctl`/`mdadm` | 给 QuickStart Disk.Status；不是侧栏 S.M.A.R.T. 页。不认定必须跑 smartd 守护进程 |
+| **能**（r33 N100 已验证）：首页磁盘信息列出系统根目录用量 | `smartd` 包（含 `/etc/smartd.conf`）+ `smartctl`/`mdadm` | 给 QuickStart Disk.Status；不是侧栏 S.M.A.R.T. 页。不认定必须跑 smartd 守护进程 |
 | **仍不能**：侧栏「网络存储 / 磁盘阵列 / S.M.A.R.T.」 | controller 仍删那两条 `entry` | 无数据盘不要这些页 |
-| **可能有**：若包默认启用 init，后台会出现 smartd 进程 | `smartd` 包自带 init | 这是包的默认行为，不是本批要的功能；验证时看 Disk.Status 是否回来 |
+| **可能有**：若包默认启用 init，后台会出现 smartd 进程 | `smartd` 包自带 init | 这是包的默认行为，不是本批要的功能；r33 只验证了首页卡片，没拆证是 conf 还是守护进程 |
 
 ### 包名明细
 
@@ -836,4 +840,4 @@ r32 已含 smartctl、mdadm、§三十四 的 loading 补丁，N100 首页仍显
 | 审计 | `luci-app-filetransfer=y` 仍红；`smartmontools`/`drivedb`/`smartd`/`mdadm` **必须**是 `=y` |
 | 不加 | 侧栏 RAID/SMART 菜单 |
 
-后续 AI：**不要**再把 `smartd` 包当「无盘所以多余」从 seed/Makefile 拆掉，除非 N100 证明 Disk.Status 不需要 `/etc/smartd.conf`；**不要**为了这个包把侧栏 SMART 页加回来；**不要**把本批写成「已经证实必须跑 smartd 后台」。
+后续 AI：**不要**再把 `smartd` 包当「无盘所以多余」从 seed/Makefile 拆掉；**不要**为了这个包把侧栏 SMART 页加回来；**不要**把本批写成「已经证实必须跑 smartd 后台」（N100 只验证了加回这个包之后卡片正常）。

@@ -52,7 +52,7 @@ if grep -q '^CONFIG_PACKAGE_luci-app-filetransfer=y$' .config; then
 fi
 for pkg in smartmontools smartmontools-drivedb smartd mdadm; do
   if ! grep -q "^CONFIG_PACKAGE_${pkg}=y$" .config; then
-    echo "::error::$pkg 没编进镜像，首页磁盘信息会一直 loading。见 §三十二/§三十三/§三十五（smartd 包含 /etc/smartd.conf，待 N100 验证）"
+    echo "::error::$pkg 没编进镜像，首页磁盘信息会一直 loading。见 §三十二/§三十三/§三十五（r33 N100 已验证：smartd 包含 /etc/smartd.conf）"
     fail=1
   fi
 done

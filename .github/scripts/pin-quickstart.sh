@@ -12,7 +12,7 @@
 # （smartmontools/smartd/drivedb/mdadm）。旧构建树可能已经拆过 +smartd
 # （跳过 clone），脚本先加回再检查。r32 对照 r28：拆掉 smartd 包后
 # Disk.Status 一直不回来，更具体线索是缺 /etc/smartd.conf，尚不能认定
-# 必须跑 smartd 后台（§三十五，预期修复待 N100 验证）。首页磁盘信息等到
+# 必须跑 smartd 后台（§三十五；r33 N100 已验证首页卡片正常）。首页磁盘信息等到
 # Disk.Status；官方 !disks&&!raidList 会把空 RAID 列表当加载完（r31 空白），
 # 补丁改成 disks==null 才转圈（§三十四）。侧栏 RAID/SMART 菜单仍删。
 # auto_setup 允许 gowebdav，拦住 samba/linkease/下载器/Docker/ddnsto。
