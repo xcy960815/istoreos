@@ -4,9 +4,11 @@
 > 用于为家里的 J4125 四口 2.5G 软路由（LAN IP `192.168.100.1`）构建裁剪版固件。
 > 用户在 2026-10-05 明确要求删除下列功能，**除非用户再次明确要求，不得在 seed 中加回**。
 
-## 当前进度（2026-10-17，后续 AI 先读这里）
+## 当前进度（2026-10-18，后续 AI 先读这里）
 
-**两套状态不要混：** 已成功出镜像的最新一轮是 **r22**（`703d8b99d7`，只含到 §二十八）；N100 实测过开机的是 **r17**。**最终版是 `afcc97d026`** = r22 + §二十九（删 WireGuard/unetd 全家，远程只走 Tailscale）+ §三十（删 SMART 三件套）+ §二十三两次改口（首页存储服务只留 WebDAV、家长控制常显），已推送。此前 r23～r27 是边改边触发/重复触发的临时构建，**已全部取消并从 Actions 列表删除**；**r28 正从 `afcc97d026` 全新构建**（2026-10-17 触发），成功后自动发 Release（tag `r28`）。下一步验机（写 U 盘、N100）以 r28 为准；用户上次装官方也是 **img** 整盘写入，不必等 ISO。
+**N100 对照（2026-10-18）**：**r28** 首页磁盘信息正常（闪迪认成系统根目录），侧栏仍有「网络存储 / 磁盘阵列 / S.M.A.R.T.」。**r29** 藏菜单并拆掉 smartctl/mdadm → 一直 loading。**r31** 工具加回、菜单仍藏 → 圈停了但卡片空白。原因见 §三十四：官方 loading 条件把 `raidList=[]` 当成已加载。本提交改 `pin-quickstart.sh`（菜单继续藏，磁盘信息等到 Disk.Status）。推送后构建。试刷仍用 N100 + img，**禁止动 J4125**。
+
+**两套状态不要混：** 已成功出镜像并进 Releases 的有 r22 / r28 / r29 / r30 / r31。N100 网口：双口 Intel I225-V（`kmod-igc`），第一口 WAN、第二口 LAN `192.168.100.1`。r17 是 Argon 概览（没有 QuickStart 首页）。r23～r27 临时构建已取消，从未出包。
 
 **后续 seed 变更（2026-10-10，§二十）**：用户已要求移除 Aria2/Transmission 及其页面入口，当前 seed 已关闭 9 个包（596 → 587 个 `=y`）。r12 起的镜像已不含下载器（r10、r11 仍含）。
 
@@ -465,7 +467,7 @@ r17 及更早镜像登录后是 LuCI Argon 概览，不是官方那种彩色首�
 | 磁盘信息 | 保留 | 只读概览，不是 Samba |
 | Docker | 前端已按 `/etc/init.d/dockerd` 是否存在决定；本镜像没有 dockerd，卡片不出现 | 不装 Docker |
 | 固件更新 / 沙箱 | 前端已按 `ota` 二进制、`/ext_overlay` 决定；本镜像都没有 | OTA 已删（§二十一） |
-| 侧栏「网络存储」→ 磁盘阵列 / S.M.A.R.T. | 从 `quickstart.lua` 删除这两条 `entry`，父菜单随子项消失；Makefile 只拆 `+smartd`，留下 `smartmontools`/`drivedb`/`mdadm` | 无数据盘，不要这些页。首页磁盘信息仍要 smartctl+mdadm，见 §三十二/§三十三 |
+| 侧栏「网络存储」→ 磁盘阵列 / S.M.A.R.T. | 从 `quickstart.lua` 删除这两条 `entry`，父菜单随子项消失；Makefile 只拆 `+smartd`，留下 `smartmontools`/`drivedb`/`mdadm` | 无数据盘，不要这些页。首页磁盘信息仍要 smartctl+mdadm，loading 等到 Disk.Status，见 §三十二/§三十三/§三十四 |
 | 侧栏「系统 → 挂载点」 | `pin-quickstart.sh` 往 luci-app-quickstart 的 menu.d 写 `admin/system/mounts` `enabled: false` | 无数据盘。`luci-mod-system` 不能删（备份与更新在里面）。见 §三十一 |
 | 存储服务 | 模块加回首页；**只留 WebDAV 卡片**，易有云 / Samba 从该模块渲染删除（不留空位） | 2026-10-17 改口：用户只要这块里的 WebDAV。卡片走商店 `gowebdav`（`auto_setup` 允许）；OpenList 自带 WebDAV 仍在，是另一条入口 |
 | 下载服务（Aria2 / Transmission） | 从首页渲染删除 | §二十 |
@@ -780,4 +782,31 @@ r30 已含 `smartctl`，N100 从闪迪 U 盘启动后首页仍显示「正在获
 | 审计 | `smartd`/`luci-app-filetransfer=y` 仍红；`smartmontools`/`smartmontools-drivedb`/`mdadm` **必须**是 `=y` |
 | 不加 | `smartd`；侧栏 RAID/SMART 菜单；不主动写 `kmod-md-*`（mdadm 的 DEPENDS 可能被 defconfig 加回，属查询底座不是组 RAID 页） |
 
-后续 AI：**不要**再把 `mdadm` 当「无盘所以多余」删掉；**不要**为了 `mdadm` 把侧栏磁盘阵列加回来。工作区改完时尚未推送构建。
+后续 AI：**不要**再把 `mdadm` 当「无盘所以多余」删掉；**不要**为了 `mdadm` 把侧栏磁盘阵列加回来。r31 空白不是缺 mdadm，见 §三十四。
+
+## 三十四、首页磁盘信息空白：等到 Disk.Status（2026-10-18，用户明确要求菜单不要、磁盘信息要）
+
+r28 在 N100 上磁盘信息正常（U 盘 `sda` 系统根目录、使用率），左边仍有「网络存储 / 磁盘阵列 / S.M.A.R.T.」。用户要菜单不要、磁盘信息还要。
+
+r29 同一轮既藏菜单又拆掉 `smartctl`/`mdadm`，卡片一直「正在获取磁盘信息...」。r30 只加回 smartctl 仍 loading；r31 再加回 mdadm，圈停了但红框里没有用量条。r28 已证明不是「U 盘认不成系统盘」。
+
+首页磁盘卡片（不是 RAID 向导那个 `Promise.all`）初始 `disks=null, raidList=null`，官方用 `!disks && !raidList` 显示转圈。`mdadm` 让 `/raid/list/` 很快返回空阵列 `[]`，空数组在 JS 里是 truthy，转圈立刻结束；`Disk.Status`（`smartctl`）还没到时 `disks` 仍是 `null`，系统根目录和已挂载都不画 → 空白。r28 工具齐全时 Disk.Status 赶在看见之前回来了，所以看起来正常。
+
+侧栏 RAID/SMART 继续从 controller 删除（父菜单随子项消失）。`smartd` 仍不要。只改首页 loading：`disks==null` 才转圈，不再被空的 RAID 列表骗过。
+
+### 功能视角
+
+| 变更后设备能做 / 不能做 | 涉及 | 影响 / 替代方案 |
+|---|---|---|
+| **能**：首页磁盘信息列出系统根目录用量（与 r28 相同），不再空白或假结束 loading | `pin-quickstart.sh` 改 `index.js` loading 条件 | 等 `/nas/disk/status/`；空 RAID 列表不再提前收掉转圈 |
+| **仍不能**：侧栏「网络存储 / 磁盘阵列 / S.M.A.R.T.」；后台 `smartd` 轮询 | controller 仍删那两条 `entry`；Makefile 仍只拆 `+smartd` | 无数据盘不要这些页；查询仍用 smartctl+mdadm |
+
+### 包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 构建脚本 | `pin-quickstart.sh`：`index.js` 把 `!e(l).disks&&!e(l).raidList` 改成 `e(l).disks==null`；RAID/SMART 菜单删除、Makefile 依赖不变 |
+| seed | 不动（`smartmontools`/`drivedb`/`mdadm` 仍 `=y`，`smartd` 仍不写） |
+| 不加 | 侧栏 RAID/SMART 菜单；`smartd` |
+
+后续 AI：**不要**为了磁盘信息把 RAID/SMART 菜单加回；**不要**再把 r31 空白写成「U 盘不是系统盘」。

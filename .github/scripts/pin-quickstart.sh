@@ -9,10 +9,11 @@
 # 也显示（点进去再商店装 luci-app-oaf）。侧栏不要「网络存储」下的 RAID /
 # S.M.A.R.T.，也不要 luci-mod-system 的「挂载点」（无数据盘；那个包还带着备份
 # 与更新，只能 menu.d 关掉，不能从 seed 删）。Makefile 只拆 smartd（不要后台
-# 轮询）；留下 smartmontools+drivedb+mdadm。首页磁盘信息 Promise.all 同时等
-# /nas/disk/status/ 和 /raid/list/，缺 smartctl 或 mdadm 都会一直 loading
-# （§三十二/§三十三）。侧栏 RAID/SMART 菜单仍删。auto_setup 允许 gowebdav，
-# 拦住 samba/linkease/下载器/Docker/ddnsto。
+# 轮询）；留下 smartmontools+drivedb+mdadm。首页磁盘信息要等 Disk.Status；
+# 官方用 !disks&&!raidList，Raid.List 空数组是 truthy，mdadm 一回来卡片就
+# 空白（r31）。补丁改成 disks==null 才转圈。缺 smartctl/mdadm 仍会慢或空
+# （§三十二/§三十三/§三十四）。侧栏 RAID/SMART 菜单仍删。auto_setup 允许
+# gowebdav，拦住 samba/linkease/下载器/Docker/ddnsto。
 #
 # 必须在 feeds install 之后、make defconfig 之前跑（LuCI 符号这时才进 kconfig）。
 # clone 的副本不进 git，不算改源码。见 docs/CUSTOM-TRIMMING.md §二十三
@@ -262,6 +263,19 @@ else:
     raise SystemExit("::error::index.js 家长控制显示条件对不上，前端改版了要人工复核")
 if '{icon:"baby"' not in s or "luci-app-oaf" not in s:
     raise SystemExit("::error::首页没有家长控制入口")
+
+# 官方：!disks&&!raidList 才显示「正在获取」。raidList=[] 是 truthy，
+# mdadm 把 /raid/list/ 很快返回空阵列时，Disk.Status 还没到就会空白。
+load_old = "!e(l).disks&&!e(l).raidList"
+load_new = "e(l).disks==null"
+if s.count(load_old) == 1:
+    s = s.replace(load_old, load_new, 1)
+    print("index.js: 磁盘信息等到 Disk.Status 才结束 loading")
+elif load_new in s and load_old not in s:
+    print("index.js 磁盘信息已等 Disk.Status")
+else:
+    raise SystemExit("::error::index.js 磁盘信息 loading 条件对不上，前端改版了要人工复核")
+
 p.write_text(s, encoding="utf-8")
 PY
 
