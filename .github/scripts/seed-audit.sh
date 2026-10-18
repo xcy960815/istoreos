@@ -46,15 +46,13 @@ if grep -q '^CONFIG_PACKAGE_luci-theme-bootstrap=y$' .config; then
   echo "::error::luci-theme-bootstrap 又被加回；先跑 .github/scripts/drop-luci-theme-bootstrap.sh 再 defconfig。见 §二十四"
   fail=1
 fi
-for pkg in smartd luci-app-filetransfer; do
-  if grep -q "^CONFIG_PACKAGE_${pkg}=y$" .config; then
-    echo "::error::$pkg 又被加回（smartd 多半是 quickstart DEPENDS，filetransfer 见 §三十一）；先跑 pin-quickstart.sh 拆依赖或从 seed 确认已删"
-    fail=1
-  fi
-done
-for pkg in smartmontools smartmontools-drivedb mdadm; do
+if grep -q '^CONFIG_PACKAGE_luci-app-filetransfer=y$' .config; then
+  echo "::error::luci-app-filetransfer 又被加回（见 §三十一）"
+  fail=1
+fi
+for pkg in smartmontools smartmontools-drivedb smartd mdadm; do
   if ! grep -q "^CONFIG_PACKAGE_${pkg}=y$" .config; then
-    echo "::error::$pkg 没编进镜像，首页磁盘信息会一直 loading。见 §三十二/§三十三"
+    echo "::error::$pkg 没编进镜像，首页磁盘信息会一直 loading。见 §三十二/§三十三/§三十五（smartd 包含 /etc/smartd.conf，待 N100 验证）"
     fail=1
   fi
 done

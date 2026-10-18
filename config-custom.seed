@@ -23,7 +23,9 @@
 # 2026-10-17: 首页磁盘信息转圈：加回 smartmontools+drivedb（给 smartctl），smartd/mdadm
 #   和侧栏 SMART/RAID 仍不要。见 §三十二
 # 2026-10-18: r30 仍 loading：首页 Promise.all 还等 /raid/list/，加回 mdadm（侧栏
-#   磁盘阵列仍藏）。smartd 不要。见 §三十三
+#   磁盘阵列仍藏）。当时 smartd 不要。见 §三十三
+# 2026-10-18: r32 仍转圈：对照 r28 加回 smartd 包（含 /etc/smartd.conf；不认定
+#   必须跑后台）。侧栏 SMART 仍藏。seed 515→516。预期修复待 N100 验证。见 §三十五
 # 保留: 基础路由栈 + kmod-igc + tailscale(守护进程+LuCI) + iStore 商店(luci-app-store/dkml)
 #       + ddns-go(公网域名，2026-10-09 加回，feed 见 feeds.conf.default 的 ddnsgo)
 #       + openlist/vlmcsd/ttyd/wol 等仍保留的服务
@@ -534,6 +536,7 @@ CONFIG_PACKAGE_shadow-usermod=y
 CONFIG_PACKAGE_shadow-utils=y
 CONFIG_PACKAGE_shadow-vipw=y
 CONFIG_PACKAGE_shadow=y
+CONFIG_PACKAGE_smartd=y
 CONFIG_PACKAGE_smartmontools-drivedb=y
 CONFIG_PACKAGE_smartmontools=y
 CONFIG_PACKAGE_sqlite3-cli=y

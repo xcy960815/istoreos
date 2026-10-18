@@ -8,12 +8,14 @@
 # 不留空位），下载/远程域名整块仍删掉；快捷入口「家长控制」未装 oaf
 # 也显示（点进去再商店装 luci-app-oaf）。侧栏不要「网络存储」下的 RAID /
 # S.M.A.R.T.，也不要 luci-mod-system 的「挂载点」（无数据盘；那个包还带着备份
-# 与更新，只能 menu.d 关掉，不能从 seed 删）。Makefile 只拆 smartd（不要后台
-# 轮询）；留下 smartmontools+drivedb+mdadm。首页磁盘信息要等 Disk.Status；
-# 官方用 !disks&&!raidList，Raid.List 空数组是 truthy，mdadm 一回来卡片就
-# 空白（r31）。补丁改成 disks==null 才转圈。缺 smartctl/mdadm 仍会慢或空
-# （§三十二/§三十三/§三十四）。侧栏 RAID/SMART 菜单仍删。auto_setup 允许
-# gowebdav，拦住 samba/linkease/下载器/Docker/ddnsto。
+# 与更新，只能 menu.d 关掉，不能从 seed 删）。Makefile 保留官方四项 DEPENDS
+# （smartmontools/smartd/drivedb/mdadm）。旧构建树可能已经拆过 +smartd
+# （跳过 clone），脚本先加回再检查。r32 对照 r28：拆掉 smartd 包后
+# Disk.Status 一直不回来，更具体线索是缺 /etc/smartd.conf，尚不能认定
+# 必须跑 smartd 后台（§三十五，预期修复待 N100 验证）。首页磁盘信息等到
+# Disk.Status；官方 !disks&&!raidList 会把空 RAID 列表当加载完（r31 空白），
+# 补丁改成 disks==null 才转圈（§三十四）。侧栏 RAID/SMART 菜单仍删。
+# auto_setup 允许 gowebdav，拦住 samba/linkease/下载器/Docker/ddnsto。
 #
 # 必须在 feeds install 之后、make defconfig 之前跑（LuCI 符号这时才进 kconfig）。
 # clone 的副本不进 git，不算改源码。见 docs/CUSTOM-TRIMMING.md §二十三
@@ -57,22 +59,21 @@ grep -q "^PKG_VERSION:=${QS_VERSION}$" "$qs/Makefile" || {
   echo "::error::$qs PKG_VERSION 不是钉死的 ${QS_VERSION}，上游改了要人工复核"
   exit 1
 }
-# 无数据盘：官方 quickstart 硬依赖 SMART/RAID。smartd 不能留（后台轮询）。
-# 首页磁盘信息要 smartctl 和 mdadm（Raid.List），侧栏菜单另删。
+# 官方四项 DEPENDS。旧构建树可能已跳过 clone、Makefile 还停在拆掉 +smartd
+# 的裁剪版：先加回，再检查。侧栏菜单另删。
 python3 - "$qs/Makefile" <<'PY'
 import pathlib, sys
 p = pathlib.Path(sys.argv[1])
 s = p.read_text(encoding="utf-8")
-old = "+smartmontools +smartd +smartmontools-drivedb +mdadm "
-new = "+smartmontools +smartmontools-drivedb +mdadm "
-if old in s:
-    s = s.replace(old, new, 1)
+official = "+smartmontools +smartd +smartmontools-drivedb +mdadm "
+stripped = "+smartmontools +smartmontools-drivedb +mdadm "
+if official not in s and stripped in s:
+    s = s.replace(stripped, official, 1)
     p.write_text(s, encoding="utf-8")
-    print("quickstart Makefile: 去掉 smartd，保留 smartmontools/drivedb/mdadm")
-if "smartd" in s:
-    raise SystemExit("::error::quickstart Makefile 还依赖 smartd，拒绝继续")
-if "smartmontools" not in s or "+mdadm" not in s:
-    raise SystemExit("::error::quickstart Makefile 丢了 smartmontools/mdadm，首页磁盘信息会 loading")
+    print("quickstart Makefile: 从旧裁剪加回 +smartd")
+if official not in s:
+    raise SystemExit("::error::quickstart Makefile 没有官方四项 DEPENDS（要有 smartd+smartctl+mdadm）")
+print("quickstart Makefile: 官方四项 DEPENDS 都在（侧栏菜单另删）")
 PY
 
 luci=package/luci-app-quickstart
