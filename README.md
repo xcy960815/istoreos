@@ -1,117 +1,87 @@
-iStoreOS 是入门级的路由系统，也是入门级的 NAS 系统，
-基于原版 OpenWRT，在 ARS2 上经过长期迭代，最终开放适配到多个硬件平台
+# iStoreOS 裁剪版（J4125 网关）
 
-更多信息请参阅 https://github.com/istoreos
+这是 [istoreos/istoreos](https://github.com/istoreos/istoreos) 的维护 fork，不是官方发行。分支 `custom-24.10` 给家里的 **J4125 四口 2.5G（i226-V）** 编纯网关固件：Docker / NAS 已迁走，路由器只做路由、Tailscale 入口和公网 DDNS。
 
+当前基线：**r33**（N100 + 闪迪 USB 已验证）。**不要刷正在用的 J4125。**
 
-以下是 OpenWRT 原始的 README
---------
+镜像：[Releases](https://github.com/xcy960815/istoreos/releases)（tag `r<构建号>`）。刷 **EFI img**：解压 `*-squashfs-combined-efi.img.gz` 后整盘 `dd`。默认账号 `root`、空密码。
 
-![OpenWrt logo](include/logo.png)
+## 开箱有什么
 
-OpenWrt Project is a Linux operating system targeting embedded devices. Instead
-of trying to create a single, static firmware, OpenWrt provides a fully
-writable filesystem with package management. This frees you from the
-application selection and configuration provided by the vendor and allows you
-to customize the device through the use of packages to suit any application.
-For developers, OpenWrt is the framework to build an application without having
-to build a complete firmware around it; for users this means the ability for
-full customization, to use the device in ways never envisioned.
+QuickStart 首页（存储服务只留 WebDAV、家长控制常显、磁盘信息正常）、Argon 主题、Tailscale **1.104.1** + LuCI、DDNS-Go、OpenList、iStore 商店、网络唤醒、ttyd、vlmcsd、kmod-igc、irqbalance。侧栏保留「网络向导」和「系统 → 备份与升级」。
 
-Sunshine!
+刷完再从 iStore 商店按需装（**不在构建期**，写进 seed 也进不了镜像）：OpenClash、eqos、oaf、cpufreq、风扇、diskman、gowebdav、fastnet、floatip。
 
-## Download
+## 删了什么（未经要求不得加回）
 
-Built firmware images are available for many architectures and come with a
-package selection to be used as WiFi home router. To quickly find a factory
-image usable to migrate from a vendor stock firmware to OpenWrt, try the
-*Firmware Selector*.
+包名批次见 [`docs/CUSTOM-TRIMMING.md`](docs/CUSTOM-TRIMMING.md)。这里只记刷完机**不能再做什么**。
 
-* [OpenWrt Firmware Selector](https://firmware-selector.openwrt.org/)
+### 用户点名去掉的服务
 
-If your device is supported, please follow the **Info** link to see install
-instructions or consult the support resources listed below.
+| 不能再做 | 替代 / 备注 |
+|---|---|
+| 在路由器上跑 Docker / 容器管理 | 已迁 9400F |
+| Samba / 易有云 / unishare 文件共享 | 文件服务归 9400F/N100；OpenList WebDAV 保留 |
+| UPnP 自动端口映射 | 公网入口用防火墙手动转发 |
+| ddnsto / Linkease 穿透 | 远程走 Tailscale；公网走 DDNS-Go |
+| OpenWrt 自带 `luci-app-ddns` | 用 DDNS-Go，不要把这套加回来 |
+| Aria2 / Transmission 下载器 | 首页下载卡片一并去掉 |
+| 固件里在线升级（OTA） | Releases 下 img 整盘写，或「备份与升级」本地上传 |
+| WireGuard / unetd | 远程只走 Tailscale |
+| Bootstrap 第二主题 | 只留 Argon |
+| 侧栏「文件传输」 | 已删包 |
+| 首页 Samba / 易有云 / 下载 / Docker / ddnsto 卡片 | 存储服务只留 WebDAV |
 
-## 
+### 界面没有、查询工具还在
 
-An advanced user may require additional or specific package. (Toolchain, SDK, ...) For everything else than simple firmware download, try the wiki download page:
+| 看不见 | 实际还留着 | 原因 |
+|---|---|---|
+| 侧栏「网络存储 / 磁盘阵列 / S.M.A.R.T.」 | `smartd` + `smartctl` + `mdadm` | 给首页磁盘信息；无数据盘不要这些页 |
+| 「系统 → 挂载点」 | `luci-mod-system`、`block-mount` | 备份与升级同包，只能藏菜单 |
 
-* [OpenWrt Wiki Download](https://openwrt.org/downloads)
+### 按纯网关定位裁掉的能力
 
-## Development
+无对应硬件或场景，不是「以后可能用」：
 
-To build your own firmware you need a GNU/Linux, BSD or macOS system (case
-sensitive filesystem required). Cygwin is unsupported because of the lack of a
-case sensitive file system.
+- 无线 AP / USB 无线网卡
+- 3G/4G/5G 模组（手机 USB 共享网络仍可用）
+- USB 串口、并口、USB 摄像头、USB 声卡
+- 接显示器跑图形 / i915 加速
+- NFS 服务端、CIFS/davfs2 挂别人的盘、iSCSI、硬盘休眠、USB over IP
+- L2TP / PPTP / SSTP / GRE / IPIP / IPsec、链路聚合、中继
+- DS-Lite / MAP / SIT 等 IPv6 过渡隧道（原生 IPv6 还在）
+- KVM 虚拟化
+- 老式/万兆/Broadcom 等非保险网卡（保险只留 igc + e1000/e1000e/igb/r8169/r8125 + 主流 USB 网卡）
+- 老式交换机芯片、ISDN/ATM、SCTP、TPM 密钥环、htop/strace（后两者可事后 opkg 装回）
 
-### Requirements
+下一轮还能瘦、但还没动的候选在 `docs/CUSTOM-TRIMMING.md` §十六。
 
-You need the following tools to compile OpenWrt, the package names vary between
-distributions. A complete list with distribution specific packages is found in
-the [Build System Setup](https://openwrt.org/docs/guide-developer/build-system/install-buildsystem)
-documentation.
+## 试刷（N100）
 
-```
-binutils bzip2 diff find flex gawk gcc-6+ getopt grep install libc-dev libz-dev
-make4.1+ perl python3.7+ rsync subversion unzip which
-```
+N100 双口 Intel I225-V：第一口 WAN，第二口 LAN `192.168.100.1`。和家里 J4125 同网段，**不要插进家里交换机**。
 
-### Quickstart
+1. 从 Releases 下 r33 的 `combined-efi.img.gz`，解压后整盘写入 U 盘（macOS 用终端.app 的 `sudo dd`，Finder「无法读取」正常，不要初始化）。
+2. N100：U 盘优先启动，Secure Boot 关。
+3. 测试机网线接 **第二口**，静态 `192.168.100.2/24`，网关留空；关掉会抢这个网段的 Wi‑Fi。打开 http://192.168.100.1 。
 
-1. Run `./scripts/feeds update -a` to obtain all the latest package definitions
-   defined in feeds.conf / feeds.conf.default
+不要用双公头 USB 线连电脑和 N100。
 
-2. Run `./scripts/feeds install -a` to install symlinks for all obtained
-   packages into package/feeds/
+## 构建
 
-3. Run `make menuconfig` to select your preferred configuration for the
-   toolchain, target system & firmware packages.
+功能增删只改 `config-custom.seed`，不改源码。允许的例外只有：`feeds.conf.default` 的 `src-git ddnsgo`，以及 defconfig 前的 `pin-tailscale-prebuilt.sh`、`pin-quickstart.sh`、`drop-luci-theme-bootstrap.sh`。
 
-4. Run `make` to build your firmware. This will download all sources, build the
-   cross-compile toolchain and then cross-compile the GNU/Linux kernel & all chosen
-   applications for your target system.
+云端：GitHub Actions 工作流 `Build iStoreOS trimmed`，手动触发。本地步骤、上游同步、刷机注意见 [`BUILD-CUSTOM.md`](BUILD-CUSTOM.md)。
 
-### Related Repositories
+分支：`istoreos-24.10` 只 ff-only 跟踪官方；定制都在 `custom-24.10`。不为上游开 PR。
 
-The main repository uses multiple sub-repositories to manage packages of
-different categories. All packages are installed via the OpenWrt package
-manager called `opkg`. If you're looking to develop the web interface or port
-packages to OpenWrt, please find the fitting repository below.
+## 文档
 
-* [LuCI Web Interface](https://github.com/openwrt/luci): Modern and modular
-  interface to control the device via a web browser.
+| 文件 | 内容 |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) | 助手入口：纪律、例外、当前进度 |
+| [`docs/CUSTOM-TRIMMING.md`](docs/CUSTOM-TRIMMING.md) | 裁剪记录（改 seed 必同步更新） |
+| [`docs/HOME-SERVER-BACKGROUND.md`](docs/HOME-SERVER-BACKGROUND.md) | 全家设备分工和为什么这样裁 |
+| [`docs/CI-HISTORY.md`](docs/CI-HISTORY.md) | CI 失败复盘 |
+| [`BUILD-CUSTOM.md`](BUILD-CUSTOM.md) | 构建、刷机、同步上游 |
 
-* [OpenWrt Packages](https://github.com/openwrt/packages): Community repository
-  of ported packages.
-
-* [OpenWrt Routing](https://github.com/openwrt/routing): Packages specifically
-  focused on (mesh) routing.
-
-* [OpenWrt Video](https://github.com/openwrt/video): Packages specifically
-  focused on display servers and clients (Xorg and Wayland).
-
-## Support Information
-
-For a list of supported devices see the [OpenWrt Hardware Database](https://openwrt.org/supported_devices)
-
-### Documentation
-
-* [Quick Start Guide](https://openwrt.org/docs/guide-quick-start/start)
-* [User Guide](https://openwrt.org/docs/guide-user/start)
-* [Developer Documentation](https://openwrt.org/docs/guide-developer/start)
-* [Technical Reference](https://openwrt.org/docs/techref/start)
-
-### Support Community
-
-* [Forum](https://forum.openwrt.org): For usage, projects, discussions and hardware advise.
-* [Support Chat](https://webchat.oftc.net/#openwrt): Channel `#openwrt` on **oftc.net**.
-
-### Developer Community
-
-* [Bug Reports](https://bugs.openwrt.org): Report bugs in OpenWrt
-* [Dev Mailing List](https://lists.openwrt.org/mailman/listinfo/openwrt-devel): Send patches
-* [Dev Chat](https://webchat.oftc.net/#openwrt-devel): Channel `#openwrt-devel` on **oftc.net**.
-
-## License
-
-OpenWrt is licensed under GPL-2.0
+上游项目：[iStoreOS](https://github.com/istoreos/istoreos)（基于 OpenWrt，GPL-2.0）。本仓库只做需求裁剪和本地修复。
