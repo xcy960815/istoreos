@@ -2,7 +2,7 @@
 
 这是 [istoreos/istoreos](https://github.com/istoreos/istoreos) 的维护 fork，不是官方发行。分支 `custom-24.10` 给家里的 **J4125 四口 2.5G（i226-V）** 编纯网关固件：Docker / NAS 已迁走，路由器只做路由、Tailscale 入口和公网 DDNS。
 
-当前基线：**r33**（N100 + 闪迪 USB 已验证）。**不要刷正在用的 J4125。**
+当前基线：**r33**（N100 闪迪 USB 已验证，傲腾已写入）。J4125 刷机前备份见维护机 `~/Documents/j4125-backup-20261018/`（还原用 1019 那份，不要整包灌）。未确认现场已刷前，不要远程动正在用的 J4125。
 
 镜像：[Releases](https://github.com/xcy960815/istoreos/releases)（tag `r<构建号>`）。刷 **EFI img**：解压 `*-squashfs-combined-efi.img.gz` 后整盘 `dd`。默认账号 `root`、空密码。
 

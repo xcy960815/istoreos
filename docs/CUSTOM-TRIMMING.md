@@ -4,9 +4,13 @@
 > 用于为家里的 J4125 四口 2.5G 软路由（LAN IP `192.168.100.1`）构建裁剪版固件。
 > 用户在 2026-10-05 明确要求删除下列功能，**除非用户再次明确要求，不得在 seed 中加回**。
 
-## 当前进度（2026-10-18 夜，后续 AI 先读这里）
+## 当前进度（2026-10-19 夜，后续 AI 先读这里）
 
-**N100 已验证 r33**（`680cb032d5`，闪迪 USB 整盘）：首页磁盘信息有系统根目录用量；侧栏**没有**「网络存储 / 磁盘阵列 / S.M.A.R.T.」；存储服务只留 WebDAV、家长控制常显。seed `=y` **516**。下一步验机仍以 r33 为准；**禁止动 J4125**。
+**N100 已验证 r33**（`680cb032d5`）：首页磁盘信息有系统根目录；侧栏无 RAID/SMART。seed `=y` **516**。r33 已整盘写入 N100 机内 **16G 傲腾**（`MPEK1J016GAL`）。
+
+**J4125 刷裁剪版：备份已齐，本对话未确认已经刷上。** 2026-10-19 18:19 SSH 仍是官方 `24.10.8 2026073111`。配置包在维护机 `~/Documents/j4125-backup-20261018/`，**还原用 `j4125-keep-20261019.tar.gz`**（昨晚 1018 之后 OpenClash/DHCP 又写过盘）。含端口转发、OpenClash 两份 YAML+custom、DDNS-Go yaml、OpenList 库、Tailscale state、PPPoE、DHCP 静态租约。**不要整包还原**（会把 Docker/Samba/UPnP 加回）。`/mnt/sata1-4` 按用户要求没拷；gowebdav 根目录和系统日志仍指着这块盘，刷完路径会空。明细 §三十六。
+
+**不要**：把 Docker 加回网关（含为 nginx-proxy-manager）；用 Open-Box 换掉生产 OpenClash；把 ISO 当安装盘；整盘 `dd` 到 Ventoy。二级域名反代若做，放 **9400F**，J4125 只 DNAT 80/443。
 
 首页磁盘卡片要 `smartd` 包（含 `/etc/smartd.conf`）+ `smartctl` + `mdadm`；侧栏 RAID/SMART 仍从 controller 删除。r28 有菜单+磁盘信息；r29 拆工具后 loading；r31 空白（Raid.List 空数组提前结束转圈）；r32 等到 Disk.Status 仍转圈（无 smartd 包）。**尚未证明必须跑 smartd 后台进程**，不要为了「无盘」再拆这个包。明细 §二十三、§三十一～§三十五。
 
@@ -841,3 +845,39 @@ r32 已含 smartctl、mdadm、§三十四 的 loading 补丁，N100 首页仍显
 | 不加 | 侧栏 RAID/SMART 菜单 |
 
 后续 AI：**不要**再把 `smartd` 包当「无盘所以多余」从 seed/Makefile 拆掉；**不要**为了这个包把侧栏 SMART 页加回来；**不要**把本批写成「已经证实必须跑 smartd 后台」（N100 只验证了加回这个包之后卡片正常）。
+
+## 三十六、刷机前备份与本轮决策（2026-10-18 夜～10-19，无 seed 变更）
+
+本轮没有改固件内容。r33 已在 N100 验证；用户准备把 J4125 换成裁剪版，先备份、先写盘、再讨论负载和反代。
+
+### 写盘 / Ventoy
+
+- OpenWrt/iStoreOS 的 `*-image-efi.iso` **只是 LiveCD**，Ventoy 点开不会往傲腾里装。装系统必须整盘 `combined-efi.img`（或解压 `.img.gz`）。
+- 官方回退：KoolCenter `x86_64_efi` 的 **24.10.8 `2026073111`**（与当时 J4125 正在跑的版本相同）。官方这版没有 ISO，只有 img。
+- Ventoy（OnlyDisk 31G）上给 WePE 用的是**已解压**的 img（WePE 没有解压软件）：`istoreos-custom-r33-…combined-efi.img`、`istoreos-official-24.10.8-2026073111-…combined-efi.img`。`.gz` 已删。**不要 dd 到 Ventoy 自己那根盘。**
+- N100 机内 16G 傲腾 `MPEK1J016GAL`（14.4G）已整盘写入 r33。BIOS 不要当 RST 缓存。
+
+### J4125 配置备份（维护机，不进 git）
+
+路径：`~/Documents/j4125-backup-20261018/`
+
+| 文件 | 用途 |
+|---|---|
+| **`j4125-keep-20261019.tar.gz`** | 刷完抽配置用这个。sysupgrade 全量：firewall 转发、PPPoE、`chap-secrets`、DHCP 静态租约、shadow/dropbear、uhttpd 证书、Tailscale `tailscaled.state`、DDNS-Go yaml、OpenClash（`crosswall`/`yuyunsvip` + custom 防火墙/规则）、OpenList（`config.json` + `data.db`/`wal`/`shm`）、eqos/oaf/gowebdav/fastnet |
+| `j4125-extra-20261019.tgz` | sysupgrade 没收的：`/etc/tailscale/files`、`/root/Configs/OpenClawMgr`（插件关着）、`/etc/atvloadly` 残留（服务已迁 `.243`） |
+| `j4125-keep-20261018.tar.gz` | 昨晚 23:02 旧份。之后 OpenClash/DHCP/`crosswall.yaml` 在 10-19 00:11 又写过盘，不要用这份还原 |
+| `j4125-opkg-installed-20261018.txt` | 当时 1111 个已装包 |
+
+**不要整包还原。** 会把 Docker/Samba/UPnP/ddnsto/Aria2/Transmission 加回 r33。先恢复 network/dhcp/firewall/shadow，商店装 OpenClash 再盖配置目录；DDNS-Go/OpenList/Tailscale 固件里已有，拷对应文件即可。
+
+`/mnt/sata1-4` 用户明确不要备份。刷完注意：gowebdav 根目录和 `system.log_file` 仍指向这块盘，路径会空；公网 WebDAV（6086）要改目录或关掉。
+
+2026-10-19 18:19 SSH 确认机器仍是官方 24.10.8；**本对话没有确认 J4125 已经刷上 r33。** 未明确要求前不要远程刷主路由。
+
+### 讨论结论（未改 seed）
+
+- **OpenClash 继续用。** 用户问的 Open-Box 是本地仓 `~/Documents/my-repositories/Open-Box`（[liandu2024/Open-Box](https://github.com/liandu2024/Open-Box)）：闭源面板 + 魔改 sing-box，不是 iStore 的 HomeBox 测速。产品更新，但生产网关已有两年 Clash YAML 和备份；裁剪版还缺它要的 `kmod-veth`/`kmod-nft-queue`。不要和刷机一起换栈，不要和 OpenClash 同时开。想试去 N100 旁路。
+- **不要为 nginx-proxy-manager 把 Docker 加回 J4125。** 二级域名反代值得做，放 **9400F**；网关只 DNAT 80/443。LuCI 不要占公网 80（现成是 1996）。家人服务可走 Tailscale，不必全暴露。
+- 去掉 Docker 后首页 CPU 0%、内存 7%、50°C 是网关空闲正常值，不是浪费。计算放 9400F，J4125 留转发余量。irqbalance/eqos/oaf 可以；数据库/Jellyfin/embedding 不行。
+
+后续 AI：**不要**把 Docker/Samba/UPnP 加回 seed；**不要**把 Open-Box 写进固件；**不要**整包还原 1018/1019 tar；**不要**把 ISO 写成安装盘；J4125 是否已刷以现场 `ubus call system board` 为准，不要根据本对话臆测。

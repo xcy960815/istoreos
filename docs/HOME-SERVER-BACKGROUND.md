@@ -26,6 +26,7 @@
 
 ## 三、网络架构
 
+- 去掉 Docker 后网关空闲（约 CPU 0% / 内存 7% / 50°C）是预期，不是浪费；计算在 9400F。生产代理继续 **OpenClash**（已备份 YAML），不要换成闭源 Open-Box（`~/Documents/my-repositories/Open-Box`）
 - 家庭网段 `192.168.100.0/24`，网关 = J4125（192.168.100.1）
 - **远程两条路并行**：① 家人设备走 **Tailscale**（路由器 `100.116.149.47`，已开 exit node；网内有 iPhone、两台 MacBook）；② **公网域名走 DDNS-Go**（宽带有公网 IP + 免费域名，网关必须开箱带 DDNS-Go）。不要写成「只用 Tailscale、不用 DDNS」。公网入口用防火墙手动端口转发，不上 UPnP、不用 OpenWrt 自带 `luci-app-ddns`、不用 ddnsto
 - 9400F 装好后将 DHCP 静态绑定 **192.168.100.10**，有线接路由器 LAN 口
@@ -76,9 +77,10 @@
 - [ ] 12600KF 组装（B660M DDR4 + 1060 过渡）
 - [ ] 闲鱼收 3060 12G → 1060 回服务器
 - [ ] 数据库备份体系（先本地，N100 到位后异地）
-- [x] **iStoreOS 裁剪版云端构建成功**（r10，`istoreos-x86_64-trimmed-r10`，EFI 用 `*-squashfs-combined-efi.img.gz`）
-- [ ] **N100 试刷**（进行中：img 写普通 U 盘启动；不要双公头线、不要写 Ventoy 盘、LAN 不要进家用交换机）。细节见 `docs/CUSTOM-TRIMMING.md` 文首「当前进度」
-- [ ] **J4125 刷入裁剪版**（必须 N100 验证通过后再做，禁止远程直接刷主路由）
+- [x] **iStoreOS 裁剪版云端构建成功**（当前基线 **r33**；EFI 用解压后的 `*-squashfs-combined-efi.img` 整盘写入）
+- [x] **N100 试刷 r33**（闪迪 USB 验证过首页磁盘信息；16G 傲腾 `MPEK1J016GAL` 已写入 r33）。ISO 只是 LiveCD，不能当安装盘；不要双公头线、不要 dd 到 Ventoy
+- [ ] **J4125 刷入裁剪版**（N100 已通过；配置备份已做，见 `docs/CUSTOM-TRIMMING.md` §三十六。2026-10-19 18:19 仍是官方 24.10.8，本对话未确认已刷。禁止未授权远程直接刷主路由）
+- [ ] **公网改二级域名**：反代（NPM/Caddy/nginx）放 **9400F**，J4125 只 DNAT 80/443；**不要**为这个把 Docker 加回网关
 - [ ] N100 内存确认 / 哨兵岗位上岗
 
 ## 九、相关资料索引
