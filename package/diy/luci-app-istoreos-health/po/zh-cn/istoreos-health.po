@@ -4,8 +4,8 @@ msgstr "Content-Type: text/plain; charset=UTF-8\n"
 msgid "Health Check"
 msgstr "健康巡检"
 
-msgid "Daily health inspection (Tailscale / firewall / durable helper / DNS). Optional Telegram and email notify. Secrets are stored in /etc/config/istoreos-health (mode 600) and are never written to health logs."
-msgstr "每日健康巡检（Tailscale / 防火墙 / 耐久 helper / DNS）。可选 Telegram 与邮件通知。密钥保存在 /etc/config/istoreos-health（权限 600），不会写入巡检日志。"
+msgid "Daily health inspection (Tailscale / firewall / durable helper / DNS). Optional Telegram notify. Bot token is stored in /etc/config/istoreos-health (mode 600) and is never written to health logs."
+msgstr "每日健康巡检（Tailscale / 防火墙 / 耐久 helper / DNS）。可选 Telegram 通知。Bot token 保存在 /etc/config/istoreos-health（权限 600），不会写入巡检日志。"
 
 msgid "Notification"
 msgstr "通知"
@@ -31,50 +31,14 @@ msgstr "Bot Token"
 msgid "Chat ID"
 msgstr "Chat ID"
 
-msgid "Email (SMTP)"
-msgstr "邮件（SMTP）"
-
-msgid "SMTP host"
-msgstr "SMTP 主机"
-
-msgid "SMTP port"
-msgstr "SMTP 端口"
-
-msgid "TLS mode"
-msgstr "TLS 模式"
-
-msgid "SMTPS (implicit TLS, typically 465)"
-msgstr "SMTPS（隐式 TLS，常用 465）"
-
-msgid "STARTTLS (typically 587)"
-msgstr "STARTTLS（常用 587）"
-
-msgid "No TLS (not recommended)"
-msgstr "无 TLS（不推荐）"
-
-msgid "SMTP username"
-msgstr "SMTP 用户名"
-
-msgid "SMTP password"
-msgstr "SMTP 密码"
-
-msgid "From address"
-msgstr "发件地址"
-
-msgid "To address"
-msgstr "收件地址"
-
 msgid "Actions"
 msgstr "操作"
 
-msgid "Save settings above first. Test buttons do not print secrets."
+msgid "Save settings above first. Test button does not print secrets."
 msgstr "请先保存上方配置。测试按钮不会输出密钥。"
 
 msgid "Test Telegram"
 msgstr "测试 Telegram"
-
-msgid "Test Email"
-msgstr "测试邮件"
 
 msgid "Run health now"
 msgstr "立即巡检"

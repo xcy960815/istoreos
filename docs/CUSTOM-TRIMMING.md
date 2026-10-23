@@ -975,34 +975,32 @@ sed -i '/istoreos-health/d' /etc/crontabs/root; /etc/init.d/cron reload
 
 后续 AI：**不要**让备份失败中止 OTA；**不要**把备份目录改到会在 keep-settings=否 时仍幻想幸存却未挂数据盘的路径而不说明；改巡检项只动 `package/diy/istoreos-ops/files/`。
 
-## 三十九、健康巡检 Telegram / 邮件通知 + LuCI（2026-10-23，用户明确要求）
+## 三十九、健康巡检 Telegram 通知 + LuCI（2026-10-23，用户明确要求；同日去掉邮件）
 
 ### 背景
 
-§三十八 的 `istoreos-health` 已有 cron 与报告文件，但失败时要人盯 `/var/log`。用户要求：Telegram + 邮件双通道，LuCI **服务 → 健康巡检** 可配；密钥不进世界可读日志。
+§三十八 的 `istoreos-health` 已有 cron 与报告文件，但失败时要人盯 `/var/log`。用户要求 Telegram 通知 + LuCI **服务 → 健康巡检**；密钥不进世界可读日志。**不要邮件/SMTP**（曾短时加入，已按用户要求删除）。
 
 ### 功能视角
 
 | 变更后设备能做什么 | 涉及 | 说明 |
 |---|---|---|
-| LuCI **服务 → 健康巡检** | `luci-app-istoreos-health` | 开通知、失败/总是、Telegram token+chat（测试按钮）、SMTP host/port/user/pass/from/to/TLS、立即巡检 |
+| LuCI **服务 → 健康巡检** | `luci-app-istoreos-health` | 开通知、失败/总是、Telegram token+chat（测试按钮）、立即巡检 |
 | 失败（或总是）发 Telegram | `istoreos-health-notify` + Bot API | 依赖已有 `curl`；token 写在 600 的 curl `--config` 临时文件，不进 logger |
-| 失败（或总是）发邮件 | 同上 | **优先 curl SMTP**（smtps/starttls）；若失败且机上有 `msmtp` 再回退。seed **不**烘焙 msmtp |
-| 密钥保护 | `/etc/config/istoreos-health` mode 600 | uci-defaults + 每次 notify 再 chmod；巡检日志只含 RESULT/OK/FAIL 文本，无 token/密码 |
+| 密钥保护 | `/etc/config/istoreos-health` mode 600 | uci-defaults + 每次 notify 再 chmod；巡检日志只含 RESULT/OK/FAIL 文本，无 token |
 
 ### 包名 / 构建明细
 
 | 动作 | 内容 |
 |---|---|
-| 扩展 | `package/diy/istoreos-ops` → 1.1.0：`istoreos-health-notify`、`/etc/config/istoreos-health`；`DEPENDS+=curl` |
+| 扩展 | `package/diy/istoreos-ops`：`istoreos-health-notify`、`/etc/config/istoreos-health`；`DEPENDS+=curl`（现 1.1.1，仅 Telegram） |
 | 新增 | `package/diy/luci-app-istoreos-health` + `po/zh-cn` |
-| seed `=y` | `luci-app-istoreos-health`、`luci-i18n-istoreos-health-zh-cn`（`CONFIG_PACKAGE_*` 521） |
-| 不加 | `msmtp`（可选 opkg；文档说明即可） |
+| seed `=y` | `luci-app-istoreos-health`、`luci-i18n-istoreos-health-zh-cn` |
+| 不加 | 邮件/SMTP/`msmtp` |
 
 ### 机上配置
 
-1. LuCI → **服务 → 健康巡检**：启用通知 → 选「仅失败时」或「总是」→ 填 Telegram 和/或 SMTP → **保存** → 点「测试 Telegram / 测试邮件」。
+1. LuCI → **服务 → 健康巡检**：启用通知 → 选「仅失败时」或「总是」→ 填 Telegram → **保存** → 点「测试 Telegram」。
 2. CLI：`uci set istoreos-health.notify.enabled=1` …；`istoreos-health-notify test-telegram`；`istoreos-health`（失败会按 when 发送）。
-3. 依赖：固件已有 `curl`（seed）。要用 msmtp 回退时自行 `opkg install msmtp`，不必改 seed。
 
-后续 AI：**不要**把 bot token / SMTP 密码写进 `logger`、健康 report 或 cron 日志；**不要**为邮件强行加 `CONFIG_PACKAGE_msmtp=y`（除非用户明确要求）。
+后续 AI：**不要**把 bot token 写进 `logger`、健康 report 或 cron 日志；**不要**加回邮件/SMTP 通知（除非用户再次明确要求）。

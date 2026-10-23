@@ -1,13 +1,12 @@
 #!/bin/sh
-# Notify after istoreos-health. Secrets never go to logger/stdout.
-# Transports: Telegram Bot API (curl); email via curl SMTP (preferred) or msmtp if present.
-# See docs/CUSTOM-TRIMMING.md §三十八 / §三十九.
+# Telegram notify after istoreos-health. Secrets never go to logger/stdout.
+# Transport: Telegram Bot API via curl.
+# See docs/CUSTOM-TRIMMING.md §三十九.
 
 LOGTAG=istoreos-health-notify
 UCI_SEC=istoreos-health.notify
 
 log() { logger -t "$LOGTAG" "$*"; }
-# Never print token/password/chat bodies with secrets
 say() { echo "$*"; }
 
 uci_get() { uci -q get "$UCI_SEC.$1"; }
@@ -19,10 +18,9 @@ harden_cfg() {
 }
 harden_cfg
 
-
 usage() {
 	cat <<USAGE
-usage: istoreos-health-notify {after-health <rc> [report]|test-telegram|test-email}
+usage: istoreos-health-notify {after-health <rc> [report]|test-telegram}
 USAGE
 }
 
@@ -30,7 +28,6 @@ hostname_s() {
 	uci -q get system.@system[0].hostname 2>/dev/null || cat /proc/sys/kernel/hostname 2>/dev/null || echo istoreos
 }
 
-# Write curl --config fragment; caller must rm. chmod 600.
 mk_curl_cfg() {
 	local f
 	f=$(mktemp /tmp/istoreos-notify.XXXXXX) || return 1
@@ -46,7 +43,6 @@ send_telegram() {
 	command -v curl >/dev/null 2>&1 || { say "telegram: curl missing"; return 1; }
 
 	cfg=$(mk_curl_cfg) || return 1
-	# Token only inside 600 config file, not argv of long-lived process listing if possible
 	url="https://api.telegram.org/bot${token}/sendMessage"
 	{
 		echo "url = \"$url\""
@@ -56,7 +52,6 @@ send_telegram() {
 		echo "max-time = 60"
 	} >"$cfg"
 
-	# shellcheck disable=SC2034
 	ec=0
 	if curl -K "$cfg" -X POST \
 		--data-urlencode "chat_id=${chat}" \
@@ -80,163 +75,14 @@ send_telegram() {
 	return "$ec"
 }
 
-build_mail_file() {
-	local subject=$1 body=$2 from=$3 to=$4 out=$5
-	# RFC822-ish; curl -T sends as DATA
-	{
-		printf 'From: %s\r\n' "$from"
-		printf 'To: %s\r\n' "$to"
-		printf 'Subject: %s\r\n' "$subject"
-		printf 'MIME-Version: 1.0\r\n'
-		printf 'Content-Type: text/plain; charset=UTF-8\r\n'
-		printf '\r\n'
-		printf '%s\n' "$body"
-	} >"$out"
-	chmod 600 "$out"
-}
-
-send_email_curl() {
-	local subject=$1 body=$2
-	local host port user pass from to tls cfg msg url ec userline
-
-	host=$(uci_get smtp_host)
-	port=$(uci_get smtp_port); port=${port:-465}
-	user=$(uci_get smtp_user)
-	pass=$(uci_get smtp_pass)
-	from=$(uci_get smtp_from)
-	to=$(uci_get smtp_to)
-	tls=$(uci_get smtp_tls); tls=${tls:-smtps}
-
-	[ -n "$host" ] && [ -n "$from" ] && [ -n "$to" ] || {
-		say "email: skip (host/from/to empty)"
-		return 1
-	}
-	command -v curl >/dev/null 2>&1 || { say "email: curl missing"; return 1; }
-
-	case "$tls" in
-		smtps|on|1) url="smtps://${host}:${port}" ;;
-		starttls) url="smtp://${host}:${port}" ;;
-		off|0) url="smtp://${host}:${port}" ;;
-		*) url="smtps://${host}:${port}" ;;
-	esac
-
-	msg=$(mktemp /tmp/istoreos-mail.XXXXXX) || return 1
-	build_mail_file "$subject" "$body" "$from" "$to" "$msg" || { rm -f "$msg"; return 1; }
-
-	cfg=$(mk_curl_cfg) || { rm -f "$msg"; return 1; }
-	{
-		echo "url = \"$url\""
-		echo "silent"
-		echo "show-error"
-		echo "connect-timeout = 15"
-		echo "max-time = 90"
-		case "$tls" in
-			smtps|on|1|starttls) echo "ssl-reqd" ;;
-		esac
-		if [ -n "$user" ]; then
-			# Escape double quotes in pass for curl config
-			userline=$(printf '%s:%s' "$user" "$pass" | sed 's/"/\\"/g')
-			echo "user = \"$userline\""
-		fi
-		echo "mail-from = \"$from\""
-		echo "mail-rcpt = \"$to\""
-	} >"$cfg"
-
-	if curl -K "$cfg" -T "$msg" >/dev/null 2>/tmp/istoreos-mail.err; then
-		say "email: ok (curl smtp)"
-		log "email: ok (curl smtp)"
-		ec=0
-	else
-		say "email: curl smtp failed"
-		log "email: curl smtp failed"
-		ec=1
-	fi
-	rm -f "$cfg" "$msg" /tmp/istoreos-mail.err
-	return "$ec"
-}
-
-send_email_msmtp() {
-	local subject=$1 body=$2
-	local host port user pass from to tls cfg msg ec
-
-	command -v msmtp >/dev/null 2>&1 || return 1
-	host=$(uci_get smtp_host)
-	port=$(uci_get smtp_port); port=${port:-465}
-	user=$(uci_get smtp_user)
-	pass=$(uci_get smtp_pass)
-	from=$(uci_get smtp_from)
-	to=$(uci_get smtp_to)
-	tls=$(uci_get smtp_tls); tls=${tls:-smtps}
-	[ -n "$host" ] && [ -n "$from" ] && [ -n "$to" ] || return 1
-
-	cfg=$(mktemp /tmp/istoreos-msmtp.XXXXXX) || return 1
-	chmod 600 "$cfg"
-	{
-		echo "defaults"
-		echo "auth on"
-		echo "logfile /dev/null"
-		case "$tls" in
-			off|0) echo "tls off" ;;
-			starttls) echo "tls on"; echo "tls_starttls on" ;;
-			*) echo "tls on"; echo "tls_starttls off" ;;
-		esac
-		echo "account default"
-		echo "host $host"
-		echo "port $port"
-		echo "from $from"
-		[ -n "$user" ] && echo "user $user"
-		[ -n "$pass" ] && echo "password $pass"
-		echo "account default : default"
-	} >"$cfg"
-
-	msg=$(mktemp /tmp/istoreos-mail.XXXXXX) || { rm -f "$cfg"; return 1; }
-	build_mail_file "$subject" "$body" "$from" "$to" "$msg"
-	if msmtp --file="$cfg" -t <"$msg" >/dev/null 2>/tmp/istoreos-mail.err; then
-		say "email: ok (msmtp)"
-		log "email: ok (msmtp)"
-		ec=0
-	else
-		say "email: msmtp failed"
-		log "email: msmtp failed"
-		ec=1
-	fi
-	rm -f "$cfg" "$msg" /tmp/istoreos-mail.err
-	return "$ec"
-}
-
-send_email() {
-	local subject=$1 body=$2
-	if send_email_curl "$subject" "$body"; then
-		return 0
-	fi
-	# Fallback when curl SMTP unavailable/broken but msmtp installed (optional opkg)
-	if command -v msmtp >/dev/null 2>&1; then
-		send_email_msmtp "$subject" "$body"
-		return $?
-	fi
-	return 1
-}
-
-compose_and_send() {
-	local subject=$1 body=$2 rc_tg=0 rc_em=0 any=0
-	[ "$(uci_get telegram)" = 1 ] && {
-		any=1
-		send_telegram "$body" || rc_tg=1
-	}
-	[ "$(uci_get email)" = 1 ] && {
-		any=1
-		send_email "$subject" "$body" || rc_em=1
-	}
-	[ "$any" = 1 ] || { say "notify: no channel enabled"; return 1; }
-	[ "$rc_tg" = 0 ] && [ "$rc_em" = 0 ]
-}
-
 do_after_health() {
 	local rc=${1:-1} report=${2:-/tmp/istoreos-health.report}
 	local when enabled host subject body snippet
 
 	enabled=$(uci_get enabled)
 	[ "$enabled" = 1 ] || { say "notify: disabled"; return 0; }
+
+	[ "$(uci_get telegram)" = 1 ] || { say "notify: telegram channel off"; return 0; }
 
 	when=$(uci_get when); when=${when:-fail}
 	case "$when" in
@@ -254,14 +100,13 @@ do_after_health() {
 	fi
 	snippet=$(head -c 3500 "$report" 2>/dev/null || echo "(no report)")
 	body=$(printf '%s\nrc=%s\n\n%s\n' "$subject" "$rc" "$snippet")
-	compose_and_send "$subject" "$body"
+	send_telegram "$body"
 }
 
 do_test_telegram() {
 	local host body
 	host=$(hostname_s)
 	body="istoreos-health Telegram test from $host at $(date '+%Y-%m-%d %H:%M:%S %z')"
-	# Force channel regardless of enabled flags for explicit test
 	if [ -z "$(uci_get tg_token)" ] || [ -z "$(uci_get tg_chat_id)" ]; then
 		say "telegram: configure token and chat id first"
 		return 1
@@ -269,24 +114,11 @@ do_test_telegram() {
 	send_telegram "$body"
 }
 
-do_test_email() {
-	local host subject body
-	host=$(hostname_s)
-	subject="[istoreos-health] email test on $host"
-	body="istoreos-health email test from $host at $(date '+%Y-%m-%d %H:%M:%S %z')"
-	if [ -z "$(uci_get smtp_host)" ] || [ -z "$(uci_get smtp_from)" ] || [ -z "$(uci_get smtp_to)" ]; then
-		say "email: configure smtp host/from/to first"
-		return 1
-	fi
-	send_email "$subject" "$body"
-}
-
 cmd=${1:-}
 shift 2>/dev/null || true
 case "$cmd" in
 	after-health) do_after_health "$@" ;;
 	test-telegram) do_test_telegram ;;
-	test-email) do_test_email ;;
 	""|-h|--help|help) usage; exit 0 ;;
 	*) usage; exit 1 ;;
 esac

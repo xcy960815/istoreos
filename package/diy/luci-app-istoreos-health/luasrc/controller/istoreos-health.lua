@@ -10,7 +10,6 @@ function index()
 	end
 	entry({"admin", "services", "istoreos-health"}, cbi("istoreos-health"), _("Health Check"), 92).dependent = true
 	entry({"admin", "services", "istoreos-health", "test_telegram"}, post("action_test_telegram")).leaf = true
-	entry({"admin", "services", "istoreos-health", "test_email"}, post("action_test_email")).leaf = true
 	entry({"admin", "services", "istoreos-health", "run_health"}, post("action_run_health")).leaf = true
 end
 
@@ -21,7 +20,6 @@ local function run_notify(cmd)
 	local e = fs.readfile("/tmp/istoreos-notify-luci.err") or ""
 	fs.unlink("/tmp/istoreos-notify-luci.out")
 	fs.unlink("/tmp/istoreos-notify-luci.err")
-	-- strip anything that looks like a token/password just in case
 	o = o:gsub("bot%d+:%S+", "bot***:***")
 	e = e:gsub("bot%d+:%S+", "bot***:***")
 	local code = 1
@@ -35,12 +33,6 @@ end
 
 function action_test_telegram()
 	local code, o, e = run_notify("/usr/sbin/istoreos-health-notify test-telegram")
-	luci.http.prepare_content("application/json")
-	luci.http.write_json({ code = code, msg = (o ~= "" and o or e) })
-end
-
-function action_test_email()
-	local code, o, e = run_notify("/usr/sbin/istoreos-health-notify test-email")
 	luci.http.prepare_content("application/json")
 	luci.http.write_json({ code = code, msg = (o ~= "" and o or e) })
 end

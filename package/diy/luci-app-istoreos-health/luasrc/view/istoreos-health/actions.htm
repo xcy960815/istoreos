@@ -1,12 +1,11 @@
 <%#
-  Actions: test Telegram / test email / run health now
+  Actions: test Telegram / run health now
 -%>
 <div class="cbi-section">
 	<h3><%:Actions%></h3>
-	<p class="cbi-section-descr"><%:Save settings above first. Test buttons do not print secrets.%></p>
+	<p class="cbi-section-descr"><%:Save settings above first. Test button does not print secrets.%></p>
 	<p>
 		<button type="button" class="cbi-button cbi-button-apply" id="btn-test-tg"><%:Test Telegram%></button>
-		<button type="button" class="cbi-button cbi-button-apply" id="btn-test-email"><%:Test Email%></button>
 		<button type="button" class="cbi-button cbi-button-reload" id="btn-run-health"><%:Run health now%></button>
 	</p>
 	<pre id="istoreos-health-action-out" style="white-space:pre-wrap;max-height:24em;overflow:auto;"></pre>
@@ -26,9 +25,6 @@
 	};
 	document.getElementById('btn-test-tg').onclick = function(){
 		post('<%=url("admin/services/istoreos-health/test_telegram")%>', this);
-	};
-	document.getElementById('btn-test-email').onclick = function(){
-		post('<%=url("admin/services/istoreos-health/test_email")%>', this);
 	};
 	document.getElementById('btn-run-health').onclick = function(){
 		post('<%=url("admin/services/istoreos-health/run_health")%>', this);

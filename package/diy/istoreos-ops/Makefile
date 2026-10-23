@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=istoreos-ops
-PKG_VERSION:=1.1.0
+PKG_VERSION:=1.1.1
 PKG_RELEASE:=1
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=xcy960815 <xcy960815@users.noreply.github.com>
@@ -18,7 +18,7 @@ endef
 
 define Package/istoreos-ops/description
   Curated config backup before OTA flash, health checks (Tailscale/fw4/durable/DNS),
-  and optional Telegram/email notify (curl SMTP; msmtp optional at runtime).
+  and optional Telegram notify (Bot API via curl).
 endef
 
 define Package/istoreos-ops/conffiles
