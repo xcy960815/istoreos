@@ -225,11 +225,19 @@ check_durable
 check_dns_poison
 
 line "----"
+RC=0
 if [ "$FAIL" -gt 0 ]; then
 	line "RESULT FAIL ($FAIL failure(s), $WARN warning(s)) report=$REPORT"
 	log "FAIL count=$FAIL warn=$WARN"
-	exit 1
+	RC=1
+else
+	line "RESULT OK ($WARN warning(s)) report=$REPORT"
+	log "OK warn=$WARN"
+	RC=0
 fi
-line "RESULT OK ($WARN warning(s)) report=$REPORT"
-log "OK warn=$WARN"
-exit 0
+
+# Notify (Telegram / email). Soft-fail; never log secrets (notify script handles that).
+if [ -x /usr/sbin/istoreos-health-notify ]; then
+	/usr/sbin/istoreos-health-notify after-health "$RC" "$REPORT" || true
+fi
+exit "$RC"
