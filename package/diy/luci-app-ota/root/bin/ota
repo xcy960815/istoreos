@@ -258,6 +258,11 @@ download() {
 	echo "$sum" >"$SUMFILE"
 	rm -f "$PROG" "$IMG_PART"
 	flock -u 300
+	# Soft pre-OTA backup after verified download (istoreos-ops). Never fail the download.
+	if [ -x /usr/sbin/istoreos-bak ]; then
+		/usr/sbin/istoreos-bak backup --reason=ota-download >/tmp/istoreos-bak-ota.out 2>/tmp/istoreos-bak-ota.err \
+			|| echo "istoreos-bak soft-fail (disk full?) — OTA download still OK" >>"$STATE_DIR/ota.log"
+	fi
 	return 0
 }
 

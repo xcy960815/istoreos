@@ -935,3 +935,42 @@ r32 已含 smartctl、mdadm、§三十四 的 loading 补丁，N100 首页仍显
 4. `uci get ota.github.owner` → `xcy960815`；`grep -v koolcenter /bin/ota /lib/upgrade/ota.sh`。
 
 后续 AI：**不要**把 OTA_URL 改回 fw.koolcenter.com；换仓库只改 `ota.github.*` 或 diy 默认值；改菜单只动 `tailscale-durable/luci-app-tailscale.json`。
+
+## 三十八、OTA 前配置备份 + 健康巡检（2026-10-23，用户明确要求）
+
+### 背景
+
+自建 GitHub OTA（§三十七）会在 LuCI 确认后 `sysupgrade`。keep-settings 能留 overlay，但不能替代「刷前再留一份 curated 快照」；Tailscale 耐久层（§二十二）与 OpenClash fake-ip 也需要可脚本化自检，避免 controlplane 被毒或 helper 回退成 stock。
+
+### 功能视角
+
+| 变更后设备能做什么 | 涉及 | 说明 |
+|---|---|---|
+| OTA 下载完成 / 点 Flash 前自动 curated 备份 | `istoreos-bak` + `luci-app-ota` 钩子 | 目录默认 `/etc/istoreos-bak/pre-ota-*.tar.gz`；保留最近 N=5；**盘满只告警，不拦刷写** |
+| CLI 还原 | `istoreos-bak restore <归档或时间戳>` | 只还原备份里那些路径，不是整包 sysupgrade backup |
+| 健康巡检 | `/usr/sbin/istoreos-health` | Tailscale Running+100.x、无 `network.tailscale`、fw4 check、durable helper/ensure/fixup、dnsmasq/OpenClash 不毒 `controlplane.tailscale.com`；失败非 0；报告 `/tmp/istoreos-health.report` |
+| 可选每日 cron | `uci-defaults/99-istoreos-ops` | 每天 04:17 写入 `/var/log/istoreos-health.log`；不要可删 crontab 行 |
+
+备份收录（存在才打进包）：`/etc/config/{openclash,tailscale,network,firewall,system,dropbear,ota,dhcp,wireless}`、`/etc/openclash`、`/etc/tailscale`（含 state 常见路径）、ddns-go 配置若在。
+
+### 包名 / 构建明细
+
+| 动作 | 内容 |
+|---|---|
+| 新增 diy 包 | `package/diy/istoreos-ops`（`istoreos-bak`、`istoreos-health`、`99-istoreos-ops`） |
+| seed `=y` | `CONFIG_PACKAGE_istoreos-ops=y`（`CONFIG_PACKAGE_*` 519） |
+| 钩子 | `luci-app-ota`：Flash 前 soft backup；`/bin/ota` 下载校验成功后 soft backup；`PKG_RELEASE` 2 |
+| 不加 | OpenClash 进构建期；不改 app-hub |
+
+### 机上用法
+
+```sh
+istoreos-bak backup --reason=manual
+istoreos-bak list
+istoreos-bak restore 20261023-120000          # 或完整文件名
+istoreos-health                               # 看 /tmp/istoreos-health.report；非 0=有 FAIL
+# 关掉每日巡检：
+sed -i '/istoreos-health/d' /etc/crontabs/root; /etc/init.d/cron reload
+```
+
+后续 AI：**不要**让备份失败中止 OTA；**不要**把备份目录改到会在 keep-settings=否 时仍幻想幸存却未挂数据盘的路径而不说明；改巡检项只动 `package/diy/istoreos-ops/files/`。

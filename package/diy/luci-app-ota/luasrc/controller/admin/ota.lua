@@ -72,11 +72,22 @@ function action_ota()
       return
     end
     local keep = (http.formvalue("keep") == "1") and "" or "-n"
+    -- Soft pre-OTA backup (istoreos-ops). Never blocks flash on failure/disk-full.
+    local bak_note = ""
+    if os.execute("test -x /usr/sbin/istoreos-bak") == 0 then
+      local br = os.execute("/usr/sbin/istoreos-bak backup --reason=ota-flash >/tmp/istoreos-bak-ota.out 2>/tmp/istoreos-bak-ota.err")
+      if br == 0 then
+        bak_note = "<br />" .. luci.i18n.translate("Pre-OTA config backup saved under /etc/istoreos-bak/.")
+      else
+        bak_note = "<br />" .. luci.i18n.translate("Pre-OTA backup skipped or failed (disk full?) — flashing continues. See /tmp/istoreos-bak-ota.err")
+      end
+    end
     luci.template.render("admin_system/ota_flashing", {
       title = luci.i18n.translate("Flashing…"),
       msg   = luci.i18n.translate("The system is flashing now.<br /> DO NOT POWER OFF THE DEVICE!<br /> Wait a few minutes before you try to reconnect. It might be necessary to renew the address of your computer to reach the device again, depending on your settings.")
         .. "<br />" .. luci.i18n.translate("If you are not automatically redirected to the login page in 2 minutes, please try to manually entering the address or <a href='/'>click here</a> to refresh.")
-        .. "<br />" .. luci.i18n.translate("If the device has an LED status indicator, you can also check it."),
+        .. "<br />" .. luci.i18n.translate("If the device has an LED status indicator, you can also check it.")
+        .. bak_note,
       addr  = (#keep > 0) and "192.168.1.1" or nil
     })
     fork_exec("sleep 1; /sbin/sysupgrade %s %q" %{ keep, image_tmp })

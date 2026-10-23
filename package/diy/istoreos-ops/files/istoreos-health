@@ -1,0 +1,235 @@
+#!/bin/sh
+# Health inspection for trimmed iStoreOS fork.
+# Exit 0 = all required checks pass; non-zero = one or more failures.
+# Soft-skip checks when optional packages (OpenClash) are absent.
+# See docs/CUSTOM-TRIMMING.md §三十八.
+
+LOGTAG=istoreos-health
+REPORT="${ISTOREOS_HEALTH_REPORT:-/tmp/istoreos-health.report}"
+FAIL=0
+WARN=0
+
+log() { logger -t "$LOGTAG" "$*"; }
+line() { echo "$*" | tee -a "$REPORT"; }
+ok() { line "OK  $*"; }
+fail() { line "FAIL $*"; FAIL=$((FAIL + 1)); }
+warn() { line "WARN $*"; WARN=$((WARN + 1)); }
+
+: >"$REPORT"
+line "istoreos-health $(date '+%Y-%m-%d %H:%M:%S %z')"
+line "----"
+
+# ---- Tailscale: logged in + 100.x on iface ----
+check_tailscale() {
+	if ! command -v tailscale >/dev/null 2>&1; then
+		fail "tailscale binary missing"
+		return
+	fi
+	if ! command -v tailscaled >/dev/null 2>&1 && ! pgrep -x tailscaled >/dev/null 2>&1; then
+		# binary may be under /usr/sbin; also accept running daemon
+		if ! pgrep -f '[t]ailscaled' >/dev/null 2>&1; then
+			fail "tailscaled not running"
+			return
+		fi
+	elif ! pgrep -f '[t]ailscaled' >/dev/null 2>&1; then
+		fail "tailscaled not running"
+		return
+	fi
+
+	local st backend ip4 iface
+	st=$(tailscale status --json 2>/dev/null)
+	if [ -z "$st" ]; then
+		fail "tailscale status --json failed (not logged in?)"
+		return
+	fi
+	backend=$(echo "$st" | jsonfilter -e '@.BackendState' 2>/dev/null)
+	case "$backend" in
+		Running) ok "Tailscale BackendState=$backend" ;;
+		*) fail "Tailscale BackendState=${backend:-unknown} (want Running)" ;;
+	esac
+
+	ip4=$(tailscale ip -4 2>/dev/null | head -1)
+	case "$ip4" in
+		100.*) ok "Tailscale IPv4=$ip4" ;;
+		*) fail "Tailscale IPv4 missing/not 100.x (got '${ip4:-empty}')" ;;
+	esac
+
+	iface=""
+	if command -v ip >/dev/null 2>&1; then
+		iface=$(ip -o -4 addr show 2>/dev/null | awk '$4 ~ /^100\./ { print $2; exit }')
+	fi
+	if [ -z "$iface" ]; then
+		# busybox ifconfig fallback
+		iface=$(ifconfig 2>/dev/null | awk '
+			/^[a-zA-Z0-9]/ { iface=$1; sub(/:$/, "", iface) }
+			/inet addr:100\./ || /inet 100\./ { print iface; exit }
+		')
+	fi
+	case "$iface" in
+		tailscale*|tun*) ok "100.x on iface=$iface" ;;
+		"") fail "no iface carrying 100.x" ;;
+		*) warn "100.x on unexpected iface=$iface" ;;
+	esac
+
+	# Durable: netifd must not own network.tailscale
+	if uci -q get network.tailscale >/dev/null 2>&1; then
+		fail "uci network.tailscale exists (netifd must not own Tailscale addrs)"
+	else
+		ok "no network.tailscale in netifd"
+	fi
+}
+
+# ---- fw4 clean ----
+check_fw4() {
+	if ! command -v fw4 >/dev/null 2>&1; then
+		warn "fw4 not installed — skip"
+		return
+	fi
+	local out ec
+	out=$(fw4 check 2>&1)
+	ec=$?
+	if [ "$ec" -eq 0 ]; then
+		ok "fw4 check clean"
+	else
+		fail "fw4 check exit=$ec: $(echo "$out" | tr '\n' ' ' | cut -c1-200)"
+	fi
+	# Duplicate zone names are a known Tailscale footgun
+	if echo "$out" | grep -qiE 'duplicate|redefined|conflicting'; then
+		fail "fw4 reports duplicate/conflict (see above)"
+	fi
+	# Soft: zone device binding if tszone present
+	if [ "$(uci -q get firewall.tszone.name)" = "tailscale" ]; then
+		local dev
+		dev=$(uci -q get firewall.tszone.device)
+		case "$dev" in
+			*tailscale0*) ok "firewall.tszone.device includes tailscale0" ;;
+			"")
+				if uci -q get firewall.tszone.network >/dev/null 2>&1; then
+					fail "firewall.tszone still uses network= (want device=tailscale0)"
+				else
+					warn "firewall.tszone.device empty"
+				fi
+				;;
+			*) warn "firewall.tszone.device='$dev'" ;;
+		esac
+	fi
+}
+
+# ---- durable helper / ensure present ----
+check_durable() {
+	local helper=/usr/sbin/tailscale_helper
+	local keep=/etc/tailscale/tailscale_helper.keep
+	local ensure=/etc/tailscale/ensure-helper-fix.sh
+	local marker="netifd skip: Tailscale owns addrs"
+
+	if [ -f "$keep" ]; then
+		ok "durable keep present: $keep"
+	else
+		fail "missing $keep (pin-tailscale durable overlay)"
+	fi
+
+	if [ -x "$ensure" ] || [ -f "$ensure" ]; then
+		ok "ensure-helper-fix present"
+	else
+		# may live only as init script calling inline — still check init
+		warn "missing $ensure"
+	fi
+
+	if [ -f "$helper" ] && grep -qF "$marker" "$helper" 2>/dev/null; then
+		ok "tailscale_helper has durable marker"
+	elif [ -f "$helper" ]; then
+		fail "tailscale_helper missing durable marker (stock asvow?)"
+	else
+		warn "tailscale_helper missing (Tailscale LuCI not installed?)"
+	fi
+
+	if [ -x /etc/init.d/tailscale-fixup ]; then
+		if /etc/init.d/tailscale-fixup enabled 2>/dev/null; then
+			ok "tailscale-fixup enabled"
+		else
+			fail "tailscale-fixup installed but not enabled"
+		fi
+	else
+		warn "tailscale-fixup init missing"
+	fi
+}
+
+# ---- OpenClash / dnsmasq must not poison controlplane.tailscale.com ----
+is_fake_ip() {
+	# Clash fake-ip default pool 198.18.0.0/15
+	case "$1" in
+		198.18.*|198.19.*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+check_dns_poison() {
+	local host=controlplane.tailscale.com
+	local oc_cfg=/etc/config/openclash
+	local fake_filter=/etc/openclash/custom/openclash_custom_fake_filter.list
+	local resolved skip_oc=0
+
+	if [ ! -f "$oc_cfg" ] && [ ! -d /etc/openclash ]; then
+		line "SKIP OpenClash not installed — DNS poison check limited to dnsmasq/resolvers"
+		skip_oc=1
+	fi
+
+	if [ "$skip_oc" = 0 ]; then
+		# Prefer explicit bypass in fake-filter
+		if [ -f "$fake_filter" ] && grep -qiE 'controlplane\.tailscale\.com|^\.?tailscale\.com' "$fake_filter" 2>/dev/null; then
+			ok "OpenClash fake_filter bypasses tailscale controlplane (or domain)"
+		else
+			# Check uci fake_ip mode
+			local mode
+			mode=$(uci -q get openclash.config.operation_mode 2>/dev/null)
+			# Also look at enable / dns settings — if fake-ip and no bypass, warn hard
+			if grep -rqi 'fake-ip' /etc/openclash/*.yaml /etc/openclash/config/*.yaml 2>/dev/null \
+				|| uci -q get openclash.config.en_mode 2>/dev/null | grep -qi fake; then
+				fail "OpenClash appears in fake-ip mode but $fake_filter lacks controlplane.tailscale.com"
+			else
+				warn "OpenClash present; cannot confirm fake-filter for $host (add it if using fake-ip)"
+			fi
+		fi
+	fi
+
+	# dnsmasq must not pin a bogus address for the host
+	if uci show dhcp 2>/dev/null | grep -qiF "address=/$host/"; then
+		local pin
+		pin=$(uci show dhcp 2>/dev/null | grep -iF "address=/$host/" | head -1)
+		fail "dnsmasq pins $host: $pin"
+	else
+		ok "dnsmasq has no address=/$host/ pin"
+	fi
+
+	# Live resolve (best effort; may fail offline — then warn not fail)
+	resolved=""
+	if command -v nslookup >/dev/null 2>&1; then
+		resolved=$(nslookup "$host" 2>/dev/null | awk '/^Address:/{a=$2} END{print a}')
+		# skip IPv6-only clutter: prefer IPv4 line
+		resolved=$(nslookup "$host" 2>/dev/null | awk '/^Address: [0-9]+\./{print $2; exit}')
+	elif command -v resolveip >/dev/null 2>&1; then
+		resolved=$(resolveip -4 "$host" 2>/dev/null | head -1)
+	fi
+	if [ -z "$resolved" ]; then
+		warn "could not resolve $host (offline or DNS down) — skip fake-ip probe"
+	elif is_fake_ip "$resolved"; then
+		fail "$host resolves to fake-ip pool ($resolved) — Tailscale controlplane poisoned"
+	else
+		ok "$host resolves to $resolved (not fake-ip pool)"
+	fi
+}
+
+check_tailscale
+check_fw4
+check_durable
+check_dns_poison
+
+line "----"
+if [ "$FAIL" -gt 0 ]; then
+	line "RESULT FAIL ($FAIL failure(s), $WARN warning(s)) report=$REPORT"
+	log "FAIL count=$FAIL warn=$WARN"
+	exit 1
+fi
+line "RESULT OK ($WARN warning(s)) report=$REPORT"
+log "OK warn=$WARN"
+exit 0

@@ -16,6 +16,6 @@
 
 构建与刷机步骤见 [`BUILD-CUSTOM.md`](BUILD-CUSTOM.md)；云端构建走 Actions（手动触发）。CI 历次失败的原始复盘（run 编号、日志原文）在 [`docs/CI-HISTORY.md`](docs/CI-HISTORY.md)，节号与 CUSTOM-TRIMMING.md 对应；CUSTOM-TRIMMING.md 只留当前有效的结论。
 
-**OTA（2026-10-23）**：`luci-app-ota` 已改打本仓库 GitHub Releases（§三十七），禁止再指 koolcenter。
+**OTA（2026-10-23）**：`luci-app-ota` 已改打本仓库 GitHub Releases（§三十七），禁止再指 koolcenter。**运维（同日）**：`istoreos-ops` 提供 OTA 前 curated 备份（盘满不拦刷）与 `istoreos-health` 巡检（§三十八）。
 
 **进度（2026-10-19 夜）**：**r33 已在 N100 验证**，并已写入机内 16G 傲腾。J4125 配置备份在维护机 `~/Documents/j4125-backup-20261018/`（还原用 **1019** 那份，不要整包灌）；**本对话未确认主路由已刷 r33**（18:19 仍是官方 24.10.8）。不要为 NPM 把 Docker 加回网关（反代放 9400F）；不要用 Open-Box 换生产 OpenClash。快照见 [`docs/CUSTOM-TRIMMING.md`](docs/CUSTOM-TRIMMING.md) 文首和 §三十六。

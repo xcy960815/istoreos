@@ -1,0 +1,209 @@
+#!/bin/sh
+# Curated pre-OTA config backup / restore for trimmed iStoreOS fork.
+# Soft-fail on disk full: warn and exit non-zero, never block caller by hanging.
+# See docs/CUSTOM-TRIMMING.md §三十八.
+
+BAK_ROOT="${ISTOREOS_BAK_ROOT:-/etc/istoreos-bak}"
+KEEP_N="${ISTOREOS_BAK_KEEP:-5}"
+LOGTAG=istoreos-bak
+
+# Curated UCI + related trees (only if present).
+UCI_NAMES="openclash tailscale network firewall system dropbear ota dhcp wireless"
+EXTRA_PATHS="
+/etc/openclash
+/etc/tailscale
+/etc/config/ddns-go
+/etc/ddns-go
+/etc/ddns-go/config.yaml
+/etc/tailscale/files
+"
+
+log() { logger -t "$LOGTAG" "$*"; echo "$*"; }
+warn() { logger -p user.warning -t "$LOGTAG" "$*"; echo "WARN: $*" >&2; }
+
+usage() {
+	cat <<USAGE
+usage: istoreos-bak {backup|restore|list|prune} [args]
+  backup [--reason=NAME]   create tar.gz under $BAK_ROOT (keep last $KEEP_N)
+  restore <archive|stamp>  restore curated paths from a backup
+  list                     list backups (newest first)
+  prune                    drop older than keep-last-$KEEP_N
+env: ISTOREOS_BAK_ROOT  ISTOREOS_BAK_KEEP
+USAGE
+}
+
+ensure_root() {
+	mkdir -p "$BAK_ROOT" 2>/dev/null || {
+		warn "cannot create $BAK_ROOT"
+		return 1
+	}
+	# Prefer overlay if /etc is read-only somehow
+	if ! touch "$BAK_ROOT/.write-test" 2>/dev/null; then
+		BAK_ROOT=/overlay/upper/etc/istoreos-bak
+		mkdir -p "$BAK_ROOT" 2>/dev/null || {
+			warn "backup dir not writable"
+			return 1
+		}
+		touch "$BAK_ROOT/.write-test" 2>/dev/null || {
+			warn "backup dir not writable: $BAK_ROOT"
+			return 1
+		}
+	fi
+	rm -f "$BAK_ROOT/.write-test"
+	return 0
+}
+
+disk_free_kb() {
+	# busybox df -k: Available column
+	df -k "$1" 2>/dev/null | awk 'NR==2 { print $4; exit }'
+}
+
+collect_paths() {
+	# stdout: relative paths from /
+	local n p
+	for n in $UCI_NAMES; do
+		[ -e "/etc/config/$n" ] && echo "etc/config/$n"
+	done
+	# shellcheck disable=SC2086
+	for p in $EXTRA_PATHS; do
+		[ -z "$p" ] && continue
+		[ -e "$p" ] || continue
+		echo "${p#/}"
+	done
+	# Tailscale state (common locations)
+	for p in /etc/tailscale/tailscaled.state /var/lib/tailscale/tailscaled.state; do
+		[ -e "$p" ] && echo "${p#/}"
+	done
+	# OpenClash common extras already under /etc/openclash if EXTRA caught it
+}
+
+prune_old() {
+	local n="$KEEP_N" list
+	[ -d "$BAK_ROOT" ] || return 0
+	# Newest first; delete from N+1 onward
+	list=$(ls -1t "$BAK_ROOT"/pre-ota-*.tar.gz 2>/dev/null)
+	[ -n "$list" ] || return 0
+	echo "$list" | awk -v n="$n" 'NR>n { print }' | while read -r f; do
+		[ -n "$f" ] || continue
+		rm -f "$f" && log "pruned $f"
+	done
+}
+
+do_backup() {
+	local reason=manual stamp dest tmp list need_kb free_kb
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			--reason=*) reason=${1#--reason=} ;;
+			--reason) shift; reason=$1 ;;
+			*) warn "unknown arg: $1"; return 2 ;;
+		esac
+		shift
+	done
+	reason=$(echo "$reason" | tr -c 'A-Za-z0-9._-' '_' | cut -c1-32)
+	[ -n "$reason" ] || reason=manual
+
+	ensure_root || return 1
+
+	list=$(collect_paths)
+	if [ -z "$list" ]; then
+		warn "nothing to back up"
+		return 1
+	fi
+
+	# Rough size estimate (du -sk sum) + 512KB margin
+	need_kb=$(echo "$list" | while read -r rel; do
+		[ -e "/$rel" ] && du -sk "/$rel" 2>/dev/null | awk '{print $1}'
+	done | awk '{s+=$1} END{print s+512}')
+	free_kb=$(disk_free_kb "$BAK_ROOT")
+	[ -n "$free_kb" ] || free_kb=0
+	if [ "$free_kb" -lt "$need_kb" ] 2>/dev/null; then
+		warn "disk full? free=${free_kb}kB need~${need_kb}kB under $BAK_ROOT — skip backup (OTA may continue)"
+		return 3
+	fi
+
+	stamp=$(date '+%Y%m%d-%H%M%S')
+	dest="$BAK_ROOT/pre-ota-${stamp}-${reason}.tar.gz"
+	tmp="$BAK_ROOT/.tmp-$$.tar.gz"
+
+	# Create from / so paths are absolute-friendly on restore
+	# shellcheck disable=SC2086
+	if ! (cd / && tar -czf "$tmp" $list) 2>/tmp/istoreos-bak.err; then
+		rm -f "$tmp"
+		if grep -qiE 'No space|disk full|File too large' /tmp/istoreos-bak.err 2>/dev/null; then
+			warn "tar failed (disk full) — skip backup; see /tmp/istoreos-bak.err"
+			return 3
+		fi
+		warn "tar failed — skip backup; see /tmp/istoreos-bak.err"
+		return 1
+	fi
+	rm -f /tmp/istoreos-bak.err
+	if ! mv "$tmp" "$dest"; then
+		rm -f "$tmp"
+		warn "mv to $dest failed (disk full?) — skip backup"
+		return 3
+	fi
+	log "backup ok: $dest"
+	echo "$dest"
+	prune_old
+	return 0
+}
+
+resolve_archive() {
+	local arg=$1
+	[ -n "$arg" ] || return 1
+	if [ -f "$arg" ]; then
+		echo "$arg"
+		return 0
+	fi
+	if [ -f "$BAK_ROOT/$arg" ]; then
+		echo "$BAK_ROOT/$arg"
+		return 0
+	fi
+	# stamp or partial name
+	local hit
+	hit=$(ls -1t "$BAK_ROOT"/pre-ota-*"$arg"*.tar.gz 2>/dev/null | head -1)
+	[ -n "$hit" ] || return 1
+	echo "$hit"
+}
+
+do_restore() {
+	local arc=$1 dest
+	[ -n "$arc" ] || { usage; return 2; }
+	ensure_root || true
+	dest=$(resolve_archive "$arc") || {
+		warn "archive not found: $arc"
+		return 1
+	}
+	log "restoring from $dest"
+	if ! tar -tzf "$dest" >/dev/null 2>&1; then
+		warn "bad archive: $dest"
+		return 1
+	fi
+	# Archive only contains curated paths collected at backup time.
+	if ! tar -xzf "$dest" -C /; then
+		warn "restore failed"
+		return 1
+	fi
+	log "restore ok: $dest (reload services / reboot as needed)"
+	echo "$dest"
+	return 0
+}
+
+do_list() {
+	ensure_root || true
+	ls -1t "$BAK_ROOT"/pre-ota-*.tar.gz 2>/dev/null || {
+		echo "(none under $BAK_ROOT)"
+		return 0
+	}
+}
+
+cmd=${1:-}
+[ -n "$cmd" ] && shift
+case "$cmd" in
+	backup) do_backup "$@" ;;
+	restore) do_restore "$@" ;;
+	list) do_list ;;
+	prune) ensure_root && prune_old ;;
+	""|-h|--help|help) usage; exit 0 ;;
+	*) usage; exit 1 ;;
+esac

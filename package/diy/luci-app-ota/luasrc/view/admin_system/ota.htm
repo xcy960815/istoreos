@@ -66,7 +66,7 @@
 				</form>
 			</div>
 			<div class="state state-downloaded">
-				<form method="post" action="<%=url('admin/system/ota')%>" onsubmit="return confirm('<%:Flash the downloaded image now? Do not power off during upgrade.%>');">
+				<form method="post" action="<%=url('admin/system/ota')%>" onsubmit="return confirm('<%:Flash the downloaded image now? A curated config backup runs first (soft-fail if disk full). Do not power off during upgrade.%>');">
 					<input type="hidden" name="apply" value="1" />
 					<input type="hidden" name="token" value="<%=token%>" />
 					<div class="cbi-value">

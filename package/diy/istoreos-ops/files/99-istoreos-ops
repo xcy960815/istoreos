@@ -1,0 +1,19 @@
+#!/bin/sh
+# First-boot: optional daily health cron (04:17). Idempotent.
+# Disable: crontab -e and remove the istoreos-health line, or:
+#   sed -i '/istoreos-health/d' /etc/crontabs/root; /etc/init.d/cron reload
+
+CRON_FILE=/etc/crontabs/root
+LINE='17 4 * * * /usr/sbin/istoreos-health >>/var/log/istoreos-health.log 2>&1'
+
+[ -x /usr/sbin/istoreos-health ] || exit 0
+mkdir -p /etc/crontabs
+touch "$CRON_FILE"
+
+if grep -qF 'istoreos-health' "$CRON_FILE" 2>/dev/null; then
+	exit 0
+fi
+
+echo "$LINE" >>"$CRON_FILE"
+[ -x /etc/init.d/cron ] && /etc/init.d/cron reload >/dev/null 2>&1 || true
+exit 0
