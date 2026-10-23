@@ -159,10 +159,17 @@ jobs:
             # 原文打到 compile.log，必须 V=s 重跑这一步，并带走 logs/target。
             if grep -q 'ERROR: target/linux failed to build' compile.log; then
               echo "::group::verbose 重跑 target/linux/install"
-              make target/linux/install -j1 V=s || true
+              make target/linux/install -j1 V=s 2>&1 | tee -a compile.log || true
               echo "::endgroup::"
+            # r34：包全绿，挂在 package/install（rootfs/opkg 装配）。quiet 把 Collected errors /
+            # postinst 原文吞进 /dev/null，必须 V=s 重跑才能看见冲突或缺依赖。
+            elif grep -q 'make\[2\] package/install' compile.log; then
+              echo "::group::verbose 重跑 package/install"
+              make package/install -j1 V=s 2>&1 | tee -a compile.log || true
+              echo "::endgroup::"
+              echo "::error::package/install（rootfs 装配）失败；见上方 V=s 日志 / compile.log 末尾（Collected errors / postinst / 文件冲突）"
             else
-              echo "::error::compile.log 里没有 ERROR: package / target/linux 行（可能是 tools 挂了），原因见上传的 compile.log"
+              echo "::error::compile.log 里没有 ERROR: package / target/linux / package/install 行（可能是 tools 挂了），原因见上传的 compile.log"
             fi
             exit 1
           fi
