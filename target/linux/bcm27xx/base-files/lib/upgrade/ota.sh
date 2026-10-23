@@ -1,19 +1,7 @@
-
-type 'board_name' >/dev/null 2>/dev/null || . /lib/functions.sh
-
+# Trimmed-fork OTA: real logic is in /bin/ota (GitHub Releases via luci-app-ota).
+# Owned by base-files so luci-app-ota does not clash on /lib/upgrade/ota.sh.
+# Do NOT point at koolcenter.
 export_ota_url() {
-	local board="$(board_name)"
-	case "$board" in
-	raspberrypi,400 |\
-	raspberrypi,4-compute-module |\
-	raspberrypi,4-model-b)
-		export -n OTA_URL_BASE="https://fw0.koolcenter.com/iStoreOS/rpi4"
-		;;
-	raspberrypi,5-model-b)
-		export -n OTA_URL_BASE="https://fw0.koolcenter.com/iStoreOS/rpi5"
-		;;
-	*)
-		return 1
-		;;
-	esac
+	export -n OTA_URL_BASE="https://github.com/xcy960815/istoreos/releases"
+	return 0
 }

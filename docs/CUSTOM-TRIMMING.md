@@ -923,7 +923,7 @@ r32 已含 smartctl、mdadm、§三十四 的 loading 补丁，N100 首页仍显
 | 动作 | 内容 |
 |---|---|
 | seed 重新 `=y` | `luci-app-ota`、`luci-i18n-ota-zh-cn`（`CONFIG_PACKAGE_*` +2） |
-| 改写 | `package/diy/luci-app-ota/root/bin/ota`（GitHub API + jsonfilter）；`root/lib/upgrade/ota.sh`（占位，防koolcenter）；`ota.htm` 强制确认刷写；`ota_config` 可改 owner/repo/asset_suffix |
+| 改写 | `package/diy/luci-app-ota/root/bin/ota`（GitHub API + jsonfilter）；`target/linux/*/base-files/lib/upgrade/ota.sh`（占位防koolcenter；勿再放进 luci-app-ota，否则与 base-files 文件冲突）；`ota.htm` 强制确认刷写；`ota_config` 可改 owner/repo/asset_suffix |
 | CI | `Apply custom config` 写入 `CONFIG_VERSION_CODE="r${GITHUB_RUN_NUMBER}"`（进 `DISTRIB_REVISION`）；Release 额外上传 `ota.meta` |
 | 菜单 | 见 §二十二「菜单位置」 |
 
