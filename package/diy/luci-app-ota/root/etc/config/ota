@@ -1,2 +1,7 @@
 config global 'network'
 #	option ipv4 '0'
+
+config github 'github'
+	option owner 'xcy960815'
+	option repo 'istoreos'
+	# option asset_suffix 'squashfs-combined-efi.img.gz'

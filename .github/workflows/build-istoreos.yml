@@ -63,6 +63,10 @@ jobs:
         run: |
           cp config-custom.seed .config
           make defconfig
+          # Stamp DISTRIB_REVISION as r<run_number> for GitHub OTA comparison (§三十七)
+          sed -i '/^CONFIG_VERSION_CODE=/d' .config
+          echo "CONFIG_VERSION_CODE=\"r${GITHUB_RUN_NUMBER}\"" >> .config
+          grep -E '^CONFIG_VERSION_CODE=' .config
           bash .github/scripts/seed-audit.sh
           # 产物里要能看到展开后的完整 .config；upload-artifact 不收点文件，先改名
           cp .config config-expanded.txt
@@ -202,7 +206,20 @@ jobs:
         run: |
           set -euo pipefail
           tag="r${GITHUB_RUN_NUMBER}"
-          files=(bin/targets/x86/64/*.img.gz bin/targets/x86/64/*.iso bin/targets/x86/64/sha256sums bin/targets/x86/64/*.manifest)
+          img=$(ls bin/targets/x86/64/*squashfs-combined-efi.img.gz | head -1)
+          [ -f "$img" ] || { echo "::error::缺少 combined-efi.img.gz"; exit 1; }
+          base=$(basename "$img")
+          sum=$(grep -E "[ /]${base}\$" bin/targets/x86/64/sha256sums | awk '{print $1}')
+          [ -n "$sum" ] || sum=$(grep -F "$base" bin/targets/x86/64/sha256sums | awk '{print $1}')
+          [ -n "$sum" ] || { echo "::error::sha256sums 里没有 $base"; exit 1; }
+          {
+            echo "TAG=${tag}"
+            echo "ASSET=${base}"
+            echo "SHA256=${sum}"
+            echo "BROWSER_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${base}"
+          } > bin/targets/x86/64/ota.meta
+          cat bin/targets/x86/64/ota.meta
+          files=(bin/targets/x86/64/*.img.gz bin/targets/x86/64/*.iso bin/targets/x86/64/sha256sums bin/targets/x86/64/*.manifest bin/targets/x86/64/ota.meta)
           for f in "${files[@]}"; do
             [ -f "$f" ] || { echo "::error::缺少产物 $f，不建 Release"; exit 1; }
           done
@@ -211,6 +228,7 @@ jobs:
           - 构建提交：\`${GITHUB_SHA:0:10}\`
           - 构建日志：https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
           - 下载 \`*-squashfs-combined-efi.img.gz\`，**解压**得到 \`.img\` 后整盘写入（不是直接把 gz 写进盘）
+          - 已刷裁剪版可用 LuCI「系统 → OTA」从本 Releases 检查/下载（校验 sha256；需手动确认刷写，不会自动刷）
           - 刷机步骤见仓库 \`BUILD-CUSTOM.md\`；裁剪记录见 \`docs/CUSTOM-TRIMMING.md\`
           - 包清单见 \`.manifest\`，校验值见 \`sha256sums\`"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then

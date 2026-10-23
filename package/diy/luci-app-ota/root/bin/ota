@@ -1,255 +1,343 @@
 #!/bin/sh
-# author jjm2473
-
-mirrors() {
-    local url="$1"
-    case "$url" in
-        https://fw0.koolcenter.com/iStoreOS/*|\
-        https://fw.koolcenter.com/iStoreOS/*)
-            local path=$(echo "$url" | sed -E 's#^https?://[^/]+/(.*)#\1#')
-            # echo "https://dl2.istoreos.com/$path"
-            echo "https://dl.istoreos.com/$path"
-        ;;
-    esac
-    echo "$url"
-    return 0
-}
-
-if [ -f /lib/upgrade/ota.sh ]; then
-    . /lib/upgrade/ota.sh
-    export_ota_url
-fi
-
-if [ -z "$OTA_URL_BASE" ]; then
-    echo "Unsupported device." >&2
-    exit 255
-fi
+# OTA for this fork's GitHub Releases (NOT koolcenter / official iStoreOS).
+# Repo default: xcy960815/istoreos  — override via uci ota.github.owner / ota.github.repo
+# Flow: check → download (.img.gz) → sha256 verify → gunzip → /tmp/firmware.img
+# Flash is always a separate LuCI confirm (never auto).
 
 WRLOCK=/var/lock/ota_background.lock
 STLOCK=/var/lock/ota_status.lock
+STATE_DIR=/var/run/ota
+IMG=/tmp/firmware.img
+IMG_GZ=/tmp/firmware.img.gz
+IMG_PART=/tmp/firmware.img.part
+PROG=/tmp/firmware.img.progress
+SUMFILE=/tmp/firmware.img.sha256sum
+META=$STATE_DIR/release.meta
+SHA256SUMS=$STATE_DIR/sha256sums
 
-action=${1}
-shift
-
-sha256() {
-    sha256sum $1 | cut -d' ' -f1
-}
+owner=$(uci -q get ota.github.owner 2>/dev/null); owner=${owner:-xcy960815}
+repo=$(uci -q get ota.github.repo 2>/dev/null); repo=${repo:-istoreos}
+# Prefer EFI combined image (J4125 / N100 GPT). Override with full basename if needed.
+asset_suffix=$(uci -q get ota.github.asset_suffix 2>/dev/null)
+asset_suffix=${asset_suffix:-squashfs-combined-efi.img.gz}
 
 OTA_CURL_OPTS=""
-case $action in
-    "check"|"download")
-        [ "`uci -q get ota.network.ipv4`" = 1 ] && OTA_CURL_OPTS="--ipv4"
-    ;;
-esac
-alias fcurl="curl $OTA_CURL_OPTS -L --fail --show-error"
-unset OTA_CURL_OPTS
+action=${1:-}
+shift 2>/dev/null || true
 
-download() {
-    local img=$1
-    local sum=$2
-    exec 300>$STLOCK
-    flock 300
-    touch /tmp/firmware.img.part
-    echo >/tmp/firmware.img.progress
-    rm -f /tmp/firmware.img.sha256sum
-    flock -u 300
-    if [ -f /tmp/firmware.img ]; then
-        echo "Checking existed firmware.img..." >> /tmp/firmware.img.progress
-        if [ "`sha256 /tmp/firmware.img`" = "$sum" ]; then
-            flock 300
-            echo $sum > /tmp/firmware.img.sha256sum;
-            rm -f /tmp/firmware.img.part
-            rm -f /tmp/firmware.img.progress
-            flock -u 300
-            return 0;
-        else
-            echo "Check failed, redownload" >> /tmp/firmware.img.progress
-            rm -f /tmp/firmware.img
-        fi
-    fi
-    local pid url
-    mirrors "$OTA_URL_BASE/$img" | while read; do
-        url="$REPLY"
-        echo "Try $url" >>/tmp/firmware.img.progress
-        flock 300
-        echo "#=#=#" >>/tmp/firmware.img.progress
-        fcurl --connect-timeout 5 --progress-bar -o /tmp/firmware.img.part "$url" 2>>/tmp/firmware.img.progress &
-        pid="$!"
-        echo "$pid" > /var/run/ota/download.pid
-        flock -u 300
-        if wait $pid; then
-            rm -f /var/run/ota/download.pid
-            echo "Checking new firmware.img.part..." > /tmp/firmware.img.progress
-            if [ "`sha256 /tmp/firmware.img.part`" = "$sum" ]; then
-                flock 300
-                mv /tmp/firmware.img.part /tmp/firmware.img && echo $sum > /tmp/firmware.img.sha256sum
-                rm -f /tmp/firmware.img.progress
-                flock -u 300
-                return 0
-            else
-                echo "Checksum failed!" >>/tmp/firmware.img.progress
-            fi
-        else
-            # on Terminated $? == 143, on Timeout $? == 28
-            local ecode=$?
-            echo >>/tmp/firmware.img.progress
-            if [ $ecode -eq 143 ]; then
-                echo "Canceled!" >> /tmp/firmware.img.progress
-                break
-            fi
-        fi
-        flock 300
-        sed -i '/\r/d' /tmp/firmware.img.progress
-        flock -u 300
-    done
-    rm -f /var/run/ota/download.pid
-    rm -f /tmp/firmware.img.part
-    return 1
+case $action in
+	check|download)
+		[ "$(uci -q get ota.network.ipv4)" = 1 ] && OTA_CURL_OPTS="--ipv4"
+	;;
+esac
+# shellcheck disable=SC2086
+alias fcurl="curl $OTA_CURL_OPTS -fsSL --connect-timeout 15 --max-time 600"
+
+sha256() {
+	sha256sum "$1" | cut -d' ' -f1
 }
 
-lock_download() {
-    local lock="$WRLOCK"
-    exec 200>$lock
-    flock -n 200 || return
-    download $1 $2
-    flock -u 200
+ota_init() {
+	mkdir -p "$STATE_DIR" >/dev/null 2>&1 || true
+}
+
+# Current trimmed build id: prefer DISTRIB_REVISION when it looks like rNN (CI stamps VERSION_CODE).
+current_tag() {
+	local rev
+	rev=$(grep 'DISTRIB_REVISION=' /etc/openwrt_release 2>/dev/null | sed -E "s/.*'(.+)'.*/\1/")
+	case "$rev" in
+		r[0-9]|r[0-9][0-9]|r[0-9][0-9][0-9]|r[0-9][0-9][0-9][0-9]|r[0-9][0-9][0-9][0-9][0-9])
+			echo "$rev"; return 0
+		;;
+	esac
+	if [ -f /etc/istoreos-trim-release ]; then
+		tr -d ' \n' </etc/istoreos-trim-release
+		return 0
+	fi
+	echo ""
+}
+
+tag_num() {
+	echo "$1" | sed -E 's/^r([0-9]+).*/\1/'
+}
+
+# Resolve latest release into $META:
+# TAG=r33
+# ASSET=istoreos-...-squashfs-combined-efi.img.gz
+# SHA256=...
+# BROWSER_URL=https://github.com/.../download/...
+# HTML_URL=https://github.com/.../releases/tag/r33
+fetch_latest_meta() {
+	local json tag asset sum sums_url browser html line name
+	json=$STATE_DIR/release.json
+	# GitHub API (jsonfilter is in seed)
+	if ! fcurl -o "$json" \
+		-H "Accept: application/vnd.github+json" \
+		-H "User-Agent: istoreos-trim-ota" \
+		"https://api.github.com/repos/${owner}/${repo}/releases/latest"; then
+		echo "Failed to query GitHub API for ${owner}/${repo}" >&2
+		return 255
+	fi
+	tag=$(jsonfilter -i "$json" -e '@.tag_name' 2>/dev/null)
+	html=$(jsonfilter -i "$json" -e '@.html_url' 2>/dev/null)
+	[ -n "$tag" ] || { echo "No tag_name in GitHub response" >&2; return 255; }
+
+	# Prefer CI-uploaded ota.meta if present
+	browser=$(jsonfilter -i "$json" -e "@.assets[@.name='ota.meta'].browser_download_url" 2>/dev/null)
+	if [ -n "$browser" ]; then
+		if fcurl -o "$META" "$browser"; then
+			grep -q '^TAG=' "$META" && grep -q '^SHA256=' "$META" && grep -q '^ASSET=' "$META" && {
+				echo "HTML_URL=$html" >>"$META"
+				return 0
+			}
+		fi
+	fi
+
+	# Pick asset by suffix; get sha256sums asset
+	asset=""
+	sums_url=""
+	# jsonfilter list of names
+	for name in $(jsonfilter -i "$json" -e '@.assets[*].name' 2>/dev/null); do
+		case "$name" in
+			*"$asset_suffix")
+				asset=$name
+				browser=$(jsonfilter -i "$json" -e "@.assets[@.name='$name'].browser_download_url")
+			;;
+			sha256sums)
+				sums_url=$(jsonfilter -i "$json" -e "@.assets[@.name='sha256sums'].browser_download_url")
+			;;
+		esac
+	done
+	[ -n "$asset" ] && [ -n "$browser" ] || {
+		echo "No release asset matching *$asset_suffix" >&2
+		return 255
+	}
+	[ -n "$sums_url" ] || { echo "Release has no sha256sums asset" >&2; return 255; }
+	fcurl -o "$SHA256SUMS" "$sums_url" || { echo "Failed to download sha256sums" >&2; return 255; }
+	# sha256sums lines: "<hash> *?<filename>" or "<hash>  <filename>"
+	line=$(grep -E "[ /]${asset}\$" "$SHA256SUMS" | head -1)
+	[ -n "$line" ] || line=$(grep -F "$asset" "$SHA256SUMS" | head -1)
+	sum=$(echo "$line" | awk '{print $1}')
+	[ -n "$sum" ] && [ "${#sum}" -ge 64 ] || {
+		echo "SHA256 for $asset not found in sha256sums" >&2
+		return 255
+	}
+	cat >"$META" <<EOF
+TAG=$tag
+ASSET=$asset
+SHA256=$sum
+BROWSER_URL=$browser
+HTML_URL=$html
+EOF
+	return 0
+}
+
+meta_get() {
+	grep "^$1=" "$META" 2>/dev/null | head -1 | cut -d= -f2-
 }
 
 prepare_check() {
-    local latest=0
-    if find /var/run/ota/check.status -mmin -5 2>/dev/null | grep -q . ; then
-        latest=`cat /var/run/ota/check.status`
-        return $latest
-    fi
-    local line
-    local release=`grep 'DISTRIB_RELEASE=' /etc/openwrt_release | sed -E "s/.*'(.+)'.*/\1/"`
-    local revision=`grep 'DISTRIB_REVISION=' /etc/openwrt_release | sed -E "s/.*'(.+)'.*/\1/" | cut -d'-' -f1`
-    local current="$release-$revision"
+	local latest=0
+	local cur remote cur_n remote_n
+	if find "$STATE_DIR/check.status" -mmin -5 2>/dev/null | grep -q .; then
+		latest=$(cat "$STATE_DIR/check.status")
+		return "$latest"
+	fi
+	fetch_latest_meta || return 255
+	cur=$(current_tag)
+	remote=$(meta_get TAG)
+	: >"$STATE_DIR/ota.log"
+	{
+		echo "<pre>"
+		echo "GitHub: ${owner}/${repo}"
+		echo "Current: ${cur:-unknown}"
+		echo "Latest:  $remote ($(meta_get ASSET))"
+		echo "SHA256:  $(meta_get SHA256)"
+		echo "</pre>"
+		if [ -n "$(meta_get HTML_URL)" ]; then
+			echo "<p><a href=\"$(meta_get HTML_URL)\" target=\"_blank\" rel=\"noopener\">Release notes</a></p>"
+		fi
+		echo "<p>Flash only after checksum OK. Confirm keep-settings on the next step — never auto-flash.</p>"
+	} >>"$STATE_DIR/ota.log"
 
-    cat /dev/null > /var/run/ota/ota.log
-    fcurl --connect-timeout 5 -o /var/run/ota/ota.latest "$OTA_URL_BASE/version.latest" || { rm -f /var/run/ota/ota.latest ; return 255; }
-    if head -1 /var/run/ota/ota.latest | grep -Fq "$current"; then
-        latest=1
-        current=""
-    fi
-    fcurl --connect-timeout 5 -o /var/run/ota/ota.index "$OTA_URL_BASE/version.index" || return 255;
-    head -5 /var/run/ota/ota.index | while read line; do
-        if [ -z "$line" -o "$line" = "$current" ]; then
-            break
-        fi
-        echo "<h3>`echo $line | sed 's/-/ /'`</h3><pre>" >> /var/run/ota/ota.log
-        fcurl --connect-timeout 1 "$OTA_URL_BASE/log/$line.log" >> /var/run/ota/ota.log 2>/dev/null
-        echo "</pre>" >> /var/run/ota/ota.log
-    done
-    [ "`wc -l /var/run/ota/ota.log | cut -d' ' -f1`" -eq 0 ] && return 1
-    [ "`wc -l /var/run/ota/ota.index | cut -d' ' -f1`" -gt 5 ] && echo "<a href=\"$OTA_URL_BASE/\" onclick=\"void(0)\" target=\"_blank\">More</a>" >> /var/run/ota/ota.log
-    fcurl --connect-timeout 1 "$OTA_URL_BASE/ota.footer.html" >> /var/run/ota/ota.log 2>/dev/null
-    echo "$latest" >/var/run/ota/check.status
-    return $latest
+	if [ -n "$cur" ] && [ "$cur" = "$remote" ]; then
+		latest=1
+	elif [ -n "$cur" ]; then
+		cur_n=$(tag_num "$cur")
+		remote_n=$(tag_num "$remote")
+		if [ -n "$cur_n" ] && [ -n "$remote_n" ] && [ "$cur_n" -ge "$remote_n" ] 2>/dev/null; then
+			latest=1
+		fi
+	fi
+	# Also emit koolcenter-shaped "latest" header lines for LuCI HTML (title uses first <pre> block from check)
+	# Stock UI prepends sed of ota.latest; we put summary in ota.log already.
+	printf '[%s](%s)\n\nSHA256: %s\n' "$(meta_get TAG)" "$(meta_get ASSET)" "$(meta_get SHA256)" >"$STATE_DIR/ota.latest"
+	echo "$latest" >"$STATE_DIR/check.status"
+	return "$latest"
 }
 
-# 0: found newer fw, 1: already newest fw, 2: found running task, *: err
+# 0: newer found, 1: already latest, 2: download in progress, *: err
 do_check() {
-    local ret=0
-    local lock="$WRLOCK"
-    exec 200>$lock
-    if flock -n 200; then
-        prepare_check
-        ret=$?
-        flock -u 200 >/dev/null 2>&1
-    elif [ -f /tmp/firmware.img.progress -o -f /tmp/firmware.img.sha256sum ]; then
-        ret=2
-    else
-        echo "lock failed!" >&2
-        return 255
-    fi
-
-    if [ "$ret" -eq 0 -o "$ret" -eq 2 ]; then
-        # output
-        echo "<pre>"
-        sed -E '1 s/^\[.*\]\((.+)\)\s*$/\1/' /var/run/ota/ota.latest
-        echo "</pre>"
-        echo "<br><h2>ChangeLog:</h2>"
-    fi
-    [ "$ret" -eq 0 -o "$ret" -eq 1 -o "$ret" -eq 2 ] && cat /var/run/ota/ota.log
-    return $ret
+	local ret=0
+	exec 200>$WRLOCK
+	if flock -n 200; then
+		prepare_check
+		ret=$?
+		flock -u 200 >/dev/null 2>&1
+	elif [ -f "$PROG" -o -f "$SUMFILE" ]; then
+		ret=2
+	else
+		echo "lock failed!" >&2
+		return 255
+	fi
+	if [ "$ret" -eq 0 -o "$ret" -eq 2 ]; then
+		echo "<pre>"
+		sed -E '1 s/^\[.*\]\((.+)\)\s*$/\1/' "$STATE_DIR/ota.latest" 2>/dev/null
+		echo "</pre>"
+		echo "<br><h2>ChangeLog:</h2>"
+	fi
+	[ "$ret" -eq 0 -o "$ret" -eq 1 -o "$ret" -eq 2 ] && cat "$STATE_DIR/ota.log"
+	return $ret
 }
 
-# async download
-do_download(){
-    local img=`head -1 /var/run/ota/ota.latest | sed -E 's/.*\((.+)\).*/\1/'`
-    local sum=`head -3 /var/run/ota/ota.latest | grep '^SHA256: ' | cut -d' ' -f2`
-    [ -z "$img" -o -z "$sum" ] && { echo "do check first" >&2 ; return 254; }
-    lock_download $img $sum &
-    return 0
+download() {
+	local url sum name
+	[ -f "$META" ] || { echo "do check first" >&2; return 254; }
+	url=$(meta_get BROWSER_URL)
+	sum=$(meta_get SHA256)
+	name=$(meta_get ASSET)
+	[ -n "$url" ] && [ -n "$sum" ] || { echo "incomplete meta" >&2; return 254; }
+
+	exec 300>$STLOCK
+	flock 300
+	touch "$IMG_PART"
+	echo >/tmp/firmware.img.progress
+	rm -f "$SUMFILE" "$IMG" "$IMG_GZ"
+	flock -u 300
+
+	if [ -f "$IMG_GZ" ] && [ "$(sha256 "$IMG_GZ")" = "$sum" ]; then
+		echo "Reusing verified $IMG_GZ" >>"$PROG"
+	else
+		echo "Downloading $name ..." >>"$PROG"
+		exec 300>$STLOCK
+		flock 300
+		echo "#=#=#" >>"$PROG"
+		# shellcheck disable=SC2086
+		curl $OTA_CURL_OPTS -L --fail --show-error --connect-timeout 15 \
+			--progress-bar -o "$IMG_PART" "$url" 2>>"$PROG" &
+		pid=$!
+		echo "$pid" >/var/run/ota/download.pid
+		flock -u 300
+		if ! wait $pid; then
+			ecode=$?
+			rm -f /var/run/ota/download.pid
+			echo >>"$PROG"
+			[ $ecode -eq 143 ] && echo "Canceled!" >>"$PROG"
+			rm -f "$IMG_PART"
+			return 1
+		fi
+		rm -f /var/run/ota/download.pid
+		echo "Verifying SHA256..." >"$PROG"
+		if [ "$(sha256 "$IMG_PART")" != "$sum" ]; then
+			echo "Checksum failed!" >>"$PROG"
+			rm -f "$IMG_PART"
+			return 1
+		fi
+		mv "$IMG_PART" "$IMG_GZ"
+	fi
+
+	echo "Decompressing..." >"$PROG"
+	if ! gzip -dc "$IMG_GZ" >"$IMG"; then
+		echo "gunzip failed" >>"$PROG"
+		rm -f "$IMG"
+		return 1
+	fi
+	# Keep gz for resume; mark done with expected sum (of gz, as in release)
+	exec 300>$STLOCK
+	flock 300
+	echo "$sum" >"$SUMFILE"
+	rm -f "$PROG" "$IMG_PART"
+	flock -u 300
+	return 0
 }
 
-# 0: done, 1: downloading, 2: failed, 254: wrong state, *: err
+lock_download() {
+	exec 200>$WRLOCK
+	flock -n 200 || return
+	download
+	flock -u 200
+}
+
+do_download() {
+	[ -f "$META" ] || { echo "do check first" >&2; return 254; }
+	lock_download &
+	return 0
+}
+
+# 0 done, 1 downloading, 2 canceled/failed msg, 254 wrong state
 do_progress() {
-    local sum=`head -3 /var/run/ota/ota.latest | grep '^SHA256: ' | cut -d' ' -f2`
-    [ -z "$sum" ] && { echo "do check first" >&2 ; return 254; }
-    [ -f /tmp/firmware.img.sha256sum ] && [ "`cat /tmp/firmware.img.sha256sum`" = "$sum" ] && return 0
-    [ -f /tmp/firmware.img.progress ] || { echo "download not in progress" >&2 ; return 254; }
-    [ -f /tmp/firmware.img.part ] && { cat /tmp/firmware.img.progress | tr '\r' '\n' | tail -n1; return 1; }
-    tail -1 /tmp/firmware.img.progress | grep -Fq 'Canceled!' && { echo "Canceled"; return 2; }
-    cat /tmp/firmware.img.progress | tr '\r' '\n' | grep -v '^$' | tail -n1 >&2
-    return 3
+	local sum line
+	sum=$(meta_get SHA256 2>/dev/null)
+	[ -n "$sum" ] || { echo "do check first" >&2; return 254; }
+	[ -f "$SUMFILE" ] && [ "$(cat "$SUMFILE")" = "$sum" ] && [ -f "$IMG" ] && return 0
+	[ -f "$PROG" ] || { echo "download not in progress" >&2; return 254; }
+	if tail -1 "$PROG" | grep -Fq 'Canceled!'; then
+		echo "Canceled"
+		return 2
+	fi
+	if grep -Fq 'Checksum failed!' "$PROG" 2>/dev/null || grep -Fq 'gunzip failed' "$PROG" 2>/dev/null; then
+		tr '\r' '\n' <"$PROG" | grep -v '^$' | tail -n1
+		return 2
+	fi
+	# Still downloading or decompressing — keep UI in progress (code 1)
+	line=$(tr '\r' '\n' <"$PROG" | grep -v '^$' | tail -n1)
+	echo "${line:-Working...}"
+	return 1
 }
 
 do_progress_locked() {
-    local ret
-    exec 300>$STLOCK
-    flock -s 300
-    do_progress
-    ret=$?
-    flock -u 300
-    return $ret
+	local ret
+	exec 300>$STLOCK
+	flock -s 300
+	do_progress
+	ret=$?
+	flock -u 300
+	return $ret
 }
 
 do_cancel() {
-    if [ -f /var/run/ota/download.pid ]; then
-        local pid=`cat /var/run/ota/download.pid`
-        if [ -n "$pid" ]; then
-            kill -TERM $pid;
-            while kill -0 $pid >/dev/null 2>&1; do
-                if ! sleep 1; then
-                    break
-                fi
-            done
-        fi
-    fi
-    return 0
-}
-
-ota_init(){
-    mkdir -p /var/run/ota >/dev/null 2>&1 || true
+	if [ -f /var/run/ota/download.pid ]; then
+		pid=$(cat /var/run/ota/download.pid)
+		if [ -n "$pid" ]; then
+			kill -TERM "$pid" 2>/dev/null
+			while kill -0 "$pid" >/dev/null 2>&1; do
+				sleep 1 || break
+			done
+		fi
+	fi
+	return 0
 }
 
 usage() {
-    echo "usage: ota sub-command"
-    echo "where sub-command is one of:"
-    echo "      check                  Check firmware upgrade"
-    echo "      download               Download latest firmware"
-    echo "      progress               Download progress"
-    echo "      cancel                 Cancel download"
+	echo "usage: ota sub-command"
+	echo "  check | download | progress | cancel"
+	echo "GitHub OTA: ${owner}/${repo} (*${asset_suffix})"
 }
 
 ota_init || exit 255
 
+# Bare "ota" must exit 0 so LuCI menu appears (controller probes this).
 case $action in
-    "check")
-        do_check
-    ;;
-    "download")
-        do_download
-    ;;
-    "progress")
-        do_progress_locked
-    ;;
-    "cancel")
-        do_cancel
-    ;;
-    *)
-        usage
-    ;;
+	"" )
+		usage
+		exit 0
+	;;
+	check) do_check ;;
+	download) do_download ;;
+	progress) do_progress_locked ;;
+	cancel) do_cancel ;;
+	*)
+		usage
+		exit 1
+	;;
 esac

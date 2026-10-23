@@ -40,6 +40,10 @@ DURABLE="$root/.github/scripts/tailscale-durable"
   echo "::error::缺少 $DURABLE/41_tailscale-durable"
   exit 1
 }
+[ -f "$DURABLE/luci-app-tailscale.json" ] || {
+  echo "::error::缺少 $DURABLE/luci-app-tailscale.json"
+  exit 1
+}
 
 grep -qx 'CONFIG_TARGET_x86_64=y' config-custom.seed || {
   echo "::error::官方 Tailscale 预编译是 amd64，seed 不是 x86_64，拒绝替换"
@@ -136,6 +140,8 @@ install -m 0755 "$DURABLE/tailscale_helper" "$luci/root/etc/tailscale/tailscale_
 install -m 0755 "$DURABLE/ensure-helper-fix.sh" "$luci/root/etc/tailscale/ensure-helper-fix.sh"
 install -m 0755 "$DURABLE/tailscale-fixup" "$luci/root/etc/init.d/tailscale-fixup"
 install -m 0755 "$DURABLE/41_tailscale-durable" "$luci/root/etc/uci-defaults/41_tailscale-durable"
+install -d "$luci/root/usr/share/luci/menu.d"
+install -m 0644 "$DURABLE/luci-app-tailscale.json" "$luci/root/usr/share/luci/menu.d/luci-app-tailscale.json"
 
 grep -qF 'netifd skip: Tailscale owns addrs' "$luci/root/usr/sbin/tailscale_helper" || {
   echo "::error::durable helper 缺少 netifd skip 标记"
@@ -157,5 +163,13 @@ grep -q "set firewall.tszone.network='tailscale'" "$luci/root/usr/sbin/tailscale
   echo "::error::未装上 ensure-helper-fix.sh"
   exit 1
 }
+grep -q 'admin/services/tailscale' "$luci/root/usr/share/luci/menu.d/luci-app-tailscale.json" || {
+  echo "::error::menu.d 未改到 admin/services/tailscale"
+  exit 1
+}
+grep -q 'admin/vpn/tailscale' "$luci/root/usr/share/luci/menu.d/luci-app-tailscale.json" && {
+  echo "::error::menu.d 仍含 admin/vpn/tailscale"
+  exit 1
+}
 
-echo "tailscale -> official ${TS_VERSION} amd64; luci-app-tailscale ${LUCI_TAG} at $luci (+ durable helper/firewall overlay)"
+echo "tailscale -> official ${TS_VERSION} amd64; luci-app-tailscale ${LUCI_TAG} at $luci (+ durable helper/firewall + Services menu)"

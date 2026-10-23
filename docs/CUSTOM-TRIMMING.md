@@ -429,6 +429,8 @@ app-meta-aria2、app-meta-transmission、aria2-entry-deps、transmission-daemon-
 
 `package/istoreos-files` 的 postinst 仍会 sed 一次 `controller/admin/ota.lua`；文件不在时 sed 只打一行 stderr，该块不带 `set -e` 且以 `true` 收尾，不影响打包。不改它，守「不改源码」。
 
+**修订（2026-10-23）**：不是永远不要 OTA，而是不要 **koolcenter 官方镜像** OTA。自建 GitHub Releases OTA 见 **§三十七**（改写 `package/diy/luci-app-ota`，seed 重新打开）。
+
 ## 二十二、内置最新 Tailscale（2026-10-14，用户明确要求）
 
 r13 固件里已经有 Tailscale **守护进程**，但是 packages feed（`jjm2473/packages@istoreos-24.10`）钉在 **1.80.3**。用户要求开箱即有、并且用最新稳定版。
@@ -468,10 +470,13 @@ LuCI 配置页 `luci-app-tailscale-community` 仍是商店应用、六个默认 
 | `.github/scripts/tailscale-durable/ensure-helper-fix.sh` | 开机/手动：若 helper 变回 stock（含 `proto=static` 或 `network='tailscale'`）则从 keep 恢复；删 `network.tailscale`；修 zone |
 | `.github/scripts/tailscale-durable/tailscale-fixup` | `/etc/init.d/tailscale-fixup`，`START=89`（早于 luci-app-tailscale 的 90） |
 | `.github/scripts/tailscale-durable/41_tailscale-durable` | uci-defaults：enable 开机守护并跑一次 ensure |
+| `.github/scripts/tailscale-durable/luci-app-tailscale.json` | LuCI menu.d：`admin/vpn` → `admin/services` |
 
 `pin-tailscale-prebuilt.sh` 在 clone（或跳过 clone）**之后每次**把上述文件装进 `package/luci-app-tailscale/root/`（含 `/etc/tailscale/tailscale_helper.keep`）。改耐久逻辑只改 `tailscale-durable/`，不要只改构建树副本。
 
 刷机后自检：`uci -q get network.tailscale` 应空；`uci get firewall.tszone.device` 含 `tailscale0`；`grep -F 'netifd skip: Tailscale owns addrs' /usr/sbin/tailscale_helper`；`/etc/init.d/tailscale-fixup enabled`；`fw4 print` 无同名 zone 报错。
+
+**菜单位置（2026-10-23）**：asvow 默认在 LuCI **VPN → Tailscale**；本 fork 用 `.github/scripts/tailscale-durable/luci-app-tailscale.json` 改到 **服务 → Tailscale**（与商店版习惯一致），由 `pin-tailscale-prebuilt.sh` 铺进构建树。
 
 ## 二十三、QuickStart 首页（不要 Samba/易有云/下载器，2026-10-16，用户明确要求）
 
@@ -489,7 +494,7 @@ r17 及更早镜像登录后是 LuCI Argon 概览，不是官方那种彩色首�
 | 首页卡片：网络向导 / 局域网设备 / 测速 / **家长控制** / 商店 / 内网·DNS·日志·终端 | 保留。家长控制官方要等 `luci-app-oaf` 装上才画，补丁改成始终显示 | 2026-10-17 用户明确这块有用。点击仍走商店装 `luci-app-oaf`（应用过滤），不烘焙 |
 | 磁盘信息 | 保留 | 只读概览，不是 Samba |
 | Docker | 前端已按 `/etc/init.d/dockerd` 是否存在决定；本镜像没有 dockerd，卡片不出现 | 不装 Docker |
-| 固件更新 / 沙箱 | 前端已按 `ota` 二进制、`/ext_overlay` 决定；本镜像都没有 | OTA 已删（§二十一） |
+| 固件更新 / 沙箱 | 前端已按 `ota` 二进制决定；现用自建 GitHub OTA | 见 §三十七（§二十一仅禁 koolcenter） |
 | 侧栏「网络存储」→ 磁盘阵列 / S.M.A.R.T. | 从 `quickstart.lua` 删除这两条 `entry`，父菜单随子项消失；Makefile 保留官方四项（含 `smartd`） | 不要这些页。首页磁盘信息要 smartctl+smartd+mdadm，见 §三十二～§三十五 |
 | 侧栏「系统 → 挂载点」 | `pin-quickstart.sh` 往 luci-app-quickstart 的 menu.d 写 `admin/system/mounts` `enabled: false` | 无数据盘。`luci-mod-system` 不能删（备份与更新在里面）。见 §三十一 |
 | 存储服务 | 模块加回首页；**只留 WebDAV 卡片**，易有云 / Samba 从该模块渲染删除（不留空位） | 2026-10-17 改口：用户只要这块里的 WebDAV。卡片走商店 `gowebdav`（`auto_setup` 允许）；OpenList 自带 WebDAV 仍在，是另一条入口 |
@@ -518,7 +523,7 @@ r17 及更早镜像登录后是 LuCI Argon 概览，不是官方那种彩色首�
 | 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-quickstart.sh`：sparse clone `linkease/nas-packages@c82c458b61e5` 的 `network/services/quickstart`（预编译 0.13.0）到 `package/quickstart`；sparse clone `linkease/nas-packages-luci@7e5083e2ca4c` 的 `luci/luci-app-quickstart`（0.12.10-r1）到 `package/luci-app-quickstart`。再改构建树副本：首页保留 diskInfo + storage，从渲染删除 docker/downloadService/remoteDomain；存储服务模块里删除易有云/Samba 卡片，默认打开 WebDAV，「配置存储服务」走 `gowebdav`；设置列表保留 storage、去掉下载/远程域名；快捷入口「家长控制」未装 oaf 也显示；controller 删除 RAID/SMART 菜单；Makefile **保留** `+smartmontools +smartd +smartmontools-drivedb +mdadm`（§三十五）；menu.d 关掉「系统 → 挂载点」（§三十一）；`auto_setup.sh` 拒绝 samba/linkease/aria2/transmission/docker/ddnsto/unishare，**允许 gowebdav**；`disable_update_check=1` |
 | seed 新增 `=y` | `quickstart`、`luci-app-quickstart`、`luci-i18n-quickstart-zh-cn`（seed `CONFIG_PACKAGE_*` 587 → 590） |
 | defconfig 可能自行加回 | `smartd`/`smartmontools`/`mdadm` 是有意留下的（审计缺了就红）。`mdadm` 可能顺带拉回 `kmod-md-*`，不是侧栏 |
-| 不加 | 整个 nas-packages / app-hub；`app-meta-samba`、linkease、aria2、luci-app-ota、ddnsto |
+| 不加 | 整个 nas-packages / app-hub；`app-meta-samba`、linkease、aria2、ddnsto（`luci-app-ota` 已按 §三十七加回自建版） |
 
 后续 AI：**不要**把 nas-packages 写成第七/八条 feed；升 QuickStart 版本只改脚本里的 `NAS_COMMIT` / `LUCI_COMMIT` / `QS_VERSION` / `LUCI_VERSION`，前端字符串对不上就让 CI 红、不要猜着补。本地编也必须跑这支脚本，见 `BUILD-CUSTOM.md` 步骤 3d。
 
@@ -898,3 +903,35 @@ r32 已含 smartctl、mdadm、§三十四 的 loading 补丁，N100 首页仍显
 - 去掉 Docker 后首页 CPU 0%、内存 7%、50°C 是网关空闲正常值，不是浪费。计算放 9400F，J4125 留转发余量。irqbalance/eqos/oaf 可以；数据库/Jellyfin/embedding 不行。
 
 后续 AI：**不要**把 Docker/Samba/UPnP 加回 seed；**不要**把 Open-Box 写进固件；**不要**整包还原 1018/1019 tar；**不要**把 ISO 写成安装盘；J4125 是否已刷以现场 `ubus call system board` 为准，不要根据本对话臆测。
+
+## 三十七、自建 GitHub Releases OTA + Tailscale 菜单到「服务」（2026-10-23，用户明确要求）
+
+### 背景
+
+§二十一删掉的是会把机器刷回 **koolcenter 官方整包** 的 OTA。本 fork 固件只发在 `xcy960815/istoreos` 的 GitHub Releases（tag `rN` = Actions `run_number`）。用户要求：① Tailscale LuCI 从 VPN 挪到 **服务**；② 恢复「系统 → OTA」，但只拉本仓库 Releases。
+
+### 功能视角
+
+| 变更后设备能做什么 | 涉及 | 说明 |
+|---|---|---|
+| LuCI **服务 → Tailscale** | `tailscale-durable/luci-app-tailscale.json` + pin 脚本 | 与商店版习惯一致 |
+| LuCI **系统 → OTA** 检查/下载本 fork 固件 | `luci-app-ota` 2.0.0（diy） | 源：`api.github.com/repos/xcy960815/istoreos/releases/latest`；资产 `*squashfs-combined-efi.img.gz`；**必须**对照 Release `sha256sums`（或 `ota.meta`）；解压到 `/tmp/firmware.img` 后 **手动确认** 才 `sysupgrade`，无自动刷 |
+| 仍不能 | 点 OTA 装回官方完整版 | `/lib/upgrade/ota.sh` 与 `/bin/ota` 均不再指向 koolcenter |
+
+### 包名 / 构建明细
+
+| 动作 | 内容 |
+|---|---|
+| seed 重新 `=y` | `luci-app-ota`、`luci-i18n-ota-zh-cn`（`CONFIG_PACKAGE_*` +2） |
+| 改写 | `package/diy/luci-app-ota/root/bin/ota`（GitHub API + jsonfilter）；`root/lib/upgrade/ota.sh`（占位，防koolcenter）；`ota.htm` 强制确认刷写；`ota_config` 可改 owner/repo/asset_suffix |
+| CI | `Apply custom config` 写入 `CONFIG_VERSION_CODE="r${GITHUB_RUN_NUMBER}"`（进 `DISTRIB_REVISION`）；Release 额外上传 `ota.meta` |
+| 菜单 | 见 §二十二「菜单位置」 |
+
+### 刷机后自检
+
+1. 侧栏 **服务** 下有 Tailscale（不应再在 VPN）。
+2. **系统 → OTA → 检查更新**：应显示本仓库最新 `rN` 与 SHA256；已是最新则提示 Already latest。
+3. 下载完成后须再点 **Flash** 并确认；中断电源会变砖风险与普通 sysupgrade 相同——先在 N100 验证。
+4. `uci get ota.github.owner` → `xcy960815`；`grep -v koolcenter /bin/ota /lib/upgrade/ota.sh`。
+
+后续 AI：**不要**把 OTA_URL 改回 fw.koolcenter.com；换仓库只改 `ota.github.*` 或 diy 默认值；改菜单只动 `tailscale-durable/luci-app-tailscale.json`。

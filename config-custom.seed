@@ -6,7 +6,7 @@
 # 目标机器: J4125 四口 2.5G (i226-V) 软路由
 # 删除: Docker全家桶/Samba/OpenWrt自带DDNS(luci-app-ddns)/UPnP/linkease/ddnsto/unishare 及其 i18n
 # 2026-10-10: Aria2/Transmission 及其 Web/LuCI 页面已从 seed 删除；首页入口不装回。见 §二十
-# 2026-10-12: 在线升级(luci-app-ota)从 seed 删除——它拉的是官方整包，刷上去会覆盖裁剪。见 §二十一
+# 2026-10-12: 曾删官方 koolcenter OTA（§二十一）。2026-10-23: 加回自建 GitHub Releases OTA（§三十七）。
 # 2026-10-14: Tailscale 开箱即有最新稳定版（官方 amd64 1.104.1 预编译）+ LuCI。见 §二十二
 # 2026-10-16: QuickStart 首页开箱即有；Samba/易有云/下载器/ddnsto 卡片从首页去掉。见 §二十三
 # 2026-10-16: 去掉第二主题 luci-theme-bootstrap，界面只留 Argon。见 §二十四
@@ -383,6 +383,7 @@ CONFIG_PACKAGE_luci-app-argon-config=y
 CONFIG_PACKAGE_luci-app-ddns-go=y
 CONFIG_PACKAGE_luci-app-firewall=y
 CONFIG_PACKAGE_luci-app-openlist=y
+CONFIG_PACKAGE_luci-app-ota=y
 CONFIG_PACKAGE_luci-app-package-manager=y
 CONFIG_PACKAGE_luci-app-quickstart=y
 CONFIG_PACKAGE_luci-app-store=y
@@ -398,6 +399,7 @@ CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-ddns-go-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-openlist-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-ota-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-package-manager-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-quickstart-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-tailscale-zh-cn=y
