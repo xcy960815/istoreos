@@ -449,12 +449,29 @@ LuCI 配置页 `luci-app-tailscale-community` 仍是商店应用、六个默认 
 
 | 动作 | 内容 |
 |---|---|
-| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-tailscale-prebuilt.sh`：把 `package/feeds/packages/tailscale` 换成官方 `tailscale_1.104.1_amd64.tgz`（sha256 `108d1d96ecf410d305571e173516f27038f870919a9b89c914a167c6d33a4528`）；只装两个二进制。init/config 由 asvow LuCI 提供。`git clone --branch v1.2.6` asvow/luci-app-tailscale 到 `package/luci-app-tailscale` |
+| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-tailscale-prebuilt.sh`：把 `package/feeds/packages/tailscale` 换成官方 `tailscale_1.104.1_amd64.tgz`（sha256 `108d1d96ecf410d305571e173516f27038f870919a9b89c914a167c6d33a4528`）；只装两个二进制。init/config 由 asvow LuCI 提供。`git clone --branch v1.2.6` asvow/luci-app-tailscale 到 `package/luci-app-tailscale`；再铺 `.github/scripts/tailscale-durable/`（helper / keep / ensure / START=89 / uci-defaults），见下方「耐久防火墙 / netifd 补丁」 |
 | seed 新增 `=y` | `luci-app-tailscale`、`luci-i18n-tailscale-zh-cn`（seed `CONFIG_PACKAGE_*` 585 → 587） |
 | seed 原本就有、未删 | `tailscale`（守护进程；二进制由脚本换成 1.104.1） |
 | 不加 | `luci-app-tailscale-community`（商店包，无 kconfig，写了也是死行）；不升 golang |
 
 后续 AI：**不要**为了「最新 Tailscale」去升 packages 的 golang；**不要**把 asvow 这一包扩成整个 app-hub；换更新的官方版本只改脚本里的 `TS_VERSION` / `TS_HASH`。本地编也必须跑这支脚本，见 `BUILD-CUSTOM.md` 步骤 3c。
+
+### 耐久防火墙 / netifd 补丁（2026-10-23）
+
+线上 J4125 曾出现：asvow `tailscale_helper` 建 `network.tailscale`（`proto=static`）与 Tailscale 抢 `100.x`；`firewall.tszone` 用 `network='tailscale'`，再叠同名 zone 时 fw4 重定义（Provider）。线上已改为：**不建 netifd 接口**、**`firewall.tszone` 只绑 `device='tailscale0'`**，并用 `ensure-helper-fix.sh` + `START=89` 开机守护防 opkg 覆盖。
+
+本仓库把同一套规则烘焙进固件（仍走第二条构建例外，不另开 feed）：
+
+| 进 git 的文件 | 作用 |
+|---|---|
+| `.github/scripts/tailscale-durable/tailscale_helper` | 覆盖 asvow helper：跳过 netifd；zone 用 `device=tailscale0`；清掉其它 `name=tailscale` 的 zone |
+| `.github/scripts/tailscale-durable/ensure-helper-fix.sh` | 开机/手动：若 helper 变回 stock（含 `proto=static` 或 `network='tailscale'`）则从 keep 恢复；删 `network.tailscale`；修 zone |
+| `.github/scripts/tailscale-durable/tailscale-fixup` | `/etc/init.d/tailscale-fixup`，`START=89`（早于 luci-app-tailscale 的 90） |
+| `.github/scripts/tailscale-durable/41_tailscale-durable` | uci-defaults：enable 开机守护并跑一次 ensure |
+
+`pin-tailscale-prebuilt.sh` 在 clone（或跳过 clone）**之后每次**把上述文件装进 `package/luci-app-tailscale/root/`（含 `/etc/tailscale/tailscale_helper.keep`）。改耐久逻辑只改 `tailscale-durable/`，不要只改构建树副本。
+
+刷机后自检：`uci -q get network.tailscale` 应空；`uci get firewall.tszone.device` 含 `tailscale0`；`grep -F 'netifd skip: Tailscale owns addrs' /usr/sbin/tailscale_helper`；`/etc/init.d/tailscale-fixup enabled`；`fw4 print` 无同名 zone 报错。
 
 ## 二十三、QuickStart 首页（不要 Samba/易有云/下载器，2026-10-16，用户明确要求）
 

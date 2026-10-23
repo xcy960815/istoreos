@@ -8,6 +8,11 @@
 #
 # 必须在 feeds install 之后、make defconfig 之前跑（LuCI 符号这时才进 kconfig）。
 # 改的是 feeds 生成的副本，不进 git，不算改源码。见 docs/CUSTOM-TRIMMING.md §二十二
+#
+# 耐久补丁（与线上路由器一致）：asvow helper 默认会建 netifd network.tailscale（static）
+# 并用 firewall.tszone.network= 绑定，导致地址打架 / fw4 同名 zone 重定义。
+# 本脚本在 clone 后覆盖 helper，并烘焙 ensure-helper-fix.sh + START=89 开机守护。
+#  overlays 在 .github/scripts/tailscale-durable/（进 git）。
 set -euo pipefail
 
 TS_VERSION=1.104.1
@@ -17,6 +22,24 @@ LUCI_TAG=v1.2.6
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$root"
+
+DURABLE="$root/.github/scripts/tailscale-durable"
+[ -f "$DURABLE/tailscale_helper" ] || {
+  echo "::error::缺少 $DURABLE/tailscale_helper"
+  exit 1
+}
+[ -f "$DURABLE/ensure-helper-fix.sh" ] || {
+  echo "::error::缺少 $DURABLE/ensure-helper-fix.sh"
+  exit 1
+}
+[ -f "$DURABLE/tailscale-fixup" ] || {
+  echo "::error::缺少 $DURABLE/tailscale-fixup"
+  exit 1
+}
+[ -f "$DURABLE/41_tailscale-durable" ] || {
+  echo "::error::缺少 $DURABLE/41_tailscale-durable"
+  exit 1
+}
 
 grep -qx 'CONFIG_TARGET_x86_64=y' config-custom.seed || {
   echo "::error::官方 Tailscale 预编译是 amd64，seed 不是 x86_64，拒绝替换"
@@ -98,5 +121,41 @@ grep -q 'LUCI_TITLE:=LuCI for Tailscale' "$luci/Makefile" || {
   echo "::error::$luci 不是 asvow/luci-app-tailscale，拒绝继续"
   exit 1
 }
+[ -f "$luci/root/usr/sbin/tailscale_helper" ] || {
+  echo "::error::$luci 缺少 root/usr/sbin/tailscale_helper，上游布局变了"
+  exit 1
+}
 
-echo "tailscale -> official ${TS_VERSION} amd64; luci-app-tailscale ${LUCI_TAG} at $luci"
+# --- durable overlay（每次跑都覆盖，旧构建树跳过 clone 也要打补丁）---
+install -d "$luci/root/usr/sbin"
+install -d "$luci/root/etc/tailscale"
+install -d "$luci/root/etc/init.d"
+install -d "$luci/root/etc/uci-defaults"
+install -m 0755 "$DURABLE/tailscale_helper" "$luci/root/usr/sbin/tailscale_helper"
+install -m 0755 "$DURABLE/tailscale_helper" "$luci/root/etc/tailscale/tailscale_helper.keep"
+install -m 0755 "$DURABLE/ensure-helper-fix.sh" "$luci/root/etc/tailscale/ensure-helper-fix.sh"
+install -m 0755 "$DURABLE/tailscale-fixup" "$luci/root/etc/init.d/tailscale-fixup"
+install -m 0755 "$DURABLE/41_tailscale-durable" "$luci/root/etc/uci-defaults/41_tailscale-durable"
+
+grep -qF 'netifd skip: Tailscale owns addrs' "$luci/root/usr/sbin/tailscale_helper" || {
+  echo "::error::durable helper 缺少 netifd skip 标记"
+  exit 1
+}
+grep -q "add_list firewall.tszone.device='tailscale0'" "$luci/root/usr/sbin/tailscale_helper" || {
+  echo "::error::durable helper 未绑定 device=tailscale0"
+  exit 1
+}
+grep -q "set network.tailscale.proto='static'" "$luci/root/usr/sbin/tailscale_helper" && {
+  echo "::error::durable helper 仍含 proto=static（应已禁用）"
+  exit 1
+}
+grep -q "set firewall.tszone.network='tailscale'" "$luci/root/usr/sbin/tailscale_helper" && {
+  echo "::error::durable helper 仍含 network=tailscale（应改 device）"
+  exit 1
+}
+[ -f "$luci/root/etc/tailscale/ensure-helper-fix.sh" ] || {
+  echo "::error::未装上 ensure-helper-fix.sh"
+  exit 1
+}
+
+echo "tailscale -> official ${TS_VERSION} amd64; luci-app-tailscale ${LUCI_TAG} at $luci (+ durable helper/firewall overlay)"

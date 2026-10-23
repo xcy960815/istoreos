@@ -1,0 +1,5 @@
+#!/bin/sh
+# First boot: enable boot guard and heal UCI once.
+[ -x /etc/init.d/tailscale-fixup ] && /etc/init.d/tailscale-fixup enable
+[ -x /etc/tailscale/ensure-helper-fix.sh ] && /etc/tailscale/ensure-helper-fix.sh || true
+exit 0

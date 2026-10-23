@@ -1,0 +1,13 @@
+#!/bin/sh /etc/rc.common
+# Re-apply Tailscale helper/firewall fix before luci-app-tailscale starts.
+START=89
+STOP=10
+USE_PROCD=0
+
+start() {
+	/etc/tailscale/ensure-helper-fix.sh
+}
+
+boot() {
+	start
+}
