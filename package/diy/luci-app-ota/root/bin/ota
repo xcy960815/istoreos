@@ -114,10 +114,15 @@ fetch_latest_meta() {
 	}
 	[ -n "$sums_url" ] || { echo "Release has no sha256sums asset" >&2; return 255; }
 	fcurl -o "$SHA256SUMS" "$sums_url" || { echo "Failed to download sha256sums" >&2; return 255; }
-	# sha256sums lines: "<hash> *?<filename>" or "<hash>  <filename>"
-	line=$(grep -E "[ /]${asset}\$" "$SHA256SUMS" | head -1)
-	[ -n "$line" ] || line=$(grep -F "$asset" "$SHA256SUMS" | head -1)
-	sum=$(echo "$line" | awk '{print $1}')
+	# sha256sums: binary "<hash> *<file>" or text "<hash>  <file>"
+	# Strip leading * from field 2 so both forms match (same bug class as CI r36).
+	sum=$(awk -v f="$asset" '
+		{
+			name=$2
+			sub(/^\*/, "", name)
+			if (name == f) { print $1; exit }
+		}
+	' "$SHA256SUMS")
 	[ -n "$sum" ] && [ "${#sum}" -ge 64 ] || {
 		echo "SHA256 for $asset not found in sha256sums" >&2
 		return 255

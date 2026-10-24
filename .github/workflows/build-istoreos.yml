@@ -212,12 +212,22 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          shopt -s nullglob
           tag="r${GITHUB_RUN_NUMBER}"
-          img=$(ls bin/targets/x86/64/*squashfs-combined-efi.img.gz | head -1)
-          [ -f "$img" ] || { echo "::error::缺少 combined-efi.img.gz"; exit 1; }
+          imgs=(bin/targets/x86/64/*squashfs-combined-efi.img.gz)
+          [ ${#imgs[@]} -ge 1 ] || { echo "::error::缺少 combined-efi.img.gz"; exit 1; }
+          img=${imgs[0]}
           base=$(basename "$img")
-          sum=$(grep -E "[ /]${base}\$" bin/targets/x86/64/sha256sums | awk '{print $1}')
-          [ -n "$sum" ] || sum=$(grep -F "$base" bin/targets/x86/64/sha256sums | awk '{print $1}')
+          # OpenWrt sha256sums is binary-mode: "<hash> *<filename>". Text mode is
+          # "<hash>  <filename>". r36 died here: grep '[ /]' misses the '*', and with
+          # pipefail the failed grep aborts before the fallback (silent exit 1).
+          sum=$(awk -v f="$base" '
+            {
+              name=$2
+              sub(/^\*/, "", name)
+              if (name == f) { print $1; exit }
+            }
+          ' bin/targets/x86/64/sha256sums)
           [ -n "$sum" ] || { echo "::error::sha256sums 里没有 $base"; exit 1; }
           {
             echo "TAG=${tag}"
@@ -227,6 +237,7 @@ jobs:
           } > bin/targets/x86/64/ota.meta
           cat bin/targets/x86/64/ota.meta
           files=(bin/targets/x86/64/*.img.gz bin/targets/x86/64/*.iso bin/targets/x86/64/sha256sums bin/targets/x86/64/*.manifest bin/targets/x86/64/ota.meta)
+          [ ${#files[@]} -ge 1 ] || { echo "::error::没有可上传产物"; exit 1; }
           for f in "${files[@]}"; do
             [ -f "$f" ] || { echo "::error::缺少产物 $f，不建 Release"; exit 1; }
           done

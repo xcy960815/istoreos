@@ -940,6 +940,16 @@ r32 已含 smartctl、mdadm、§三十四 的 loading 补丁，N100 首页仍显
 
 ### 背景
 
+## 三十七补、r36：编译已过、Publish 静默失败（2026-10-24）
+
+r36（run 39928975435，提交 `6884719f46`）**package/install / 打盘全绿**，artifact `istoreos-x86_64-trimmed-r36` 已上传；挂在 **Publish to GitHub Releases**：
+
+- OpenWrt `sha256sums` 是 binary 模式：`<hash> *<filename>`
+- workflow 用 `grep -E "[ /]${base}$"` 对不上前导 `*`；在 `set -o pipefail` 下 grep 非 0 直接退出，**走不到 fallback**，日志里也没有 `::error::`（同秒 exit 1）
+- `/bin/ota` 原先同款 regex，靠无 pipefail 的 fallback 才勉强能用；一并改成 `awk` 剥 `*` 再比文件名
+- `luci-app-istoreos-health` 去掉重复的 `conffiles /etc/config/istoreos-health`（只由 `istoreos-ops` 安装该文件）
+- 路径所有权复核：`/lib/upgrade/ota.sh` 仅 base-files；`/bin/ota` 仅 luci-app-ota；ops/health/tailscale overlay 无双提供者
+
 自建 GitHub OTA（§三十七）会在 LuCI 确认后 `sysupgrade`。keep-settings 能留 overlay，但不能替代「刷前再留一份 curated 快照」；Tailscale 耐久层（§二十二）与 OpenClash fake-ip 也需要可脚本化自检，避免 controlplane 被毒或 helper 回退成 stock。
 
 ### 功能视角
