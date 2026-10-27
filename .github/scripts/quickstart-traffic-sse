@@ -1,0 +1,127 @@
+#!/usr/bin/lua
+--[[
+  QuickStart homepage WAN traffic SSE (~1Hz).
+  Auth: valid LuCI sysauth cookie via ubus session.get (not public).
+  Emits: data: {"downloadSpeed":Bps,"uploadSpeed":Bps,"startTime":t0,"endTime":t1}\n\n
+]]
+
+local function flush_write(s)
+	io.write(s)
+	io.flush()
+end
+
+local function get_cookie(name)
+	local cookie = os.getenv("HTTP_COOKIE") or ""
+	for part in string.gmatch(cookie, "[^;]+") do
+		local k, v = string.match(part, "^%s*([^=]+)%s*=%s*(.-)%s*$")
+		if k == name and v and #v > 0 then
+			return v
+		end
+	end
+	return nil
+end
+
+local function sanitize_sid(sid)
+	if not sid then return nil end
+	if not string.match(sid, "^[%w%-_]+$") then return nil end
+	if #sid < 8 or #sid > 128 then return nil end
+	return sid
+end
+
+local function session_ok()
+	for _, key in ipairs({"sysauth_https", "sysauth_http", "sysauth"}) do
+		local sid = sanitize_sid(get_cookie(key))
+		if sid then
+			local cmd = string.format(
+				"ubus call session get '{\"ubus_rpc_session\":\"%s\"}' 2>/dev/null",
+				sid)
+			local f = io.popen(cmd)
+			local out = f and f:read("*a") or ""
+			if f then f:close() end
+			if out:find('"username"') then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function resolve_wan_dev()
+	local f = io.popen("ubus call network.interface.wan status 2>/dev/null")
+	local out = f and f:read("*a") or ""
+	if f then f:close() end
+	local l3 = out:match('"l3_device"%s*:%s*"([^"]+)"')
+	if l3 and #l3 > 0 then return l3 end
+	local dev = out:match('"device"%s*:%s*"([^"]+)"')
+	if dev and #dev > 0 then return dev end
+	for _, name in ipairs({"pppoe-wan", "wan", "eth0"}) do
+		local p = "/sys/class/net/" .. name .. "/statistics/rx_bytes"
+		local rf = io.open(p, "r")
+		if rf then rf:close(); return name end
+	end
+	return nil
+end
+
+local function read_bytes(dev)
+	local rx, tx = 0, 0
+	local rf = io.open("/sys/class/net/" .. dev .. "/statistics/rx_bytes", "r")
+	if rf then rx = tonumber(rf:read("*l")) or 0; rf:close() end
+	local tf = io.open("/sys/class/net/" .. dev .. "/statistics/tx_bytes", "r")
+	if tf then tx = tonumber(tf:read("*l")) or 0; tf:close() end
+	return rx, tx
+end
+
+local function now_sec()
+	return os.time()
+end
+
+if not session_ok() then
+	flush_write("Status: 403 Forbidden\r\n")
+	flush_write("Content-Type: text/plain; charset=utf-8\r\n\r\n")
+	flush_write("unauthorized\n")
+	os.exit(0)
+end
+
+local dev = resolve_wan_dev()
+if not dev then
+	flush_write("Status: 500 Internal Server Error\r\n")
+	flush_write("Content-Type: text/plain; charset=utf-8\r\n\r\n")
+	flush_write("wan device not found\n")
+	os.exit(0)
+end
+
+flush_write("Status: 200 OK\r\n")
+flush_write("Content-Type: text/event-stream\r\n")
+flush_write("Cache-Control: no-cache\r\n")
+flush_write("Connection: keep-alive\r\n")
+flush_write("X-Accel-Buffering: no\r\n")
+flush_write("\r\n")
+
+flush_write(": ok iface=" .. dev .. "\n\n")
+
+local prev_rx, prev_tx = read_bytes(dev)
+local prev_t = now_sec()
+local max_ticks = 1800 -- 30 min then end; client reconnects
+local tick = 0
+
+while tick < max_ticks do
+	os.execute("sleep 1")
+	local t1 = now_sec()
+	local rx, tx = read_bytes(dev)
+	local dt = t1 - prev_t
+	if dt < 1 then dt = 1 end
+	local dl = math.floor((rx - prev_rx) / dt)
+	local ul = math.floor((tx - prev_tx) / dt)
+	if dl < 0 then dl = 0 end
+	if ul < 0 then ul = 0 end
+	local ok = pcall(function()
+		flush_write(string.format(
+			'data: {"downloadSpeed":%d,"uploadSpeed":%d,"startTime":%d,"endTime":%d}\n\n',
+			dl, ul, prev_t, t1))
+	end)
+	if not ok then
+		break
+	end
+	prev_rx, prev_tx, prev_t = rx, tx, t1
+	tick = tick + 1
+end

@@ -277,8 +277,143 @@ elif load_new in s and load_old not in s:
 else:
     raise SystemExit("::error::index.js 磁盘信息 loading 条件对不上，前端改版了要人工复核")
 
+# 首页「网络流量」图：显示 XY 轴刻度，避免只能 hover 看数
+xaxis_old = 'xAxis:{type:"category",boundaryGap:!1,splitLine:{lineStyle:{color:["#999"]},show:!1},name:"",show:!1,nameGap:0,nameTextStyle:{height:0,lineHeight:0,padding:0}}'
+xaxis_new = 'xAxis:{type:"category",boundaryGap:!1,splitLine:{lineStyle:{color:["#999"]},show:!1},name:"",show:!0,nameGap:8,axisLabel:{show:!0,color:"rgba(0,0,0,0.45)",fontSize:10,hideOverlap:!0,interval:"auto"},axisLine:{show:!0,lineStyle:{color:"rgba(0,0,0,0.2)"}},axisTick:{show:!1},nameTextStyle:{height:0,lineHeight:0,padding:0}}'
+yaxis_old_a = 'yAxis:{type:"value",name:"",minInterval:1e4,interval:1e3,axisLabel:{formatter:function(C,S){return`${m(C)}/s`},color:"#fff",show:!1},nameTextStyle:{color:"#fff"},splitLine:{lineStyle:{color:["#999"]},show:!1}}'
+yaxis_new_a = 'yAxis:{type:"value",name:"",minInterval:1e4,splitNumber:3,axisLabel:{formatter:function(C,S){return`${m(C)}/s`},color:"rgba(0,0,0,0.45)",fontSize:10,show:!0},nameTextStyle:{color:"rgba(0,0,0,0.45)"},axisLine:{show:!1},axisTick:{show:!1},splitLine:{lineStyle:{color:["rgba(0,0,0,0.08)"]},show:!0}}'
+yaxis_old_b = 'yAxis:{type:"value",name:"",minInterval:1e4,interval:1e3,axisLabel:{formatter:function(_,x){return`${b(_)}/s`},color:"#fff",show:!1},nameTextStyle:{color:"#fff"},splitLine:{lineStyle:{color:["#999"]},show:!1}}'
+yaxis_new_b = 'yAxis:{type:"value",name:"",minInterval:1e4,splitNumber:3,axisLabel:{formatter:function(_,x){return`${b(_)}/s`},color:"rgba(0,0,0,0.45)",fontSize:10,show:!0},nameTextStyle:{color:"rgba(0,0,0,0.45)"},axisLine:{show:!1},axisTick:{show:!1},splitLine:{lineStyle:{color:["rgba(0,0,0,0.08)"]},show:!0}}'
+grid_old = 'grid:{left:"2%",right:"2%",bottom:"0%",top:"10%",containLabel:!0}'
+grid_new = 'grid:{left:"2%",right:"3%",bottom:"8%",top:"14%",containLabel:!0}'
+if s.count(xaxis_old) == 2 and ("show:!0,nameGap:8,axisLabel" not in s):
+    s = s.replace(xaxis_old, xaxis_new)
+    s = s.replace(yaxis_old_a, yaxis_new_a)
+    s = s.replace(yaxis_old_b, yaxis_new_b)
+    s = s.replace(grid_old, grid_new)
+    print("index.js: 网络流量图打开 XY 轴刻度")
+elif "show:!0,nameGap:8,axisLabel" in s and 'bottom:"8%"' in s:
+    print("index.js 网络流量图已有 XY 轴刻度")
+else:
+    raise SystemExit("::error::index.js 网络流量图轴配置对不上，前端改版了要人工复核")
+
 p.write_text(s, encoding="utf-8")
 PY
+
+# 首页「网络流量」图：SSE ~1Hz（替代 5s Statistics 轮询）
+# CGI 走 uhttpd 直出，避免 LuCI/uhttpd 缓冲；鉴权校验 LuCI sysauth cookie。
+cgi_src="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/quickstart-traffic-sse"
+cgi_dir=$luci/root/www/cgi-bin
+mkdir -p "$cgi_dir"
+[ -f "$cgi_src" ] || {
+  echo "::error::找不到 SSE CGI 源 $cgi_src"
+  exit 1
+}
+cp -a "$cgi_src" "$cgi_dir/quickstart-traffic-sse"
+chmod 755 "$cgi_dir/quickstart-traffic-sse"
+grep -q 'WAN traffic SSE' "$cgi_dir/quickstart-traffic-sse" || {
+  echo "::error::没写出 quickstart-traffic-sse"
+  exit 1
+}
+echo "luci-app-quickstart: 安装 /www/cgi-bin/quickstart-traffic-sse（SSE ~1Hz，需 LuCI session）"
+
+python3 - "$js" <<'PYSSE'
+from pathlib import Path
+import re
+import sys
+
+p = Path(sys.argv[1])
+s = p.read_text(encoding="utf-8")
+
+if 'EventSource("/cgi-bin/quickstart-traffic-sse")' in s:
+    print("index.js: 网络流量图已接 SSE")
+    sys.exit(0)
+
+if "setTimeout(C,5e3)" not in s:
+    raise SystemExit("::error::index.js 找不到 setTimeout(C,5e3) 流量刷新循环")
+
+old_lets = "let y=null,f=null,F=null;"
+new_lets = (
+    "let y=null,f=null,F=null,es=null,esRetry=0,esTimer=null,onVis=null;"
+    "const stopEs=()=>{esTimer&&(clearTimeout(esTimer),esTimer=null);"
+    "if(es){try{es.close()}catch(Z){}es=null}};"
+)
+
+idx = s.find("setTimeout(C,5e3)")
+pos = s.rfind(old_lets, 0, idx)
+if pos < 0 or "downloadSpeed" not in s[max(0, pos - 2500) : pos]:
+    raise SystemExit("::error::index.js 流量图 let y/f/F 定位失败")
+s = s[:pos] + new_lets + s[pos + len(old_lets) :]
+
+marker_start = (
+    'const C=()=>L(this,null,function*(){if(y!=null){if(!document.hidden){'
+    'if(yield g(),y==null)return;_.setOption({series:['
+)
+marker_end = "setTimeout(C,5e3)}});setTimeout(C,5e3)"
+i0 = s.find(marker_start)
+if i0 < 0 or s.find(marker_start, i0 + 1) >= 0:
+    raise SystemExit("::error::index.js 流量刷新循环定位失败（前端改版）")
+i1 = s.find(marker_end, i0)
+if i1 < 0:
+    raise SystemExit("::error::index.js 流量刷新循环结尾定位失败")
+i1_end = i1 + len(marker_end)
+old = s[i0:i1_end]
+names = re.findall(r'name:n\("([^"]+)"\)', old)
+if len(names) < 2:
+    raise SystemExit("::error::index.js 流量图 series 名解析失败")
+n_dl, n_ul = names[0], names[1]
+
+new_loop = (
+    f'const applySeries=()=>{{y!=null&&(_.setOption({{series:[{{name:n("{n_dl}"),'
+    f'data:d.value,type:"line",areaStyle:{{}},smooth:!0}},{{name:n("{n_ul}"),'
+    f'data:u.value,type:"line",areaStyle:{{}},smooth:!0}}]}}),h())}};'
+    'const startEs=()=>{if(document.hidden||y==null)return;stopEs();'
+    'try{es=new EventSource("/cgi-bin/quickstart-traffic-sse")}'
+    "catch(Z){esTimer=setTimeout(startEs,2e3);return}"
+    "es.onopen=()=>{esRetry=0};"
+    "es.onmessage=ev=>{try{const item=JSON.parse(ev.data);"
+    'if(!item||typeof item.downloadSpeed!="number")return;'
+    "const buf=(a.value||[]).concat([{downloadSpeed:item.downloadSpeed|0,"
+    "uploadSpeed:item.uploadSpeed|0,startTime:item.startTime|0,"
+    "endTime:item.endTime|0}]);"
+    "a.value=buf.length>60?buf.slice(-60):buf;applySeries()}catch(Z){}};"
+    "es.onerror=()=>{stopEs();const wait=Math.min(3e4,1e3*Math.pow(2,Math.min(esRetry,5)));"
+    "esRetry++;esTimer=setTimeout(()=>{document.hidden||startEs()},wait)};"
+    "onVis=()=>{document.hidden?stopEs():startEs()};"
+    'document.addEventListener("visibilitychange",onVis);'
+    "startEs()"
+)
+s = s[:i0] + new_loop + s[i1_end:]
+
+nt_old = (
+    "Nt(()=>{y!=null&&(y.dispose(),y=null),"
+    'F&&(window.removeEventListener("resize",F),F=null),'
+    "f&&(f.disconnect(),f=null)})"
+)
+nt_new = (
+    "Nt(()=>{stopEs(),onVis&&document.removeEventListener("
+    '"visibilitychange",onVis),'
+    "y!=null&&(y.dispose(),y=null),"
+    'F&&(window.removeEventListener("resize",F),F=null),'
+    "f&&(f.disconnect(),f=null)})"
+)
+nc = s.find('class:"network_container"')
+if nc < 0:
+    raise SystemExit("::error::index.js 找不到 network_container")
+pos = s.rfind(nt_old, 0, nc)
+if pos < 0:
+    raise SystemExit("::error::index.js 流量图 Nt 卸载钩子定位失败")
+s = s[:pos] + nt_new + s[pos + len(nt_old) :]
+
+if 'EventSource("/cgi-bin/quickstart-traffic-sse")' not in s:
+    raise SystemExit("::error::SSE EventSource 未写入")
+if "setTimeout(C,5e3)" in s:
+    raise SystemExit("::error::旧 5s 轮询仍在")
+
+p.write_text(s, encoding="utf-8")
+print("index.js: 网络流量图改为 SSE ~1Hz（EventSource /cgi-bin/quickstart-traffic-sse）")
+PYSSE
+
 
 setup=$luci/root/usr/libexec/quickstart/auto_setup.sh
 [ -f "$setup" ] || {
