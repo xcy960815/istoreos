@@ -403,6 +403,7 @@ new_loop = (
     "a.value=buf.length>60?buf.slice(-60):buf;applySeries()}catch(Z){}};"
     "es.onerror=()=>{stopEs();const wait=Math.min(3e4,1e3*Math.pow(2,Math.min(esRetry,5)));"
     "esRetry++;esTimer=setTimeout(()=>{document.hidden||startEs()},wait)};"
+    "};"
     "onVis=()=>{document.hidden?stopEs():startEs()};"
     'document.addEventListener("visibilitychange",onVis);'
     "startEs()"
@@ -433,6 +434,9 @@ if 'EventSource("/cgi-bin/quickstart-traffic-sse")' not in s:
     raise SystemExit("::error::SSE EventSource 未写入")
 if "setTimeout(C,5e3)" in s:
     raise SystemExit("::error::旧 5s 轮询仍在")
+# startEs 必须在 onVis 之前用 }; 闭合，否则浏览器 SyntaxError，首页/向导整页白屏
+if "},wait)};};onVis=" not in s:
+    raise SystemExit("::error::SSE 补丁未闭合 startEs（onVis 前缺少 };），会白屏")
 
 p.write_text(s, encoding="utf-8")
 print("index.js: 网络流量图改为 SSE ~1Hz（EventSource /cgi-bin/quickstart-traffic-sse）")
