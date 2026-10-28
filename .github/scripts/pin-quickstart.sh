@@ -96,10 +96,12 @@ grep -q 'admin", "network_guide"' "$ctrl" || {
   echo "::error::$ctrl 没有 admin/network_guide，左侧「网络向导」会丢"
   exit 1
 }
-grep -q '_("NetworkGuide")' "$ctrl" || {
-  echo "::error::$ctrl 没有 NetworkGuide 菜单标题"
+# 标题允许 _("NetworkGuide") 或已钉成「网络向导」
+grep -E -q '_\("NetworkGuide"\)|"网络向导"' "$ctrl" || {
+  echo "::error::$ctrl 没有网络向导菜单标题"
   exit 1
 }
+# po 仍校验（构建 i18n 用）；侧栏以 controller 直写中文为准
 grep -q 'msgstr "网络向导"' "$luci/po/zh-cn/quickstart.po" || {
   echo "::error::中文包没有「网络向导」，侧栏会显示英文"
   exit 1
@@ -122,6 +124,28 @@ if 'admin", "nas", "raid"' in s or 'admin", "nas", "smart"' in s:
     raise SystemExit("::error::controller 还注册 RAID/SMART 菜单，拒绝继续")
 if 'admin", "network_guide"' not in s:
     raise SystemExit("::error::删 RAID/SMART 时把网络向导弄丢了")
+PY
+# 侧栏标题改成中文直写：现网 zh-cn.lmo 常只有 136B、msgid 对不上 NetworkGuide，gettext 会显示英文
+python3 - "$ctrl" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+s = p.read_text(encoding="utf-8")
+repls = [
+    ('_("QuickStart")', '"首页"'),
+    ('_("NetworkGuide")', '"网络向导"'),
+    ('_("NetworkPort")', '"网口配置"'),
+    ('_("Wireless")', '"无线"'),
+]
+changed = False
+for a, b in repls:
+    if a in s:
+        s = s.replace(a, b)
+        changed = True
+if changed:
+    p.write_text(s, encoding="utf-8")
+    print("quickstart.lua: 侧栏标题改为中文直写（首页/网络向导/网口配置/无线）")
+if '"网络向导"' not in p.read_text(encoding="utf-8"):
+    raise SystemExit("::error::侧栏「网络向导」中文标题未写入 controller")
 PY
 # luci-mod-system 不能删（备份与更新在里面）。无数据盘，侧栏「挂载点」用 menu.d 关掉。
 menu_dir=$luci/root/usr/share/luci/menu.d
