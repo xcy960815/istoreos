@@ -471,7 +471,7 @@ LuCI 配置页 `luci-app-tailscale-community` 仍是商店应用、六个默认 
 | `.github/scripts/tailscale-durable/tailscale-fixup` | `/etc/init.d/tailscale-fixup`，`START=89`（早于 luci-app-tailscale 的 90） |
 | `.github/scripts/tailscale-durable/41_tailscale-durable` | uci-defaults：enable 开机守护并跑一次 ensure |
 | `.github/scripts/tailscale-durable/luci-app-tailscale.json` | LuCI menu.d：`admin/vpn` → `admin/services` |
-| `.github/scripts/tailscale-durable/patch-luci-setting.sh` | clone 后补丁：`authkey` + 「授权登录」 |
+| `.github/scripts/tailscale-durable/patch-luci-setting.sh` | clone 后补丁：`authkey` + 行内 AuthURL「授权登录」（无 cbi-button） |
 
 `pin-tailscale-prebuilt.sh` 在 clone（或跳过 clone）**之后每次**把上述文件装进 `package/luci-app-tailscale/root/`（含 `/etc/tailscale/tailscale_helper.keep`）。改耐久逻辑只改 `tailscale-durable/`，不要只改构建树副本。
 
@@ -491,10 +491,12 @@ LuCI 配置页 `luci-app-tailscale-community` 仍是商店应用、六个默认 
 |---|---|
 | `tailscale-durable/tailscale_helper` | NeedsLogin / 有 AuthURL / 早期 Starting：继续等、**不 stop**；仅 daemon 真挂了才 `revert_exit` |
 | `tailscale-durable/ensure-helper-fix.sh` | 缺 `NeedsLogin: keep tailscaled for AuthURL` 标记时从 keep 恢复 helper |
-| `tailscale-durable/patch-luci-setting.sh` | clone 后：`authKey`→`authkey`；NeedsLogin 显示按钮样式；zh_Hans「Need to log in」→「授权登录」 |
+| `tailscale-durable/patch-luci-setting.sh` | clone 后：`authKey`→`authkey`；NeedsLogin 用**行内 `<a href=AuthURL>`**（不用 `cbi-button`，Argon 会错位上浮且难点）；无AuthURL 时显示「正在获取授权链接…」；`getStatus` 在 `tailscale login` 后轮询等 AuthURL；zh_Hans「授权登录」 |
 | `pin-tailscale-prebuilt.sh` | 每次跑都执行上述 patch，并校验 helper 不再含旧 stop-on-no-IP 文案 |
 
-刷机后：服务 → Tailscale → 启用并保存；「已绑定用户」应出现可点的 **「授权登录」**（打开 AuthURL）；浏览器完成 OAuth 后 helper 拿到 IPv4 再写 firewall。不必预置密钥。
+刷机后：服务 → Tailscale → 启用并保存；「已绑定用户」应与 **「授权登录」水平对齐**且可点（新标签打开 AuthURL）。若暂时没有 AuthURL，显示「正在获取授权链接…」而非假链接。浏览器完成 OAuth 后 helper 拿到 IPv4 再写 firewall。不必预置密钥。
+
+**热修（不必整包重编）**：设备上替换 `/www/luci-static/resources/view/tailscale/setting.js`（来自构建树 `package/luci-app-tailscale/htdocs/.../setting.js`），浏览器强刷；中文「正在获取授权链接…」需 po→lmo 进包才本地化，未编进包时 `_()` 回退英文 msgid。`/usr/lib/lua/luci` 无此 JS。
 
 ## 二十三、QuickStart 首页（不要 Samba/易有云/下载器，2026-10-16，用户明确要求）
 
