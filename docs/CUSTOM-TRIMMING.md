@@ -466,17 +466,35 @@ LuCI 配置页 `luci-app-tailscale-community` 仍是商店应用、六个默认 
 
 | 进 git 的文件 | 作用 |
 |---|---|
-| `.github/scripts/tailscale-durable/tailscale_helper` | 覆盖 asvow helper：跳过 netifd；zone 用 `device=tailscale0`；清掉其它 `name=tailscale` 的 zone |
+| `.github/scripts/tailscale-durable/tailscale_helper` | 覆盖 asvow helper：跳过 netifd；zone 用 `device=tailscale0`；清掉其它 `name=tailscale` 的 zone；NeedsLogin 时不 stop（保 AuthURL） |
 | `.github/scripts/tailscale-durable/ensure-helper-fix.sh` | 开机/手动：若 helper 变回 stock（含 `proto=static` 或 `network='tailscale'`）则从 keep 恢复；删 `network.tailscale`；修 zone |
 | `.github/scripts/tailscale-durable/tailscale-fixup` | `/etc/init.d/tailscale-fixup`，`START=89`（早于 luci-app-tailscale 的 90） |
 | `.github/scripts/tailscale-durable/41_tailscale-durable` | uci-defaults：enable 开机守护并跑一次 ensure |
 | `.github/scripts/tailscale-durable/luci-app-tailscale.json` | LuCI menu.d：`admin/vpn` → `admin/services` |
+| `.github/scripts/tailscale-durable/patch-luci-setting.sh` | clone 后补丁：`authkey` + 「授权登录」 |
 
 `pin-tailscale-prebuilt.sh` 在 clone（或跳过 clone）**之后每次**把上述文件装进 `package/luci-app-tailscale/root/`（含 `/etc/tailscale/tailscale_helper.keep`）。改耐久逻辑只改 `tailscale-durable/`，不要只改构建树副本。
 
 刷机后自检：`uci -q get network.tailscale` 应空；`uci get firewall.tszone.device` 含 `tailscale0`；`grep -F 'netifd skip: Tailscale owns addrs' /usr/sbin/tailscale_helper`；`/etc/init.d/tailscale-fixup enabled`；`fw4 print` 无同名 zone 报错。
 
 **菜单位置（2026-10-23）**：asvow 默认在 LuCI **VPN → Tailscale**；本 fork 用 `.github/scripts/tailscale-durable/luci-app-tailscale.json` 改到 **服务 → Tailscale**（与商店版习惯一致），由 `pin-tailscale-prebuilt.sh` 铺进构建树。
+
+### 授权登录（NeedsLogin / AuthURL，2026-10-29）
+
+用户开 Tailscale 后 LuCI「已绑定用户」曾一直显示 **「未运行」且没有登录入口**。根因：耐久 `tailscale_helper` 在 `tailscale up --reset` 后等不到 IPv4（未登录时本就没有）就 `revert_exit` → `/etc/init.d/tailscale stop`，daemon 被杀，`tailscale status --json` 再也出不了 `BackendState=NeedsLogin` / `AuthURL`；asvow 只有这条路径才画可点的「未登录」链接。
+
+另：LuCI `setting.js` 表单项写成 `authKey`，init/`/etc/config/tailscale` 读的是 `authkey`，填认证密钥也不生效。
+
+本 fork 补丁（仍只改 `tailscale-durable/` + pin 脚本）：
+
+| 文件 | 作用 |
+|---|---|
+| `tailscale-durable/tailscale_helper` | NeedsLogin / 有 AuthURL / 早期 Starting：继续等、**不 stop**；仅 daemon 真挂了才 `revert_exit` |
+| `tailscale-durable/ensure-helper-fix.sh` | 缺 `NeedsLogin: keep tailscaled for AuthURL` 标记时从 keep 恢复 helper |
+| `tailscale-durable/patch-luci-setting.sh` | clone 后：`authKey`→`authkey`；NeedsLogin 显示按钮样式；zh_Hans「Need to log in」→「授权登录」 |
+| `pin-tailscale-prebuilt.sh` | 每次跑都执行上述 patch，并校验 helper 不再含旧 stop-on-no-IP 文案 |
+
+刷机后：服务 → Tailscale → 启用并保存；「已绑定用户」应出现可点的 **「授权登录」**（打开 AuthURL）；浏览器完成 OAuth 后 helper 拿到 IPv4 再写 firewall。不必预置密钥。
 
 ## 二十三、QuickStart 首页（不要 Samba/易有云/下载器，2026-10-16，用户明确要求）
 

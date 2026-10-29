@@ -44,6 +44,10 @@ DURABLE="$root/.github/scripts/tailscale-durable"
   echo "::error::缺少 $DURABLE/luci-app-tailscale.json"
   exit 1
 }
+[ -f "$DURABLE/patch-luci-setting.sh" ] || {
+  echo "::error::缺少 $DURABLE/patch-luci-setting.sh"
+  exit 1
+}
 
 grep -qx 'CONFIG_TARGET_x86_64=y' config-custom.seed || {
   echo "::error::官方 Tailscale 预编译是 amd64，seed 不是 x86_64，拒绝替换"
@@ -143,8 +147,25 @@ install -m 0755 "$DURABLE/41_tailscale-durable" "$luci/root/etc/uci-defaults/41_
 install -d "$luci/root/usr/share/luci/menu.d"
 install -m 0644 "$DURABLE/luci-app-tailscale.json" "$luci/root/usr/share/luci/menu.d/luci-app-tailscale.json"
 
+# LuCI: authkey spelling + 「授权登录」 button (every run, even when clone skipped)
+bash "$DURABLE/patch-luci-setting.sh" "$luci"
+
+
 grep -qF 'netifd skip: Tailscale owns addrs' "$luci/root/usr/sbin/tailscale_helper" || {
   echo "::error::durable helper 缺少 netifd skip 标记"
+  exit 1
+}
+grep -qF 'NeedsLogin: keep tailscaled for AuthURL' "$luci/root/usr/sbin/tailscale_helper" || {
+  echo "::error::durable helper 缺少 NeedsLogin/AuthURL 保活标记"
+  exit 1
+}
+# Must not stop-on-no-IP blindly (old bug: kills AuthURL → LuCI 「未运行」)
+if grep -q 'Failed to get Tailscale IPv4 address after 5 attempts' "$luci/root/usr/sbin/tailscale_helper"; then
+  echo "::error::durable helper 仍含旧的 stop-on-no-IP 文案"
+  exit 1
+fi
+grep -q "form.Value, 'authkey'" "$luci/htdocs/luci-static/resources/view/tailscale/setting.js" || {
+  echo "::error::setting.js 未改成 authkey"
   exit 1
 }
 grep -q "add_list firewall.tszone.device='tailscale0'" "$luci/root/usr/sbin/tailscale_helper" || {
@@ -172,4 +193,4 @@ grep -q 'admin/vpn/tailscale' "$luci/root/usr/share/luci/menu.d/luci-app-tailsca
   exit 1
 }
 
-echo "tailscale -> official ${TS_VERSION} amd64; luci-app-tailscale ${LUCI_TAG} at $luci (+ durable helper/firewall + Services menu)"
+echo "tailscale -> official ${TS_VERSION} amd64; luci-app-tailscale ${LUCI_TAG} at $luci (+ durable helper/NeedsLogin + authkey + Services menu)"

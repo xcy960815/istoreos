@@ -17,6 +17,11 @@ need_helper=0
 if ! grep -qF "$MARKER" "$HELPER" 2>/dev/null; then
 	need_helper=1
 fi
+# OAuth/NeedsLogin-safe helper (do not stop daemon before AuthURL is usable)
+LOGIN_MARKER="NeedsLogin: keep tailscaled for AuthURL"
+if ! grep -qF "$LOGIN_MARKER" "$HELPER" 2>/dev/null; then
+	need_helper=1
+fi
 if grep -q "set network.tailscale.proto='static'" "$HELPER" 2>/dev/null; then
 	need_helper=1
 fi

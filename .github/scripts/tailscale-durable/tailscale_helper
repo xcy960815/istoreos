@@ -6,9 +6,10 @@
 # iStoreOS custom durable overlay (see docs/CUSTOM-TRIMMING.md §二十二):
 # - Do not create netifd network.tailscale (Tailscale owns TUN addresses).
 # - firewall.tszone binds device=tailscale0, not network=; drop duplicate name=tailscale zones.
+# - NeedsLogin / no IP yet: NEVER stop tailscaled — LuCI needs AuthURL for 「授权登录」.
 # Marker string below is required by /etc/tailscale/ensure-helper-fix.sh
 
-# Error handling function
+# Hard failure: revert staged UCI and stop the service.
 revert_exit() {
 	logger -p daemon.err -t tailscale_helper "$(date '+%Y/%m/%d %H:%M:%S') $1"
 	uci revert dhcp && uci revert network && uci revert firewall
@@ -16,8 +17,34 @@ revert_exit() {
 	exit 1
 }
 
+# Soft path for browser/OAuth login: leave daemon up so status --json keeps AuthURL.
+# Marker: NeedsLogin: keep tailscaled for AuthURL
+backend_state() {
+	tailscale status --json 2>/dev/null | awk -F'"' '/"BackendState"/ {print $(NF-1); exit}'
+}
+
+auth_url() {
+	tailscale status --json 2>/dev/null | awk -F'"' '/"AuthURL"/ {u=$(NF-1)} END {print u}'
+}
+
+awaiting_browser_login() {
+	st=$(backend_state)
+	case "$st" in
+		NeedsLogin) return 0 ;;
+	esac
+	url=$(auth_url)
+	[ -n "$url" ] && return 0
+	return 1
+}
+
 # Execute tailscale up command
-/usr/sbin/tailscale up --reset "$@" || revert_exit "tailscale up failed."
+if ! /usr/sbin/tailscale up --reset "$@"; then
+	if awaiting_browser_login || [ "$(backend_state)" = "Starting" ] || [ "$(backend_state)" = "NoState" ]; then
+		logger -p daemon.warn -t tailscale_helper "$(date '+%Y/%m/%d %H:%M:%S') tailscale up returned error but state=$(backend_state); keeping tailscaled for browser auth"
+	else
+		revert_exit "tailscale up failed."
+	fi
+fi
 
 # Use flock to acquire an exclusive lock
 LOCK_FILE="/var/lock/tailscale.lock"
@@ -25,12 +52,42 @@ exec 9> "$LOCK_FILE"
 flock -xn 9 || { revert_exit "Failed to acquire lock on $LOCK_FILE"; }
 trap 'rm -f "$LOCK_FILE"; exit' INT TERM EXIT
 
-# Wait for Tailscale IPv4 address
+# Wait for Tailscale IPv4 address.
+# Before login there is no IP; stock helper called revert_exit → stop → LuCI shows 「未运行」
+# with no AuthURL. Keep waiting while NeedsLogin / AuthURL / early startup.
 count=0
-while [ -z "$(ifconfig | grep 'tailscale' | awk '{print $1}')" ] || [ -z "$(tailscale ip -4)" ]; do
+login_logged=0
+while [ -z "$(ifconfig | grep 'tailscale' | awk '{print $1}')" ] || [ -z "$(tailscale ip -4 2>/dev/null)" ]; do
 	sleep 2
 	count=$((count + 1))
-	[ "${count}" -ge 5 ] && revert_exit "Failed to get Tailscale IPv4 address after 5 attempts."
+	if [ "${count}" -ge 5 ]; then
+		if awaiting_browser_login; then
+			if [ "$login_logged" = 0 ]; then
+				logger -p daemon.info -t tailscale_helper "$(date '+%Y/%m/%d %H:%M:%S') NeedsLogin/AuthURL present — leaving tailscaled running for OAuth/browser login"
+				login_logged=1
+			fi
+			count=0
+			continue
+		fi
+		st=$(backend_state)
+		case "$st" in
+			Starting|NoState|"")
+				if ! pidof tailscaled >/dev/null 2>&1; then
+					revert_exit "tailscaled not running and no Tailscale IPv4 (BackendState=$st)."
+				fi
+				logger -p daemon.info -t tailscale_helper "$(date '+%Y/%m/%d %H:%M:%S') BackendState=$st — still waiting for IP (daemon up)"
+				count=0
+				continue
+				;;
+		esac
+		if ! pidof tailscaled >/dev/null 2>&1; then
+			revert_exit "Failed to get Tailscale IPv4; tailscaled is down (BackendState=$st)."
+		fi
+		# Prefer leaving daemon up over killing AuthURL for unexpected states.
+		logger -p daemon.warn -t tailscale_helper "$(date '+%Y/%m/%d %H:%M:%S') No IPv4 yet (BackendState=$st); leaving tailscaled running"
+		count=0
+		continue
+	fi
 done
 
 # Configure Tailscale MagicDNS
