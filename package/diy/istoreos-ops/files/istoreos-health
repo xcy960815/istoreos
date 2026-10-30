@@ -204,8 +204,7 @@ check_dns_poison() {
 	# Live resolve (best effort; may fail offline — then warn not fail)
 	resolved=""
 	if command -v nslookup >/dev/null 2>&1; then
-		resolved=$(nslookup "$host" 2>/dev/null | awk '/^Address:/{a=$2} END{print a}')
-		# skip IPv6-only clutter: prefer IPv4 line
+		# Skip IPv6-only clutter: prefer the IPv4 line.
 		resolved=$(nslookup "$host" 2>/dev/null | awk '/^Address: [0-9]+\./{print $2; exit}')
 	elif command -v resolveip >/dev/null 2>&1; then
 		resolved=$(resolveip -4 "$host" 2>/dev/null | head -1)

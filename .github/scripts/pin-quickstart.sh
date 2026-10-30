@@ -390,7 +390,7 @@ n_dl, n_ul = names[0], names[1]
 new_loop = (
     f'const applySeries=()=>{{y!=null&&(_.setOption({{series:[{{name:n("{n_dl}"),'
     f'data:d.value,type:"line",areaStyle:{{}},smooth:!0}},{{name:n("{n_ul}"),'
-    f'data:u.value,type:"line",areaStyle:{{}},smooth:!0}}]}}),h())}};'
+    f'data:u.value,type:"line",areaStyle:{{}},smooth:!0}}]}}))}};'
     'const startEs=()=>{if(document.hidden||y==null)return;stopEs();'
     'try{es=new EventSource("/cgi-bin/quickstart-traffic-sse")}'
     "catch(Z){esTimer=setTimeout(startEs,2e3);return}"
@@ -441,6 +441,42 @@ if "},wait)};};onVis=" not in s:
 p.write_text(s, encoding="utf-8")
 print("index.js: 网络流量图改为 SSE ~1Hz（EventSource /cgi-bin/quickstart-traffic-sse）")
 PYSSE
+
+# SSE 里已有每个采样区间的结束时间；横轴与数据同步更新，提示框仍按数据索引取区间。
+# 单独处理也兼容旧构建树中已经应用过 SSE 补丁的 index.js。
+python3 - "$js" <<'PYTIME'
+from pathlib import Path
+import sys
+
+p = Path(sys.argv[1])
+s = p.read_text(encoding="utf-8")
+labels = '(a.value||[]).map(T=>{if(!T.endTime)return "";const D=new Date(T.endTime*1e3),P=N=>String(N).padStart(2,"0");return P(D.getHours())+":"+P(D.getMinutes())+":"+P(D.getSeconds())})'
+changes = [
+    ('xAxis:{type:"category",boundaryGap:!1,', 'xAxis:{data:' + labels + ',type:"category",boundaryGap:!1,'),
+    ('const applySeries=()=>{y!=null&&(_.setOption({series:', 'const applySeries=()=>{y!=null&&(_.setOption({xAxis:{data:' + labels + '},series:'),
+    ('l(C[0].axisValue)', 'l(C[0].dataIndex)'),
+    ('l(S.axisValue)', 'l(S.dataIndex)'),
+]
+for old, new in changes:
+    if new in s:
+        continue
+    if old not in s:
+        raise SystemExit('::error::网络流量图时间轴定位失败：' + old)
+    s = s.replace(old, new, 1)
+# 旧构建树可能仍在每个 SSE 消息后 resize；页面已有 resize 事件和 ResizeObserver。
+start = s.find('const applySeries=()=>')
+end = s.find('const startEs=()=>', start)
+if start < 0 or end < 0:
+    raise SystemExit('::error::网络流量图更新函数定位失败')
+series_update = s[start:end]
+if '),h())};' in series_update:
+    series_update = series_update.replace('),h())};', '))};', 1)
+elif '))};' not in series_update:
+    raise SystemExit('::error::网络流量图更新函数结构不符合预期')
+s = s[:start] + series_update + s[end:]
+p.write_text(s, encoding="utf-8")
+print("index.js: 网络流量横轴显示 SSE 采样时间，数据更新不再重复 resize")
+PYTIME
 
 
 setup=$luci/root/usr/libexec/quickstart/auto_setup.sh
