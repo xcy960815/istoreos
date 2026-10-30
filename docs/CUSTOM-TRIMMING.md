@@ -4,7 +4,7 @@
 > 用于为家里的 J4125 四口 2.5G 软路由（LAN IP `192.168.100.1`）构建裁剪版固件。
 > 用户在 2026-10-05 明确要求删除下列功能，**除非用户再次明确要求，不得在 seed 中加回**。
 
-## 当前进度（2026-10-30，后续 AI 先读这里）
+## 当前进度（2026-10-31，后续 AI 先读这里）
 
 **最新镜像是 r43**（2026-10-30，提交 `8940a8b6fd`，[run 41031394295](https://github.com/xcy960815/istoreos/actions/runs/41031394295)，Releases 已发布）。seed `=y` **521**。含 QuickStart 首页 SSE 流量图、Tailscale「授权登录」、OTA 中文界面 + 下载进度。**r34/r35 未出包**；r36～r43 均已发 Releases。
 
@@ -18,9 +18,11 @@
 
 **两套状态不要混：** Releases 有 r22 / r28～r33 / r36～r43；**r23～r27、r34、r35 从未出包**。N100 双口 Intel I225-V（`kmod-igc`），第一口 WAN、第二口 LAN `192.168.100.1`。r17 是 Argon 概览（没有 QuickStart 首页）；r43 是最新，r33 是最后一次记录在案的 N100 验证版。
 
-**后续 seed 变更（2026-10-10，§二十）**：用户已要求移除 Aria2/Transmission 及其页面入口，当前 seed 已关闭 9 个包（596 → 587 个 `=y`）。r12 起的镜像已不含下载器（r10、r11 仍含）。
+> 以下按时间顺序追加，是变更日志；条目里的「未提交 / 未构建 / 构建中」是**当时**的动作状态，当前结论以本节开头三段和下方汇总表为准。
 
-**后续 seed 变更（2026-10-12，§二十一）**：用户要求删除「在线升级」页面，seed 再关 2 个包（587 → 585 个 `=y`）。r13 起的镜像已不含 OTA。
+**后续 seed 变更（2026-10-10，§二十）**：用户已要求移除 Aria2/Transmission 及其页面入口，当轮 seed 关闭了 9 个包（596 → 587 个 `=y`）。r12 起的镜像已不含下载器（r10、r11 仍含）。
+
+**后续 seed 变更（2026-10-12，§二十一）**：用户要求删除「在线升级」页面，seed 再关 2 个包（587 → 585 个 `=y`）。**r13～r35 不含 OTA；r36 起恢复自建 GitHub OTA（只拉本仓库 Releases，§三十七）**。
 
 **后续 seed 变更（2026-10-14，§二十二）**：用户要求内置最新 Tailscale。守护进程本来就在（r13 是 1.80.3）；本轮换成官方 **1.104.1** amd64 预编译，并烘焙 LuCI（asvow `luci-app-tailscale` v1.2.6）。不能从源码编最新版（要 Go 1.27，本树 golang 1.23.12）。seed 585 → 587。
 
@@ -57,7 +59,7 @@
 | **禁止** | **不要刷正在用的 J4125**（和 N100 都是 `192.168.100.1`）。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100。**不要**用 ISO 当安装盘/整盘 dd 到 Ventoy |
 | N100 | 双网口、无显示器、机内 16G 傲腾。BIOS：U 盘优先、Secure Boot 关。Mac 无内置网口：网线接 N100 **第二口**，`192.168.100.2/24`、**网关留空**。家里关 Wi‑Fi；公司 USB 网卡必须排在 Wi‑Fi 下面，否则 `192.168.100.1` 会被公司网抢走 |
 | 官方截图 | 家里 **J4125** 上的官方整包 QuickStart（Samba/易有云/固件更新卡片），不是本 fork；`custom-24.10` 跟踪的是 `istoreos-24.10` |
-| 构建状态（2026-10-30） | `origin/custom-24.10` = `8940a8b6fd`，seed 521；CI 手动触发，r43 全绿并自动发 Release。r36 首次 Publish 静默失败，r37 起修复；r36 资产后来手动补传（§三十七补）。审计无新增未生效行，已知丢失项见 §十四 |
+| 构建状态（2026-10-31） | `origin/custom-24.10` 已与本地同步；最新构建提交 `8940a8b6fd`（r43），其后只有文档提交。seed 521；CI 手动触发，r43 全绿并自动发 Release。r36 首次 Publish 静默失败，r37 起修复；r36 资产后来手动补传（§三十七补）。审计无新增未生效行，已知丢失项见 §十四 |
 | 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu |
 | 还没做 | N100 刷 r43 验证：SSE 流量图 ~1Hz + 横轴时间、Tailscale「授权登录」可点、OTA 中文/进度条、健康巡检退出 0；D 档剩余项（§十六）等证据；**J4125 仍禁止刷** |
 
@@ -88,7 +90,7 @@
 
 ## 三、保留清单（有实际使用证据，后续 AI 不要当成"没用"误删）
 
-> ⚠️ 本清单是**功能**层面"别丢"，不等于"固件里已烘焙"：其中 openclash、`app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,…}` 等不在构建期，按需从 iStore 商店装回。**QuickStart 首页已定要烘焙**（卡片已裁，见 §二十三），但 **r17 还没有**；改动已推送（`5612b37936`）、r19 构建中。哪些真在固件里、哪些要装回——唯一清单见 §六「仍然完好、一个没动的功能」和 §十，证据见 §九。
+> ⚠️ 本清单是**功能**层面"别丢"，不等于"固件里已烘焙"：其中 openclash、`app-meta-*`、`luci-app-{cpufreq,fan,eqos,oaf,diskman,gowebdav,…}` 等不在构建期，按需从 iStore 商店装回。**QuickStart 首页已烘焙**（r22 起有初版、r28 起完整，见 §二十三；r38 起流量图走 SSE，见 §四十），**r17 仍是 Argon 概览**。哪些真在固件里、哪些要装回——唯一清单见 §六「仍然完好、一个没动的功能」和 §十，证据见 §九。
 
 - **openclash**：全家主力代理，GeoIP 数据齐全、多份配置备份（用户本机代理 7897 与之同源）
 - **ddns-go + luci-app-ddns-go**：公网 IP + 免费域名，**开箱即有**（第七条 feed `ddnsgo`）。勿删、勿改回「刷机后商店装」、勿用 `luci-app-ddns` 顶替
@@ -134,11 +136,11 @@
 
 本节写于 r4 审计之前，当时把"路由器在用的功能"和"固件里已烘焙的包"混为一谈，按 §九/§十 的口径重列。以下清单已按 §二十 更新为当前 seed 的预期，r10 等旧镜像仍含 Aria2/Transmission：
 
-- **固件里确实有（r17）**：**tailscale 1.104.1 + luci-app-tailscale（见 §二十二）**、**ddns-go + luci-app-ddns-go（见 §十五）**、openlist（含 WebDAV）、
+- **固件里确实有（r17 快照；r43 现状见文首）**：**tailscale 1.104.1 + luci-app-tailscale（见 §二十二）**、**ddns-go + luci-app-ddns-go（见 §十五）**、openlist（含 WebDAV）、
   vlmcsd、ttyd、wol、iStore 商店本体（`luci-app-store`+`dkml`）、argon 主题、zram、lm-sensors（CPU/风扇温控）、smartd（**r17 有；2026-10-17 无盘删除，见 §三十；注意 smartd 是硬盘 SMART、不是温控，温控是 lm-sensors**）、
   wireguard（**r17 有；2026-10-17 起从 seed 删除，见 §二十九**）、dnsmasq-full、flow offload（kmod-nf-flow）
 - **不在固件里、刷机后要从商店装回**：openclash、eqos、oaf、cpufreq、luci-app-fan、fastnet、floatip、
-  gowebdav——它们从来不是构建期候选，包名与证据见 §十。**Tailscale LuCI 已不在此列**。**QuickStart 也不该再写成商店装，但 r17 还没有，等 §二十三 那轮构建**
+  gowebdav——它们从来不是构建期候选，包名与证据见 §十。**Tailscale LuCI 已不在此列**。**QuickStart 也不该再写成商店装：r22 起已烘焙、r28 起完整（§二十三），r38 起流量图走 SSE（§四十）**
 
 ### 包名明细（按批次）
 
@@ -217,7 +219,7 @@
 
 **设备能做的事零变化**——这 104 行自写进 seed 起就是空转（符号不存在，defconfig 无警告删除），删掉它们不移除任何一块已烘焙的功能；固件产物与清理前逐包相同。
 
-要交代的不是"删了什么"，而是**刷机后必须自己装回的东西**（原先误以为已在固件里）：OpenClash、eqos IP 限速、oaf/appfilter 应用过滤、cpufreq 与风扇调节、diskman 磁盘管理、gowebdav/fastnet/floatip/webdav2。装回途径：LuCI → iStore 商店（本体 `luci-app-store` + `dkml` 已在固件）。**2026-10-10 更正：Aria2/Transmission 及其入口与商店元数据不再装回**（§二十）；**Tailscale LuCI 2026-10-14 起已烘焙**（§二十二，r17 已有）；**QuickStart 首页方案见 §二十三，r17 还没有**；下方批次清单只记录历史清理，不是恢复清单。
+要交代的不是"删了什么"，而是**刷机后必须自己装回的东西**（原先误以为已在固件里）：OpenClash、eqos IP 限速、oaf/appfilter 应用过滤、cpufreq 与风扇调节、diskman 磁盘管理、gowebdav/fastnet/floatip/webdav2。装回途径：LuCI → iStore 商店（本体 `luci-app-store` + `dkml` 已在固件）。**2026-10-10 更正：Aria2/Transmission 及其入口与商店元数据不再装回**（§二十）；**Tailscale LuCI 2026-10-14 起已烘焙**（§二十二，r17 已有）；**QuickStart 首页 r22 起已烘焙（§二十三），r38 起流量图走 SSE（§四十）**；下方批次清单只记录历史清理，不是恢复清单。
 
 ### 包名明细（全部为「符号不存在」的死行，按档位列全）
 
@@ -584,7 +586,7 @@ r17 及更早的镜像只挂在 Actions 的 artifact 上：**14 天过期**，�
 | 变更后能做 / 不能做 | 涉及 | 影响 / 替代方案 |
 |---|---|---|
 | **能**：在仓库 Releases 页直接下载每轮镜像（tag `r<run_number>`），长期有效、无需登录 | workflow 新增 Publish 步骤（`gh release create`） | artifact 上传保留（14 天，供 run 页快速取）；不改变固件内容 |
-| **仍不能**：在固件里在线升级 | OTA 已删（§二十一） | 下载 `*-squashfs-combined-efi.img.gz` 解压后整盘写入，或在「系统 → 备份与升级」本地上传 |
+| **仍不能**：用 OTA 装 koolcenter 官方整包 | OTA 自 r36 起已恢复，但只拉本仓库 Releases（§三十七） | 要官方包自己下载整盘写；固件内「系统 → OTA」不会再指向 koolcenter |
 
 ### 明细
 
@@ -955,7 +957,7 @@ r32 已含 smartctl、mdadm、§三十四 的 loading 补丁，N100 首页仍显
 ### 刷机后自检
 
 1. 侧栏 **服务** 下有 Tailscale（不应再在 VPN）。
-2. **系统 → OTA → 检查更新**：应显示本仓库最新 `rN` 与 SHA256；已是最新则提示 Already latest。
+2. **系统 → OTA → 检查更新**：应显示本仓库最新 `rN` 与 SHA256；已是最新则提示「已经是最新固件」。
 3. 下载完成后须再点 **Flash** 并确认；中断电源会变砖风险与普通 sysupgrade 相同——先在 N100 验证。
 4. `uci get ota.github.owner` → `xcy960815`；`grep -v koolcenter /bin/ota /lib/upgrade/ota.sh`。
 
