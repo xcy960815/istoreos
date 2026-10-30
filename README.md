@@ -72,7 +72,7 @@ N100 双口 Intel I225-V：第一口 WAN，第二口 LAN `192.168.100.1`。和�
 
 云端：GitHub Actions 工作流 `Build iStoreOS trimmed`，手动触发。本地步骤、上游同步、刷机注意见 [`BUILD-CUSTOM.md`](BUILD-CUSTOM.md)。
 
-分支：`istoreos-24.10` 只 ff-only 跟踪官方；定制都在 `custom-24.10`。不为上游开 PR。
+分支：`istoreos-24.10` 只 ff-only 跟踪官方，**只留本地、不推 fork**；定制都在 `custom-24.10`，推送需明确指令。不为上游开 PR，也不向官方仓库推任何分支或标签。
 
 ## 文档
 

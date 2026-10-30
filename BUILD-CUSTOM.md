@@ -89,18 +89,21 @@ ls bin/targets/x86/64/
 ## 上游同步工作流（fork 维护）
 
 - 本仓库 origin = `xcy960815/istoreos`（我的 fork），upstream = `istoreos/istoreos`（官方）
-- 若 `git remote -v` 看不到 upstream，先 `git remote add upstream https://github.com/istoreos/istoreos.git`；本机已有本地 `istoreos-24.10` 跟踪 `upstream/istoreos-24.10`。`origin/istoreos-24.10` 只是 fork 镜像，可能落后，别拿它当同步源
-- 同步官方修复（网页版：fork 页面点 **Sync fork**；或命令行）：
+- 若 `git remote -v` 看不到 upstream，先 `git remote add upstream https://github.com/istoreos/istoreos.git`；本机已有本地 `istoreos-24.10` 跟踪 `upstream/istoreos-24.10`
+- **`istoreos-24.10` 只留本地，不要推到 `origin`**，也不要用网页版 **Sync fork**（它会把该分支推到 fork）。fork 上那个同名分支是历史遗留、可能落后，别拿它当同步源，也不要更新它
+- 同步官方修复：
 
 ```bash
 git fetch upstream
 git checkout istoreos-24.10
 git merge --ff-only upstream/istoreos-24.10   # 本分支只做 ff，保持零冲突
-git push origin istoreos-24.10                 # fork 镜像分支也跟上（ff 推送）
 git checkout custom-24.10
 git rebase istoreos-24.10                    # 裁剪分支只有一个 seed 文件，rebase 无痛
+# 下面这条只在用户明确要求推送后再执行：
 git push --force-with-lease origin custom-24.10  # rebase 改写了已推送历史；--force-with-lease 远端被别处改过时会拒绝覆盖
 ```
+
+- **推送纪律**：禁止向 `upstream`（`istoreos/istoreos`）推送任何分支或标签，也不开 PR；`istoreos-24.10` 不推 `origin`；唯一允许的推送是 `custom-24.10` → `origin`，且必须先得到用户明确指令（2026-10-31 用户要求）
 
 - 由于全部定制收敛在一个 seed 文件，上游 99% 的提交都与它无冲突；符号改名（罕见）时 `make defconfig` 会静默丢掉那一行，本地不会有任何提示；CI 的 seed 审计会把"已知清单外的未生效行"判失败（几分钟内），看 artifact 里的 seed-audit.txt 按报告改 seed。本地构建后可自己跑 `bash .github/scripts/seed-audit.sh` 检查
 - 云端构建走本仓库自己的 workflow（不引 P3TERX 等第三方模板；r10 起稳定出镜像，最近一次成功是 r43（2026-10-30））：`.github/workflows/build-istoreos.yml` 手动触发，seed 审计逻辑在 `.github/scripts/seed-audit.sh`（装好 feeds、跑过 defconfig 后可本地执行）。取舍理由见 `docs/CUSTOM-TRIMMING.md` §十二。构建成功后镜像自动发 GitHub Releases（tag `r<run_number>`，长期下载位；Actions artifact 仍在、14 天过期），见 `docs/CUSTOM-TRIMMING.md` §二十五
