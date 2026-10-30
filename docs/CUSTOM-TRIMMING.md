@@ -4,17 +4,19 @@
 > 用于为家里的 J4125 四口 2.5G 软路由（LAN IP `192.168.100.1`）构建裁剪版固件。
 > 用户在 2026-10-05 明确要求删除下列功能，**除非用户再次明确要求，不得在 seed 中加回**。
 
-## 当前进度（2026-10-19 夜，后续 AI 先读这里）
+## 当前进度（2026-10-30，后续 AI 先读这里）
 
-**N100 已验证 r33**（`680cb032d5`）：首页磁盘信息有系统根目录；侧栏无 RAID/SMART。seed `=y` **516**。r33 已整盘写入 N100 机内 **16G 傲腾**（`MPEK1J016GAL`）。
+**最新镜像是 r43**（2026-10-30，提交 `8940a8b6fd`，[run 41031394295](https://github.com/xcy960815/istoreos/actions/runs/41031394295)，Releases 已发布）。seed `=y` **521**。含 QuickStart 首页 SSE 流量图、Tailscale「授权登录」、OTA 中文界面 + 下载进度。**r34/r35 未出包**；r36～r43 均已发 Releases。
 
-**J4125 刷裁剪版：备份已齐，本对话未确认已经刷上。** 2026-10-19 18:19 SSH 仍是官方 `24.10.8 2026073111`。配置包在维护机 `~/Documents/j4125-backup-20261018/`，**还原用 `j4125-keep-20261019.tar.gz`**（昨晚 1018 之后 OpenClash/DHCP 又写过盘）。含端口转发、OpenClash 两份 YAML+custom、DDNS-Go yaml、OpenList 库、Tailscale state、PPPoE、DHCP 静态租约。**不要整包还原**（会把 Docker/Samba/UPnP 加回）。`/mnt/sata1-4` 按用户要求没拷；gowebdav 根目录和系统日志仍指着这块盘，刷完路径会空。明细 §三十六。
+**记录在案的现场验证仍是 r33**（`680cb032d5`）：首页磁盘信息有系统根目录；侧栏无 RAID/SMART。r33 已整盘写入 N100 机内 **16G 傲腾**（`MPEK1J016GAL`）。r38～r43 的界面改动（SSE / 授权登录 / OTA 中文进度）尚未记录刷机验证，刷后按 §四十/§四十一 自检。
+
+**J4125 刷裁剪版：备份已齐，仍未确认已经刷上。** 2026-10-19 18:19 SSH 仍是官方 `24.10.8 2026073111`。配置包在维护机 `~/Documents/j4125-backup-20261018/`，**还原用 `j4125-keep-20261019.tar.gz`**（1019 那份；1018 之后 OpenClash/DHCP 又写过盘）。含端口转发、OpenClash 两份 YAML+custom、DDNS-Go yaml、OpenList 库、Tailscale state、PPPoE、DHCP 静态租约。**不要整包还原**（会把 Docker/Samba/UPnP 加回）。`/mnt/sata1-4` 按用户要求没拷；gowebdav 根目录和系统日志仍指着这块盘，刷完路径会空。明细 §三十六。
 
 **不要**：把 Docker 加回网关（含为 nginx-proxy-manager）；用 Open-Box 换掉生产 OpenClash；把 ISO 当安装盘；整盘 `dd` 到 Ventoy。二级域名反代若做，放 **9400F**，J4125 只 DNAT 80/443。
 
 首页磁盘卡片要 `smartd` 包（含 `/etc/smartd.conf`）+ `smartctl` + `mdadm`；侧栏 RAID/SMART 仍从 controller 删除。r28 有菜单+磁盘信息；r29 拆工具后 loading；r31 空白（Raid.List 空数组提前结束转圈）；r32 等到 Disk.Status 仍转圈（无 smartd 包）。**尚未证明必须跑 smartd 后台进程**，不要为了「无盘」再拆这个包。明细 §二十三、§三十一～§三十五。
 
-**两套状态不要混：** Releases 有 r22 / r28～r33。N100 双口 Intel I225-V（`kmod-igc`），第一口 WAN、第二口 LAN `192.168.100.1`。r17 是 Argon 概览（没有 QuickStart 首页）。r23～r27 从未出包。
+**两套状态不要混：** Releases 有 r22 / r28～r33 / r36～r43；**r23～r27、r34、r35 从未出包**。N100 双口 Intel I225-V（`kmod-igc`），第一口 WAN、第二口 LAN `192.168.100.1`。r17 是 Argon 概览（没有 QuickStart 首页）；r43 是最新，r33 是最后一次记录在案的 N100 验证版。
 
 **后续 seed 变更（2026-10-10，§二十）**：用户已要求移除 Aria2/Transmission 及其页面入口，当前 seed 已关闭 9 个包（596 → 587 个 `=y`）。r12 起的镜像已不含下载器（r10、r11 仍含）。
 
@@ -44,19 +46,22 @@
 
 **后续变更（2026-10-18，§三十三）**：首页磁盘信息 `Promise.all([Disk.Status, Raid.List])`，RAID 列表要 `mdadm`。r30 只加了 smartctl，U 盘当系统盘不是主因。seed 加回 `mdadm`（514 → **515**），侧栏「磁盘阵列」仍藏、`smartd` 仍不要。工作区已改，**未提交、未推送、未构建**。defconfig 可能顺带加回 `kmod-md-*`，那是 mdadm 依赖，不是侧栏。
 
+**后续变更（2026-10-23～10-30，§三十七～§四十一）**：恢复自建 GitHub Releases OTA（只拉本仓库，禁止 koolcenter）、加 `istoreos-ops`（OTA 前备份 + 健康巡检）、健康巡检 Telegram + LuCI、QuickStart 首页流量图改 SSE ~1Hz、Tailscale「授权登录」修复、OTA 界面中文化 + 下载进度。seed 516 → **521**（OTA +2、ops +1、health LuCI +2）。r36～r43 均已出包。
+
 | 事实 | 细节 |
 |---|---|
-| 可用固件 | GitHub Actions **r17** 成功（run [`38561237293`](https://github.com/xcy960815/istoreos/actions/runs/38561237293)，提交 `597a40aba3`），产物 `istoreos-x86_64-trimmed-r17`。刷 **EFI img**：gz 解压后的 `*-squashfs-combined-efi.img` 整盘 dd。r10 已过时，别再刷 |
-| r17 里面有什么 | DDNS-Go **6.12.2**、Tailscale **1.104.1** + LuCI（VPN → Tailscale）；WireGuard、网络唤醒、OpenList、Argon + Bootstrap。**没有** Docker/Samba/UPnP/ddnsto/下载器/OTA。登录是 Argon 状态概览，**没有** QuickStart 首页，侧栏**没有**「网络向导」。默认 `root` / 空密码 |
+| 最新固件 | **r43**（2026-10-30，commit `8940a8b6fd`，seed `=y` 521），[Release](https://github.com/xcy960815/istoreos/releases/tag/r43) / [run 41031394295](https://github.com/xcy960815/istoreos/actions/runs/41031394295)。刷 **EFI img**：解压 `*squashfs-combined-efi.img.gz` 后整盘 dd。r34/r35 未出包 |
+| r43 里面有什么 | QuickStart 首页（WebDAV、家长控制、磁盘信息、SSE ~1Hz 流量图）、Argon、Tailscale **1.104.1** + LuCI（**服务**菜单）、DDNS-Go、OpenList、**系统 → OTA（仅本仓库 Releases）**、**服务 → 健康巡检（Telegram）**、istoreos-bak、iStore、网络唤醒、ttyd、vlmcsd、irqbalance。**没有** Docker/Samba/UPnP/ddnsto/下载器/WireGuard/Bootstrap；侧栏无 RAID/SMART/挂载点/文件传输。默认 `root` / 空密码 |
+| 验证到哪 | **记录在案的现场验证仍是 r33**（N100 闪迪 USB + 机内 16G 傲腾）。r38～r43 的 SSE/授权登录/OTA 中文进度尚未写验证结论；先 N100 试刷 |
 | 已写到哪 | 64G SanDisk 当 N100 系统盘（整盘 dd）。Finder「无法读取磁盘」正常，**不要初始化**。macOS 要用终端.app 完全磁盘访问后 `sudo dd`，Cursor `osascript` 会被 TCC 拦 |
-| **禁止** | **不要刷正在用的 J4125**（和 N100 都是 `192.168.100.1`）。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100 |
-| N100 | **已经用这根 U 盘开过机**，能进 LuCI。双网口、无显示器、机内 16G 傲腾（RST 缓存条当不了系统盘就别写）。BIOS：U 盘优先、Secure Boot 关。Mac 无内置网口：网线接 N100 **第二口**，`192.168.100.2/24`、**网关留空**。家里关 Wi‑Fi；公司 USB 网卡（用过 AX88179A）必须排在 Wi‑Fi 下面，否则 `192.168.100.1` 会被公司网抢走 |
-| 官方截图 | 家里 **J4125** 上的官方整包 QuickStart（Samba/易有云/固件更新卡片），不是 r17，也不是选错分支。`custom-24.10` 跟踪的就是 `istoreos-24.10` |
-| 构建状态（2026-10-17 重写） | 全部改动已推送在 `origin/custom-24.10`（seed `=y` **514**）：QuickStart 首页＋去 Bootstrap（§二十三/§二十四）＋五批清收（§二十六 7 行、§二十七 26 删 8 钉、§二十八 26 行、§二十九 13 行、§三十 3 行）。最后成功镜像 **r22**（`703d8b99d7`，只含到 §二十八；审计干净、丢失仅 thermal/xdp 两已知项）；r23～r27 临时构建已取消并从 Actions 删除；**r28 正从最终版 `afcc97d026` 全新构建**，成功自动进 Releases（tag `r28`） |
+| **禁止** | **不要刷正在用的 J4125**（和 N100 都是 `192.168.100.1`）。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100。**不要**用 ISO 当安装盘/整盘 dd 到 Ventoy |
+| N100 | 双网口、无显示器、机内 16G 傲腾。BIOS：U 盘优先、Secure Boot 关。Mac 无内置网口：网线接 N100 **第二口**，`192.168.100.2/24`、**网关留空**。家里关 Wi‑Fi；公司 USB 网卡必须排在 Wi‑Fi 下面，否则 `192.168.100.1` 会被公司网抢走 |
+| 官方截图 | 家里 **J4125** 上的官方整包 QuickStart（Samba/易有云/固件更新卡片），不是本 fork；`custom-24.10` 跟踪的是 `istoreos-24.10` |
+| 构建状态（2026-10-30） | `origin/custom-24.10` = `8940a8b6fd`，seed 521；CI 手动触发，r43 全绿并自动发 Release。r36 首次 Publish 静默失败，r37 起修复；r36 资产后来手动补传（§三十七补）。审计无新增未生效行，已知丢失项见 §十四 |
 | 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu |
-| 还没做 | r28 出镜像后写 U 盘验证：QuickStart 首页（存储服务只留 WebDAV、家长控制常显）、WireGuard 已无、无盘无 SMART 报错；审计里显示栈/摄像头/隧道/交换机/br-netfilter/SMART 等应消失、「seed 没写却开启」不应新增；D 档剩余项（ruby/git/taskd/sqlite3-cli/lm-sensors-detect、冷门 fs，§十六）等 N100 证据；**J4125 仍禁止刷** |
+| 还没做 | N100 刷 r43 验证：SSE 流量图 ~1Hz + 横轴时间、Tailscale「授权登录」可点、OTA 中文/进度条、健康巡检退出 0；D 档剩余项（§十六）等证据；**J4125 仍禁止刷** |
 
-后续 AI：**不要**把 QuickStart 写成「r17 已有首页」（r17 没有；r22 起有初版、r28 为最终版）；**不要**只删 seed 里的 bootstrap 就以为主题没了；**不要**再拿 r10 试刷；**不要**把双公头线当刷机方案。
+后续 AI：**不要**把 QuickStart 写成「r17 已有首页」（r17 没有；r22 起有初版、r28～r43 逐步完善，r38 起流量图走 SSE）；**不要**把 Tailscale 写回 VPN 菜单（r36 起在 **服务**）；**不要**把 OTA 写成「已删除」（§三十七 已恢复，只拉本仓库 Releases）；**不要**只删 seed 里的 bootstrap 就以为主题没了；**不要**再拿 r10/r17 试刷；**不要**把双公头线当刷机方案。
 
 ## 一、改动纪律（最重要）
 
@@ -956,10 +961,6 @@ r32 已含 smartctl、mdadm、§三十四 的 loading 补丁，N100 首页仍显
 
 后续 AI：**不要**把 OTA_URL 改回 fw.koolcenter.com；换仓库只改 `ota.github.*` 或 diy 默认值；改菜单只动 `tailscale-durable/luci-app-tailscale.json`。
 
-## 三十八、OTA 前配置备份 + 健康巡检（2026-10-23，用户明确要求）
-
-### 背景
-
 ## 三十七补、r36：编译已过、Publish 静默失败（2026-10-24）
 
 r36（run 39928975435，提交 `6884719f46`）**package/install / 打盘全绿**，artifact `istoreos-x86_64-trimmed-r36` 已上传；挂在 **Publish to GitHub Releases**：
@@ -969,6 +970,12 @@ r36（run 39928975435，提交 `6884719f46`）**package/install / 打盘全绿**
 - `/bin/ota` 原先同款 regex，靠无 pipefail 的 fallback 才勉强能用；一并改成 `awk` 剥 `*` 再比文件名
 - `luci-app-istoreos-health` 去掉重复的 `conffiles /etc/config/istoreos-health`（只由 `istoreos-ops` 安装该文件）
 - 路径所有权复核：`/lib/upgrade/ota.sh` 仅 base-files；`/bin/ota` 仅 luci-app-ota；ops/health/tailscale overlay 无双提供者
+
+**后续**：r36 的 Release 资产后来由 Cursor 手动补传并发布（release author 为 `cursor[bot]`）；CI 自 r37 起自动发布正常，r37～r43 均为 `github-actions[bot]`。
+
+## 三十八、OTA 前配置备份 + 健康巡检（2026-10-23，用户明确要求）
+
+### 背景
 
 自建 GitHub OTA（§三十七）会在 LuCI 确认后 `sysupgrade`。keep-settings 能留 overlay，但不能替代「刷前再留一份 curated 快照」；Tailscale 耐久层（§二十二）与 OpenClash fake-ip 也需要可脚本化自检，避免 controlplane 被毒或 helper 回退成 stock。
 
@@ -1034,3 +1041,74 @@ sed -i '/istoreos-health/d' /etc/crontabs/root; /etc/init.d/cron reload
 2. CLI：`uci set istoreos-health.notify.enabled=1` …；`istoreos-health-notify test-telegram`；`istoreos-health`（失败会按 when 发送）。
 
 后续 AI：**不要**把 bot token 写进 `logger`、健康 report 或 cron 日志；**不要**加回邮件/SMTP 通知（除非用户再次明确要求）。
+
+## 四十、QuickStart 首页流量图改 SSE + 侧栏中文标题（2026-10-27～10-30，无 seed 变更）
+
+### 背景
+
+首页网络流量图原先每 5 秒轮询 `statistics`，刷新慢且每次重建图表。2026-10-27 改为 `EventSource` 订阅 `/cgi-bin/quickstart-traffic-sse`（~1Hz）；10-28 固定侧栏「网络向导」中文标题；10-29 修 SSE 补丁缺 `};` 导致首页/向导整页白屏；10-30 横轴显示采样时刻，并去掉每条 SSE 消息后的重复 resize。
+
+### 功能视角
+
+| 变更后设备能做什么 | 涉及 | 说明 |
+|---|---|---|
+| 首页流量图 ~1Hz 刷新 | `quickstart-traffic-sse` + `pin-quickstart.sh` | `EventSource` 长连接；断开后 2s 重试 |
+| 横轴显示采样时间 | 同上 | `HH:MM:SS`，来自 SSE 的 `endTime`；提示框仍按数据索引取区间 |
+| 不泄露给未登录用户 | SSE CGI | 校验 LuCI `sysauth_https/http/sysauth` cookie，经 `ubus session.get` 确认 |
+| 侧栏「网络向导」中文标题 | `pin-quickstart.sh` | 不再回退英文 |
+| 首页/向导不再白屏 | `pin-quickstart.sh` | `startEs` 箭头函数闭合修复；`#app` 可正常渲染 |
+| 数据更新不再重复 resize | `pin-quickstart.sh` | 页面已有 `resize` 事件 + `ResizeObserver`；去掉每条 SSE 后的 `h()` |
+| DNS 巡检更稳 | `istoreos-health` | `nslookup` 只取 IPv4 `Address:` 行（同轮顺手修） |
+
+### 包名 / 构建明细
+
+| 动作 | 内容 |
+|---|---|
+| 新增脚本 | `.github/scripts/quickstart-traffic-sse`（Lua CGI，装到 `/www/cgi-bin/quickstart-traffic-sse`） |
+| 改 `pin-quickstart.sh` | 安装 CGI；把 `index.js` 的 5s `statistics` 轮询换成 `EventSource`；固定中文侧栏标题；补 `};`；横轴时间 + 去掉重复 resize |
+| seed | **无变化**（521） |
+| 出包 | r38（SSE）、r39（侧栏标题）、r40（白屏修复）、r43（时间轴/减负） |
+| 热修 | 替换 `/www/luci-static/quickstart/index.js`（构建树 `package/luci-app-quickstart/htdocs/luci-static/quickstart/index.js`）和 `/www/cgi-bin/quickstart-traffic-sse`，浏览器强刷 |
+
+### 自检
+
+1. 登录首页，流量图应约每秒更新，横轴时刻递增。
+2. 开发者工具 Network 里应有 `/cgi-bin/quickstart-traffic-sse` 的 `text/event-stream`，不应再每 5 秒请求 `statistics`。
+3. 退出登录或无 cookie 访问该 CGI 应被拒。
+4. 打开「网络向导」不应白屏；侧栏标题为中文「网络向导」。
+
+后续 AI：**不要**把流量图改回 5s 轮询；**不要**给 SSE CGI 去掉 session 校验；改首页只动 `pin-quickstart.sh` / `quickstart-traffic-sse`，不要直接改 clone 出来的 `package/luci-app-quickstart`（构建时会被覆盖）。
+
+## 四十一、OTA 界面中文化与下载进度（2026-10-30，无 seed 变更）
+
+### 背景
+
+§三十七 恢复的「系统 → OTA」页面步骤说明仍是英文拼接，下载时只有一行百分比文本，失败也没有明确提示。2026-10-30 把界面、日志和错误提示中文化，并加 `<progress>` 进度条；`/bin/ota` 增加失败状态码 3，取消与失败分开。
+
+### 功能视角
+
+| 变更后设备能做什么 | 涉及 | 说明 |
+|---|---|---|
+| OTA 页面中文 | `luci-app-ota` view/controller/po | 步骤 1/3～3/3、检查更新、下载固件、刷写、取消等 |
+| 下载进度条 | `ota.htm` + `/bin/ota` | 解析 `Downloading ... 42%`，同步 `<progress>` 与文本；校验/解压阶段显示不确定进度 |
+| 失败提示 | `/bin/ota` + `ota.htm` | 新增 code 3；区分取消（2）与失败（3），提示校验失败/解压失败/网络中断 |
+| 检查结果中文 | `/bin/ota` | 当前版本、最新版本、发布说明、更新信息、手动刷写提醒 |
+| 仍不自动刷 | `ota.htm` | 下载校验后必须手动点 Flash 并确认；OTA 只拉本仓库 Releases |
+
+### 包名 / 构建明细
+
+| 动作 | 内容 |
+|---|---|
+| 改 | `package/diy/luci-app-ota/luasrc/view/admin_system/ota.htm`、`.../controller/admin/ota.lua`、`.../root/bin/ota`、`.../po/zh-cn/ota.po`、`Makefile`（`PKG_RELEASE` 4 → 5） |
+| seed | **无变化**（521） |
+| 出包 | r43 |
+| 热修 | 替换 `/usr/lib/lua/luci/view/admin_system/ota.htm`、`/usr/lib/lua/luci/controller/admin/ota.lua`、`/bin/ota` 及中文 lmo，重载 uhttpd/LuCI 缓存 |
+
+### 自检
+
+1. 系统 → OTA：按钮/步骤/提示为中文；检查更新显示当前/最新版本与 SHA256。
+2. 点下载：出现进度条，百分比与文本同步；校验/解压阶段进度条为不确定态。
+3. 断网/校验失败：提示「下载失败」并区分原因，不进入可刷状态。
+4. 下载完成后仍需手动点 Flash；取消下载显示「已取消」。
+
+后续 AI：**不要**让 OTA 自动刷写；**不要**改回 koolcenter 源；改文案先改 `po/zh-cn/ota.po` 并重新编包，`/bin/ota` 里的中文是直接 echo 的。

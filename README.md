@@ -2,13 +2,13 @@
 
 这是 [istoreos/istoreos](https://github.com/istoreos/istoreos) 的维护 fork，不是官方发行。分支 `custom-24.10` 给家里的 **J4125 四口 2.5G（i226-V）** 编纯网关固件：Docker / NAS 已迁走，路由器只做路由、Tailscale 入口和公网 DDNS。
 
-当前基线：**r33**（N100 闪迪 USB 已验证，傲腾已写入）。J4125 刷机前备份见维护机 `~/Documents/j4125-backup-20261018/`（还原用 1019 那份，不要整包灌）。未确认现场已刷前，不要远程动正在用的 J4125。
+当前最新镜像：**r43**（2026-10-30）。**记录在案的现场验证仍是 r33**（N100 闪迪 USB 已验证，傲腾已写入）；r38～r43 的首页 SSE、Tailscale 授权登录、OTA 中文进度尚未写验证结论。J4125 刷机前备份见维护机 `~/Documents/j4125-backup-20261018/`（还原用 1019 那份，不要整包灌）。未确认现场已刷前，不要远程动正在用的 J4125。
 
 镜像：[Releases](https://github.com/xcy960815/istoreos/releases)（tag `r<构建号>`）。刷 **EFI img**：解压 `*-squashfs-combined-efi.img.gz` 后整盘 `dd`。默认账号 `root`、空密码。
 
 ## 开箱有什么
 
-QuickStart 首页（存储服务只留 WebDAV、家长控制常显、磁盘信息正常）、Argon 主题、Tailscale **1.104.1** + LuCI、DDNS-Go、OpenList、iStore 商店、网络唤醒、ttyd、vlmcsd、kmod-igc、irqbalance。侧栏保留「网络向导」和「系统 → 备份与升级」。
+QuickStart 首页（存储服务只留 WebDAV、家长控制常显、磁盘信息正常、SSE ~1Hz 流量图）、Argon 主题、Tailscale **1.104.1** + LuCI（服务菜单）、DDNS-Go、OpenList、**系统 → OTA（仅本仓库 Releases）**、**服务 → 健康巡检（Telegram）**、iStore 商店、网络唤醒、ttyd、vlmcsd、kmod-igc、irqbalance。侧栏保留「网络向导」和「系统 → 备份与升级 / OTA」。
 
 刷完再从 iStore 商店按需装（**不在构建期**，写进 seed 也进不了镜像）：OpenClash、eqos、oaf、cpufreq、风扇、diskman、gowebdav、fastnet、floatip。
 
@@ -26,7 +26,7 @@ QuickStart 首页（存储服务只留 WebDAV、家长控制常显、磁盘信�
 | ddnsto / Linkease 穿透 | 远程走 Tailscale；公网走 DDNS-Go |
 | OpenWrt 自带 `luci-app-ddns` | 用 DDNS-Go，不要把这套加回来 |
 | Aria2 / Transmission 下载器 | 首页下载卡片一并去掉 |
-| 固件里在线升级（OTA） | Releases 下 img 整盘写，或「备份与升级」本地上传 |
+| 用 OTA 刷回 koolcenter 官方整包 | 「系统 → OTA」只拉本仓库 Releases，下载后仍需手动确认刷写；要官方包自己下载整盘写 |
 | WireGuard / unetd | 远程只走 Tailscale |
 | Bootstrap 第二主题 | 只留 Argon |
 | 侧栏「文件传输」 | 已删包 |
@@ -60,7 +60,7 @@ QuickStart 首页（存储服务只留 WebDAV、家长控制常显、磁盘信�
 
 N100 双口 Intel I225-V：第一口 WAN，第二口 LAN `192.168.100.1`。和家里 J4125 同网段，**不要插进家里交换机**。
 
-1. 从 Releases 下 r33 的 `combined-efi.img.gz`，解压后整盘写入 U 盘（macOS 用终端.app 的 `sudo dd`，Finder「无法读取」正常，不要初始化）。
+1. 从 Releases 下 r43 的 `combined-efi.img.gz`，解压后整盘写入 U 盘（macOS 用终端.app 的 `sudo dd`，Finder「无法读取」正常，不要初始化）。
 2. N100：U 盘优先启动，Secure Boot 关。
 3. 测试机网线接 **第二口**，静态 `192.168.100.2/24`，网关留空；关掉会抢这个网段的 Wi‑Fi。打开 http://192.168.100.1 。
 

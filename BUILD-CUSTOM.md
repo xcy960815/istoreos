@@ -10,8 +10,8 @@
 |---|---|---|
 | ❌ 删除（首轮 2026-10-05） | Docker 全家桶 / Samba 文件共享 / OpenWrt 自带 DDNS（luci-app-ddns） / UPnP / Linkease 系（含 ddnsto） | Docker 已迁往 9400F；公网域名用 DDNS-Go，不用自带那套也不用 ddnsto。包名明细见 `docs/CUSTOM-TRIMMING.md` §二、§十五 |
 | ❌ 二次裁剪(2026-10-05) | 无线全家/蜂窝modem全家/GPU固件与DRM/NFS·SMB存储/l2tp-pptp-sstp-gre-ipip-ipsec隧道/KVM宿主/Docker孤儿kmod/老式网卡驱动 | J4125 无对应硬件；文件服务归 9400F/N100。明细见 `docs/CUSTOM-TRIMMING.md` §六 |
-| ✅ 保留（固件里确实有） | 基础网络栈 / kmod-igc / firewall4 / dnsmasq-full / IPv6 / **tailscale 1.104.1 + luci-app-tailscale** / **ddns-go + luci-app-ddns-go** / openlist（含 WebDAV） / vlmcsd / ttyd / wol / zram / lm-sensors / argon 主题 / iStore 商店本体（luci-app-store、dkml） / **smartd + smartmontools + mdadm**（给首页磁盘信息查询，不是侧栏 SMART/RAID） / **istoreos-ops + luci-app-istoreos-health**（OTA 前备份 + 健康巡检/Telegram 通知，§三十八/§三十九） | 路由器命根子 + 确实保留的服务。filetransfer 已删、挂载点菜单已藏（§三十一），`luci-mod-system` 和 sftp 仍留 |
-| 📦 刷机后从 iStore 商店装回（**不在构建期**） | openclash、eqos、oaf、cpufreq、luci-app-fan、diskman、gowebdav、fastnet、floatip | 这些名字在默认 feed 里没有 kconfig 符号，写进 seed 也进不了镜像。证据与逐条清单见 `docs/CUSTOM-TRIMMING.md` §九/§十。**DDNS-Go、Tailscale LuCI 不在此列**（r17 已烘焙）。**QuickStart 首页 r33 已在 N100 验证（§二十三/§三十五），r17 还没有** |
+| ✅ 保留（固件里确实有） | 基础网络栈 / kmod-igc / firewall4 / dnsmasq-full / IPv6 / **tailscale 1.104.1 + luci-app-tailscale** / **ddns-go + luci-app-ddns-go** / openlist（含 WebDAV） / vlmcsd / ttyd / wol / zram / lm-sensors / argon 主题 / iStore 商店本体（luci-app-store、dkml） / **smartd + smartmontools + mdadm**（给首页磁盘信息查询，不是侧栏 SMART/RAID） / **luci-app-ota**（仅本仓库 Releases，§三十七） / **istoreos-ops + luci-app-istoreos-health**（OTA 前备份 + 健康巡检/Telegram 通知，§三十八/§三十九） | 路由器命根子 + 确实保留的服务。filetransfer 已删、挂载点菜单已藏（§三十一），`luci-mod-system` 和 sftp 仍留 |
+| 📦 刷机后从 iStore 商店装回（**不在构建期**） | openclash、eqos、oaf、cpufreq、luci-app-fan、diskman、gowebdav、fastnet、floatip | 这些名字在默认 feed 里没有 kconfig 符号，写进 seed 也进不了镜像。证据与逐条清单见 `docs/CUSTOM-TRIMMING.md` §九/§十。**DDNS-Go、Tailscale LuCI 不在此列**（r17 已烘焙）。**QuickStart 首页 r33 已在 N100 验证（§二十三/§三十五）；r38 起流量图改 SSE ~1Hz（§四十），r17 还没有** |
 | ➕ 新增 | irqbalance；`feeds.conf.default` 的 `src-git ddnsgo`（sirpdboy/luci-app-ddns-go）；CI/本地在 defconfig 前跑 `pin-tailscale-prebuilt.sh`、`pin-quickstart.sh`、`drop-luci-theme-bootstrap.sh` | irqbalance：四张 2.5G 网卡中断分摊。ddnsgo feed：六个默认 feed 没有 DDNS-Go。Tailscale 最新稳定版不能用本树 Go 1.23.12 从源码编，改用官方 amd64 预编译 + asvow LuCI，并铺 `tailscale-durable/`（无 netifd 抢地址、zone 绑 device=tailscale0、开机 ensure），见 `docs/CUSTOM-TRIMMING.md` §二十二。自建 GitHub OTA 见 §三十七。QuickStart 只 clone 两个包、首页去掉 Samba/易有云/下载/ddnsto，存储服务只留 WebDAV，侧栏不要 RAID/SMART、不要挂载点，留下 smartd+smartmontools+mdadm 给磁盘信息，loading 等到 Disk.Status，见 §二十三/§三十一～§三十五。Bootstrap 主题：`luci-light` 硬依赖，要脚本拆掉，见 §二十四 |
 
 参数：EFI+BIOS 双引导、只要 squashfs（显式关掉 x86 默认的 ext4 根镜像）、kernel 分区 32MB、root 分区 512MB、另出一份 EFI LiveCD ISO（Ventoy 可启动，**不是**一键安装器）、中文界面。224MB+默认 ext4 会在 `make_ext4fs` 阶段把 `target/linux` 打挂，见 `docs/CUSTOM-TRIMMING.md` §十七。Ventoy 装到 N100 傲腾的步骤见 §十九。
@@ -67,19 +67,20 @@ ls bin/targets/x86/64/
 
 ## 上线路径（主路由！先验证再刷）
 
-**2026-10-16**：能刷的是 **r17**（Tailscale 1.104.1 + DDNS-Go，Argon 概览、没有 QuickStart 首页）。**先 N100 试刷，不要刷 J4125**。N100 已经用 U 盘当系统盘开过机。用户装官方也是 **img 整盘写入**（不是 ISO、不是 Ventoy 菜单）。Mac 网线接 N100 第二口、`192.168.100.2`、网关留空，http://192.168.100.1。禁止双公头 USB 线连 Mac↔N100。首页/Bootstrap 改动已推送（`5612b37936`），r19 重跑中；构建成功后镜像自动发仓库 Releases（§二十五）。快照见 `docs/CUSTOM-TRIMMING.md` 文首。
+**2026-10-30**：能刷的是 **r43**（QuickStart 首页 + SSE 流量图、Tailscale 1.104.1 + LuCI「服务」、DDNS-Go、自建 GitHub OTA、健康巡检/Telegram）。**先 N100 试刷，不要刷 J4125**。用户装官方也是 **img 整盘写入**（不是 ISO、不是 Ventoy 菜单）。Mac 网线接 N100 第二口、`192.168.100.2`、网关留空，http://192.168.100.1。禁止双公头 USB 线连 Mac↔N100。构建成功后镜像自动发仓库 Releases（§二十五）。快照与验证状态见 `docs/CUSTOM-TRIMMING.md` 文首。
 
 
 1. **QEMU 验证**：`qemu-system-x86_64 -nographic -hda bin/targets/x86/64/istoreos-*-combined-efi.img` 确认可启动、包齐全
 2. **备份现系统**：LuCI → 系统 → 备份升级（导出 `/etc/config`）；稳妥起见把系统盘整盘 dd 备份一份
 3. **写盘**：新镜像 gz 解压后 dd 到系统盘（或 LuCI sysupgrade）
 4. **恢复配置**：`/etc/config` 里的 network/firewall/dhcp/tailscale/**ddns-go** 等恢复回去（dockerd/dpanel/samba、OpenWrt 自带 luci-app-ddns、ddnsto 相关配置直接不要了）
-5. 验证 WAN 拨号、四个 2.5G 口、**LuCI 里已有 Tailscale（服务菜单）、DDNS-Go、系统→OTA（仅本仓库 Releases，§三十七）**；`istoreos-health` 应退出 0（§三十八）。QuickStart 见 §二十三；首页不应出现 Samba/易有云/下载器/Docker 卡片。**openclash / eqos / cpufreq / fan / diskman 这些不在固件里**，按需从 LuCI → iStore 商店装回再验
+5. 验证 WAN 拨号、四个 2.5G 口、**LuCI 里已有 Tailscale（服务菜单，未登录应显示可点「授权登录」）、DDNS-Go、系统→OTA（仅本仓库 Releases，§三十七/§四十一）**；`istoreos-health` 应退出 0（§三十八）；首页流量图应约 1Hz 并显示采样时间（§四十）。QuickStart 见 §二十三；首页不应出现 Samba/易有云/下载器/Docker 卡片。**openclash / eqos / cpufreq / fan / diskman 这些不在固件里**，按需从 LuCI → iStore 商店装回再验
 6. 旧盘留作回滚
 
 ## 上游同步工作流（fork 维护）
 
 - 本仓库 origin = `xcy960815/istoreos`（我的 fork），upstream = `istoreos/istoreos`（官方）
+- 若 `git remote -v` 看不到 upstream，先 `git remote add upstream https://github.com/istoreos/istoreos.git`；本机已有本地 `istoreos-24.10` 跟踪 `upstream/istoreos-24.10`。`origin/istoreos-24.10` 只是 fork 镜像，可能落后，别拿它当同步源
 - 同步官方修复（网页版：fork 页面点 **Sync fork**；或命令行）：
 
 ```bash
@@ -93,7 +94,7 @@ git push --force-with-lease origin custom-24.10  # rebase 改写了已推送历�
 ```
 
 - 由于全部定制收敛在一个 seed 文件，上游 99% 的提交都与它无冲突；符号改名（罕见）时 `make defconfig` 会静默丢掉那一行，本地不会有任何提示；CI 的 seed 审计会把"已知清单外的未生效行"判失败（几分钟内），看 artifact 里的 seed-audit.txt 按报告改 seed。本地构建后可自己跑 `bash .github/scripts/seed-audit.sh` 检查
-- 云端构建走本仓库自己的 workflow（不引 P3TERX 等第三方模板；r10 起稳定出镜像，最近一次成功是 r17）：`.github/workflows/build-istoreos.yml` 手动触发，seed 审计逻辑在 `.github/scripts/seed-audit.sh`（装好 feeds、跑过 defconfig 后可本地执行）。取舍理由见 `docs/CUSTOM-TRIMMING.md` §十二。构建成功后镜像自动发 GitHub Releases（tag `r<run_number>`，长期下载位；Actions artifact 仍在、14 天过期），见 `docs/CUSTOM-TRIMMING.md` §二十五
+- 云端构建走本仓库自己的 workflow（不引 P3TERX 等第三方模板；r10 起稳定出镜像，最近一次成功是 r43（2026-10-30））：`.github/workflows/build-istoreos.yml` 手动触发，seed 审计逻辑在 `.github/scripts/seed-audit.sh`（装好 feeds、跑过 defconfig 后可本地执行）。取舍理由见 `docs/CUSTOM-TRIMMING.md` §十二。构建成功后镜像自动发 GitHub Releases（tag `r<run_number>`，长期下载位；Actions artifact 仍在、14 天过期），见 `docs/CUSTOM-TRIMMING.md` §二十五
 
 ## 备注
 
