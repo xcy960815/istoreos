@@ -23,6 +23,8 @@
 	{
 		display: inherit !important;
 	}
+	#cbi-ota .ota-progress { max-width: 420px; margin: 8px 0; }
+	#cbi-ota .ota-progress progress { display: block; width: 100%; height: 16px; accent-color: #5e72e4; }
 
 	</style>
 
@@ -38,7 +40,7 @@
 						<label class="cbi-value-title" id="check_result"></label>
 						<div class="cbi-value-field">
 							<button type="button" class="cbi-button cbi-button-reload" name="check"><%:Check update%></button>
-							<div class="cbi-value-description">Step 1/3: <%:Check update%></div>
+							<div class="cbi-value-description"><%:Step 1/3: Check update%></div>
 						</div>
 					</div>
 				</form>
@@ -49,7 +51,7 @@
 						<label class="cbi-value-title" id="download_result"><%:Found new firmware%></label>
 						<div class="cbi-value-field">
 							<button type="button" class="cbi-button cbi-button-apply" name="download"><%:Download firmware%></button>
-							<div class="cbi-value-description">Step 2/3: <%:Download firmware%></div>
+							<div class="cbi-value-description"><%:Step 2/3: Download firmware%></div>
 						</div>
 					</div>
 				</form>
@@ -57,10 +59,11 @@
 			<div class="state state-downloading">
 				<form>
 					<div class="cbi-value">
-						<label class="cbi-value-title" id="download_progress">0%</label>
+						<label class="cbi-value-title" id="download_progress"><%:Downloading%></label>
 						<div class="cbi-value-field">
+							<div class="ota-progress"><progress id="download_bar" max="100" aria-label="<%:Download progress%>"></progress></div>
 							<button type="button" class="cbi-button cbi-button-reset" name="cancel"><%:Cancel download%></button>
-							<div class="cbi-value-description">Step 2/3: <%:Download firmware%></div>
+							<div class="cbi-value-description"><%:Step 2/3: Download firmware%></div>
 						</div>
 					</div>
 				</form>
@@ -79,7 +82,7 @@
 						<label class="cbi-value-title"><%:Firmware downloaded (SHA256 verified)%></label>
 						<div class="cbi-value-field">
 							<button type="submit" class="cbi-button cbi-input-apply"><%:Flash image%></button>
-							<div class="cbi-value-description">Step 3/3: <%:Flash image%> — <%:manual confirm only, never automatic%></div>
+							<div class="cbi-value-description"><%:Step 3/3: Flash image%> — <%:manual confirm only, never automatic%></div>
 						</div>
 					</div>
 				</form>
@@ -108,6 +111,7 @@
 			var check_result = document.querySelector('#check_result');
 			var download_result = document.querySelector('#download_result');
 			var download_progress = document.querySelector('#download_progress');
+			var download_bar = document.querySelector('#download_bar');
 			var upgrade_log = document.querySelector('#upgrade_log');
 			var history_log = document.querySelector('#history_log');
 
@@ -137,6 +141,7 @@
 						} else {
 							alert("<%:Found downloading firmware, will show progress%>");
 							download_progress.innerText = "<%:Downloading%>: ...";
+							download_bar.removeAttribute('value');
 							cancel.disabled = 'disabled';
 							state_switch("unchecked", "downloading");
 							refresh_download_progress_timer = setTimeout(refresh_download_progress, 500);	
@@ -167,23 +172,35 @@
 						state_switch("downloading", "downloaded");
 						break;
 					case 1:
-						if (d.msg.startsWith('#') || d.msg.startsWith(' ') || d.msg.startsWith('-')) {
+						var percent = d.msg.match(/(\d+(?:\.\d+)?)%/);
+						if (percent || /^[# -]/.test(d.msg) || /^Downloading /.test(d.msg)) {
 							if (!refresh_download_progress_paused)
 								cancel.disabled = undefined;
-							if (d.msg.endsWith('%'))
-								download_progress.innerText = "<%:Downloading%>: "+d.msg.replaceAll(/[# ]/g, '');
-							else
+							if (percent) {
+								download_bar.value = Math.min(100, Number(percent[1]));
+								download_progress.innerText = "<%:Downloading%>: " + percent[1] + "%";
+							} else {
+								download_bar.removeAttribute('value');
 								download_progress.innerText = "<%:Downloading%>";
+							}
 						} else {
 							if (!refresh_download_progress_paused)
 								cancel.disabled = 'disabled';
-							download_progress.innerText = d.msg;
+							download_bar.removeAttribute('value');
+							download_progress.innerText = d.msg === 'Verifying SHA256...' ? "<%:Verifying SHA256...%>" :
+								d.msg === 'Decompressing...' ? "<%:Decompressing...%>" : "<%:Preparing download...%>";
 						}
 						refresh_download_progress_timer = setTimeout(refresh_download_progress, 500);
 						break;
 					case 2:
 						download_result.innerText = "<%:Download canceled%>";
 						state_switch("downloading", "checked");
+						break;
+					case 3:
+						download_result.innerText = "<%:Download failed%>";
+						state_switch("downloading", "checked");
+						alert("<%:Download failed%>: " + (d.msg === 'Checksum failed!' ? "<%:Checksum failed%>" :
+							d.msg === 'gunzip failed' ? "<%:Decompression failed%>" : "<%:Network error or download interrupted%>"));
 						break;
 					case 254:
 						state_switch("downloading", "unchecked");
@@ -202,6 +219,7 @@
 					switch(d.code){
 					case 0:
 						download_progress.innerText = "<%:Downloading%>: ...";
+						download_bar.removeAttribute('value');
 						cancel.disabled = 'disabled';
 						state_switch("checked", "downloading");
 						refresh_download_progress_timer = setTimeout(refresh_download_progress, 500);

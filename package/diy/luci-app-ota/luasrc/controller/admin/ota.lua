@@ -139,7 +139,7 @@ function action_progress()
   if r == 0 then
     ret.code = 0
     ret.msg = "done"
-  elseif r == 1 or r == 2 or r == 254 then
+  elseif r == 1 or r == 2 or r == 3 or r == 254 then
     ret.code = r
     ret.msg = o
   else

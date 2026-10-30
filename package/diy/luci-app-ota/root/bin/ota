@@ -155,14 +155,14 @@ prepare_check() {
 	{
 		echo "<pre>"
 		echo "GitHub: ${owner}/${repo}"
-		echo "Current: ${cur:-unknown}"
-		echo "Latest:  $remote ($(meta_get ASSET))"
+		echo "当前版本: ${cur:-未知}"
+		echo "最新版本: $remote ($(meta_get ASSET))"
 		echo "SHA256:  $(meta_get SHA256)"
 		echo "</pre>"
 		if [ -n "$(meta_get HTML_URL)" ]; then
-			echo "<p><a href=\"$(meta_get HTML_URL)\" target=\"_blank\" rel=\"noopener\">Release notes</a></p>"
+			echo "<p><a href=\"$(meta_get HTML_URL)\" target=\"_blank\" rel=\"noopener\">发布说明</a></p>"
 		fi
-		echo "<p>Flash only after checksum OK. Confirm keep-settings on the next step — never auto-flash.</p>"
+		echo "<p>校验通过后，请在下一步确认是否保留设置并手动刷写，系统不会自动刷写。</p>"
 	} >>"$STATE_DIR/ota.log"
 
 	if [ -n "$cur" ] && [ "$cur" = "$remote" ]; then
@@ -199,7 +199,7 @@ do_check() {
 		echo "<pre>"
 		sed -E '1 s/^\[.*\]\((.+)\)\s*$/\1/' "$STATE_DIR/ota.latest" 2>/dev/null
 		echo "</pre>"
-		echo "<br><h2>ChangeLog:</h2>"
+		echo "<br><h2>更新信息:</h2>"
 	fi
 	[ "$ret" -eq 0 -o "$ret" -eq 1 -o "$ret" -eq 2 ] && cat "$STATE_DIR/ota.log"
 	return $ret
@@ -233,11 +233,16 @@ download() {
 		pid=$!
 		echo "$pid" >/var/run/ota/download.pid
 		flock -u 300
-		if ! wait $pid; then
-			ecode=$?
+		wait "$pid"
+		ecode=$?
+		if [ "$ecode" -ne 0 ]; then
 			rm -f /var/run/ota/download.pid
 			echo >>"$PROG"
-			[ $ecode -eq 143 ] && echo "Canceled!" >>"$PROG"
+			if [ "$ecode" -eq 143 ]; then
+				echo "Canceled!" >>"$PROG"
+			else
+				echo "Download failed!" >>"$PROG"
+			fi
 			rm -f "$IMG_PART"
 			return 1
 		fi
@@ -284,7 +289,7 @@ do_download() {
 	return 0
 }
 
-# 0 done, 1 downloading, 2 canceled/failed msg, 254 wrong state
+# 0 done, 1 downloading, 2 canceled, 3 failed, 254 wrong state
 do_progress() {
 	local sum line
 	sum=$(meta_get SHA256 2>/dev/null)
@@ -295,9 +300,9 @@ do_progress() {
 		echo "Canceled"
 		return 2
 	fi
-	if grep -Fq 'Checksum failed!' "$PROG" 2>/dev/null || grep -Fq 'gunzip failed' "$PROG" 2>/dev/null; then
+	if grep -Fq 'Checksum failed!' "$PROG" 2>/dev/null || grep -Fq 'gunzip failed' "$PROG" 2>/dev/null || grep -Fq 'Download failed!' "$PROG" 2>/dev/null; then
 		tr '\r' '\n' <"$PROG" | grep -v '^$' | tail -n1
-		return 2
+		return 3
 	fi
 	# Still downloading or decompressing — keep UI in progress (code 1)
 	line=$(tr '\r' '\n' <"$PROG" | grep -v '^$' | tail -n1)
