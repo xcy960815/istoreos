@@ -265,3 +265,42 @@ echo "tailscale -> official ${TS_VERSION} amd64; luci-app-tailscale ${LUCI_TAG} 
 ```
 
 修法：`${LUCI_TAG}` → `${LUCI_COMMIT:0:12}`（与 pin-quickstart.sh 末行同风格）。本文件 `bash -n` 过、同提交的其余改动（JS 门禁用的 `qs`/`luci` 在脚本 48/79 行均有定义）核查过无同类问题。功能零增删，seed 521 行不变；重跑为 r45。
+
+## 四十四、r45 build 全绿但 publish 403（run 41153241250，2026-10-31）
+
+r45（13884b3e0，即 r44 那个 LUCI_TAG 修复提交）：build job 4 小时全绿（含 manifest 断言、镜像上传），publish job「Publish to GitHub Releases」18 秒即死，原文：
+
+```
+TAG=r45
+ASSET=istoreos-x86-64-generic-squashfs-combined-efi.img.gz
+SHA256=edbf255262fa0db126f5beaaec7b3c771365429adf52ba35117764bfc0ad02db
+HTTP 403: Resource not accessible by integration (https://api.github.com/repos/xcy960815/istoreos/releases)
+##[error]Process completed with exit code 1.
+```
+
+这是 a15aea9a0e 拆分 build/publish 后 publish job 第一次真跑（r44 build 挂了没走到）。
+
+### 排除法实测
+
+1. **rerun-failed-jobs attempt 2**：同样 403。非偶发。
+2. **仓库设置**：无 rulesets（`[]`）、无分支保护（404）；`default_workflow_permissions` 为 **read**。PUT 切成 **write** 后读回确认，**attempt 3 仍同样 403** → 仓库设置不是决定因素，job 级声明根本没被兑现。
+3. **探针 workflow**（test-release-perms.yml，`permissions: contents: write` 同时写在 workflow 级和 job 级，建/删 `r-perm-test` release 后即删）：run 41175421535 **一次成功**。
+4. 对照历史：r43（run 41031394295，单 job 结构，job 级 `contents: write`）10-30 12:07 发布成功（release `published_at` 与 run 完成时间吻合）。→ **同仓库 job 级单独声明 10-30 还有效、10-31 起失效**（GitHub 侧行为变化，无法进一步归因）。
+
+### 结论矩阵
+
+| 结构 | 结果 |
+|---|---|
+| job 级声明（r43，10-30） | ✅ |
+| job 级声明（r45，10-31，默认 read） | ❌ 403 |
+| job 级声明（r45 attempt 3，默认 write） | ❌ 403 |
+| workflow 级 + job 级声明（探针，10-31） | ✅ |
+
+### 修法（只改 workflow，不改仓库语义）
+
+- workflow 顶层加 `permissions: contents: write`（探针验证过的形态）；
+- build job 保留显式 `permissions: contents: read`（构建树脚本仍拿不到写权限，加固意图不变）；
+- publish job 显式 `contents: write` 照旧；
+- 仓库设置 `default_workflow_permissions` 维持 **write**（从 read 切换，见 CUSTOM-TRIMMING §四十四；本 workflow 所有 job 都有显式声明，该默认只影响未来新增的无声明 job——文档已提醒要显式最小权限）。
+
+探针 workflow 已删（5f1039d5f3 提交后删除）。r45 不再补发（镜像 artifact 留 14 天，验证价值已兑现）；带主题修复与 workflow 修复的构建为 r46。

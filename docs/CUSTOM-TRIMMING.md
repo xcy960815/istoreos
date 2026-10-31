@@ -1164,3 +1164,23 @@ Argon 主题（third feed 的 submodule `jjm2473/luci-theme-argon`，luci-24 分
 | 出包 | r46 起（r45 在跑，不带此修复） |
 
 后续 AI：**不要**把该补丁的锚点替换改成整文件覆盖——third 跟踪 main 会漂移，整文件覆盖会悄悄吞掉上游其他修复；**不要**为消报错放宽锚点校验；上游若真改了主题布局，按报错复核后更新锚点并重测三态。
+
+## 四十四、r45 publish 403：job 级 token 声明失效，写权限上移 workflow 级（2026-10-31，无 seed 变更）
+
+### 结论
+
+`build-istoreos.yml` 顶层现在有 **workflow 级 `permissions: contents: write`**；build job 显式 `permissions: contents: read`（构建树脚本拿不到写权限，加固意图不变），publish job 显式 `contents: write`。仓库设置 `default_workflow_permissions` 已从 read 切为 **write**（API PUT，2026-10-31；本 workflow 所有 job 都有显式声明，此默认只影响未来新增的无声明 job）。原文复盘与对照实验见 [CI-HISTORY.md §四十四](CI-HISTORY.md)。
+
+### 为什么改
+
+r45 build 全绿、publish 连挂 3 次 403（`Resource not accessible by integration`）：a15aea9a0e 的 publish job 只在 **job 级**声明 `contents: write`，GitHub 从 10-31 起对这个仓库不再兑现该声明（r43 在 10-30 用同样写法成功过；重试、把仓库默认切 write 均复现失败；独立探针 workflow 用 **workflow 级**声明一次成功）。
+
+### 影响
+
+| 项 | 状态 |
+|---|---|
+| 固件功能 | r45 无镜像发布（build 全绿、验证了 r44 修复；publish 挂）。带主题修复的构建为 r46 |
+| 安全边界 | build job 显式 read 未变；变化只在「新加无声明 job 会继承 write」——新 job 必须写显式最小权限 |
+| 仓库设置 | `default_workflow_permissions`: read → **write**（一次性 API 变更，无 UI 操作记录，特意在此记账） |
+
+后续 AI：**不要**把 workflow 级 `permissions: contents: write` 降回 job 级——已被三次 403 + 探针实证无效；**给本 workflow 加新 job 时必须显式声明最小 permissions**；若 GitHub 恢复兑现 job 级声明，可以试着重做「workflow 级 read + publish job 级 write」的更小形态，改前先跑一次性探针验证。

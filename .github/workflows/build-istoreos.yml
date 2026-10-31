@@ -7,13 +7,20 @@ concurrency:
   group: istoreos-build
   cancel-in-progress: false
 
+# r45 复盘（§四十四）：仓库默认权限为 read 时，job 级单独声明 contents: write 被 GitHub
+# 忽略（publish 403 连挂 3 次，含把仓库默认切到 write 后重试；独立探针 workflow 用
+# workflow 级声明则成功）。所以写权限必须写在 workflow 级；build job 保留显式 read 兜底。
+# 注意：以后往本 workflow 加新 job，不写 permissions 就继承 write，要最小权限请显式声明。
+permissions:
+  contents: write
+
 jobs:
   build:
     # 钉 24.04：ubuntu-latest 从 2026-10-19 起切到 26，OpenWrt 主机工具链别跟着漂
     runs-on: ubuntu-24.04
     timeout-minutes: 350
-    # 构建 job 只需要读代码/发 artifact；写权限挪到独立的 publish job，
-    # 免得仓库里任何脚本被改动都能直接发 Release。仓库全局默认仍是 read。
+    # 构建 job 只需要读代码/发 artifact；发 Release 在独立 publish job。
+    # 本 job 显式压回 read：构建树里的任何脚本都拿不到写权限。
     permissions:
       contents: read
     steps:
@@ -255,8 +262,8 @@ jobs:
             fi
           done
 
-  # 发布单独成 job：contents: write 只在这里、且只在 build 成功后生效。
-  # 构建 job 里的脚本即使被改动，也拿不到写权限。同一次 run 重跑会命中已有 tag，
+  # 发布单独成 job：构建 job 显式压回 read，写权限实际只影响 publish（r45 复盘见文件头
+  # 与 docs/CUSTOM-TRIMMING.md §四十四）。同一次 run 重跑会命中已有 tag，
   # 用 upload --clobber 覆盖（r36 的 Publish 静默失败就是同 tag 已存在）。
   publish:
     needs: build
