@@ -106,7 +106,7 @@ git push --force-with-lease origin custom-24.10  # rebase 改写了已推送历�
 - **推送纪律**：禁止向 `upstream`（`istoreos/istoreos`）推送任何分支或标签，也不开 PR；`istoreos-24.10` 不推 `origin`；唯一允许的推送是 `custom-24.10` → `origin`，且必须先得到用户明确指令（2026-10-31 用户要求）
 
 - 由于全部定制收敛在一个 seed 文件，上游 99% 的提交都与它无冲突；符号改名（罕见）时 `make defconfig` 会静默丢掉那一行，本地不会有任何提示；CI 的 seed 审计会把"已知清单外的未生效行"判失败（几分钟内），看 artifact 里的 seed-audit.txt 按报告改 seed。本地构建后可自己跑 `bash .github/scripts/seed-audit.sh` 检查
-- 云端构建走本仓库自己的 workflow（不引 P3TERX 等第三方模板；r10 起稳定出镜像，最近一次成功是 r43（2026-10-30））：`.github/workflows/build-istoreos.yml` 手动触发，seed 审计逻辑在 `.github/scripts/seed-audit.sh`（装好 feeds、跑过 defconfig 后可本地执行）。取舍理由见 `docs/CUSTOM-TRIMMING.md` §十二。构建成功后镜像自动发 GitHub Releases（tag `r<run_number>`，长期下载位；Actions artifact 仍在、14 天过期），见 `docs/CUSTOM-TRIMMING.md` §二十五
+- 云端构建走本仓库自己的 workflow（不引 P3TERX 等第三方模板；r10 起稳定出镜像，最近一次成功是 r43（2026-10-30））：`.github/workflows/build-istoreos.yml` 手动触发，seed 审计逻辑在 `.github/scripts/seed-audit.sh`（装好 feeds、跑过 defconfig 后可本地执行）。取舍理由见 `docs/CUSTOM-TRIMMING.md` §十二。构建成功后镜像自动发 GitHub Releases（tag `r<run_number>`，长期下载位；Actions artifact 仍在、14 天过期），见 `docs/CUSTOM-TRIMMING.md` §二十五。**2026-10-31 加固**：build / publish 拆成两个 job，`contents: write` 只给 publish；所有 action 钉 commit SHA、checkout 不留 token；发 Release 前用 `.manifest` 断言关键包齐全且已删包没回来；`pin-quickstart.sh` 增加 `node --check` JS 门禁，`pin-tailscale-prebuilt.sh` 改钉 asvow LuCI commit
 
 ## 备注
 

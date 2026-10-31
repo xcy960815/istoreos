@@ -18,7 +18,8 @@ set -euo pipefail
 TS_VERSION=1.104.1
 TS_HASH=108d1d96ecf410d305571e173516f27038f870919a9b89c914a167c6d33a4528
 LUCI_REPO=https://github.com/asvow/luci-app-tailscale.git
-LUCI_TAG=v1.2.6
+# 钉 commit 而不是 tag：tag 可被上游移动，内容会悄悄换掉。下面这个 commit 就是 v1.2.6。
+LUCI_COMMIT=534eb3f3acba24dac4e6fee9fa33049b004ef121
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$root"
@@ -123,12 +124,28 @@ luci=package/luci-app-tailscale
 if [ -f "$luci/Makefile" ]; then
   echo "luci-app-tailscale 已在 $luci，跳过 clone"
 else
-  git clone --depth 1 --branch "$LUCI_TAG" "$LUCI_REPO" "$luci"
+  git init -q "$luci"
+  git -C "$luci" remote add origin "$LUCI_REPO"
+  git -C "$luci" fetch -q --depth 1 origin "$LUCI_COMMIT"
+  git -C "$luci" checkout -q --detach FETCH_HEAD
 fi
 grep -q 'LUCI_TITLE:=LuCI for Tailscale' "$luci/Makefile" || {
   echo "::error::$luci 不是 asvow/luci-app-tailscale，拒绝继续"
   exit 1
 }
+grep -q '^PKG_VERSION:=1\.2\.6$' "$luci/Makefile" || {
+  echo "::error::$luci PKG_VERSION 不是 1.2.6，上游布局/版本变了要人工复核"
+  exit 1
+}
+got=$(git -C "$luci" rev-parse HEAD 2>/dev/null || true)
+if [ -n "$got" ]; then
+  [ "$got" = "$LUCI_COMMIT" ] || {
+    echo "::error::$luci 的 HEAD=$got，与钉死的 $LUCI_COMMIT 不符"
+    exit 1
+  }
+else
+  echo "::warning::$luci 没有 .git（本地构建树），无法核对 commit；只校验了版本 1.2.6"
+fi
 [ -f "$luci/root/usr/sbin/tailscale_helper" ] || {
   echo "::error::$luci 缺少 root/usr/sbin/tailscale_helper，上游布局变了"
   exit 1

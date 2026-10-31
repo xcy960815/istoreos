@@ -59,7 +59,7 @@
 | **禁止** | **不要刷正在用的 J4125**（和 N100 都是 `192.168.100.1`）。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100。**不要**用 ISO 当安装盘/整盘 dd 到 Ventoy |
 | N100 | 双网口、无显示器、机内 16G 傲腾。BIOS：U 盘优先、Secure Boot 关。Mac 无内置网口：网线接 N100 **第二口**，`192.168.100.2/24`、**网关留空**。家里关 Wi‑Fi；公司 USB 网卡必须排在 Wi‑Fi 下面，否则 `192.168.100.1` 会被公司网抢走 |
 | 官方截图 | 家里 **J4125** 上的官方整包 QuickStart（Samba/易有云/固件更新卡片），不是本 fork；`custom-24.10` 跟踪的是 `istoreos-24.10` |
-| 构建状态（2026-10-31） | `origin/custom-24.10` 已与本地同步；最新构建提交 `8940a8b6fd`（r43），其后只有文档提交。seed 521；CI 手动触发，r43 全绿并自动发 Release。r36 首次 Publish 静默失败，r37 起修复；r36 资产后来手动补传（§三十七补）。审计无新增未生效行，已知丢失项见 §十四 |
+| 构建状态（2026-10-31） | 最新构建提交 `8940a8b6fd`（r43），其后只有文档与 CI 加固提交（未推）；seed 521；CI 手动触发，r43 全绿并自动发 Release。r36 首次 Publish 静默失败，r37 起修复；r36 资产后来手动补传（§三十七补）。审计无新增未生效行，已知丢失项见 §十四 |
 | 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu |
 | 还没做 | N100 刷 r43 验证：SSE 流量图 ~1Hz + 横轴时间、Tailscale「授权登录」可点、OTA 中文/进度条、健康巡检退出 0；D 档剩余项（§十六）等证据；**J4125 仍禁止刷** |
 
@@ -458,7 +458,7 @@ LuCI 配置页 `luci-app-tailscale-community` 仍是商店应用、六个默认 
 
 | 动作 | 内容 |
 |---|---|
-| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-tailscale-prebuilt.sh`：把 `package/feeds/packages/tailscale` 换成官方 `tailscale_1.104.1_amd64.tgz`（sha256 `108d1d96ecf410d305571e173516f27038f870919a9b89c914a167c6d33a4528`）；只装两个二进制。init/config 由 asvow LuCI 提供。`git clone --branch v1.2.6` asvow/luci-app-tailscale 到 `package/luci-app-tailscale`；再铺 `.github/scripts/tailscale-durable/`（helper / keep / ensure / START=89 / uci-defaults），见下方「耐久防火墙 / netifd 补丁」 |
+| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-tailscale-prebuilt.sh`：把 `package/feeds/packages/tailscale` 换成官方 `tailscale_1.104.1_amd64.tgz`（sha256 `108d1d96ecf410d305571e173516f27038f870919a9b89c914a167c6d33a4528`）；只装两个二进制。init/config 由 asvow LuCI 提供。按 **commit `534eb3f3acba`**（v1.2.6）拉取 asvow/luci-app-tailscale 到 `package/luci-app-tailscale`，并核对 HEAD 与 `PKG_VERSION=1.2.6`；再铺 `.github/scripts/tailscale-durable/`（helper / keep / ensure / START=89 / uci-defaults），见下方「耐久防火墙 / netifd 补丁」 |
 | seed 新增 `=y` | `luci-app-tailscale`、`luci-i18n-tailscale-zh-cn`（seed `CONFIG_PACKAGE_*` 585 → 587） |
 | seed 原本就有、未删 | `tailscale`（守护进程；二进制由脚本换成 1.104.1） |
 | 不加 | `luci-app-tailscale-community`（商店包，无 kconfig，写了也是死行）；不升 golang |
@@ -592,8 +592,11 @@ r17 及更早的镜像只挂在 Actions 的 artifact 上：**14 天过期**，�
 
 | 动作 | 内容 |
 |---|---|
-| workflow 新增 | `build-istoreos.yml`：job 申请 `permissions: contents: write`（仓库全局默认仍是 read，没动它）；`Upload images` 之后新增 `Publish to GitHub Releases`（`if: success()`），`gh release create r<run_number>` 上传 `*.img.gz`、`*.iso`、`sha256sums`、`*.manifest`，tag 锚定被构建的提交；同一 run 重跑用 `gh release upload --clobber` 覆盖 |
+| workflow 新增 | `build-istoreos.yml` 拆成两个 job：**build**（`permissions: contents: read`）负责编译与上传 artifact；**publish**（`needs: build`，`permissions: contents: write`）下载 artifact 后 `gh release create r<run_number>`，上传 `*.img.gz`、`*.iso`、`sha256sums`、`*.manifest`、`ota.meta`，tag 锚定被构建的提交；同一 run 重跑用 `gh release upload --clobber` 覆盖。写权限不再覆盖构建步骤 |
 | 仅手动触发 | 构建入口仍只有 workflow_dispatch；Release 是产物去处，不是触发器 |
+| 供应链加固（2026-10-31） | 所有 `uses:` 钉到 commit SHA（checkout v5.1.0、cache v5.1.0、upload-artifact v6.0.0、download-artifact v8.0.2）；checkout 设 `persist-credentials: false`，token 不留在 `.git/config` |
+| 产物断言（2026-10-31） | 发 Release 前检查 `.manifest`：关键包（tailscale/luci-app-tailscale/ddns-go/luci-app-ddns-go/luci-app-ota/luci-i18n-ota-zh-cn/istoreos-ops/luci-app-istoreos-health/luci-app-quickstart/luci-theme-argon/luci-app-openlist）缺一个即失败；已删包（luci-theme-bootstrap/dockerd/samba4-server/luci-app-samba4/ddnsto/luci-app-ddns）出现即失败 |
+| pin 脚本加固（2026-10-31） | `pin-quickstart.sh` 增加 `node --check` JS 语法门禁（r40 白屏类问题在构建期拦截）；`pin-tailscale-prebuilt.sh` 的 asvow LuCI 从 tag 改为 commit `534eb3f3acba` 拉取并核对 HEAD 与 `PKG_VERSION=1.2.6` |
 
 后续 AI：**不要**为发 Release 去改仓库全局默认权限；**不要**把 Release 当作「已刷机验证」的证据——机器验证仍按 `BUILD-CUSTOM.md` 流程走。
 

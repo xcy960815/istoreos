@@ -529,4 +529,26 @@ EOF
   echo "quickstart.config: disable_update_check=1（没有 luci-app-ota）"
 fi
 
+# JS 语法门禁：r40 首页白屏是 JS 语法错误，构建期完全没检查，刷完才发现。
+# node --check 只解析不执行，秒级；CI runner 自带 node，本地没有就只警告。
+if command -v node >/dev/null 2>&1; then
+  js_bad=0
+  while IFS= read -r -d '' f; do
+    if ! node --check "$f" 2>/tmp/istoreos-js-check.err; then
+      echo "::error::JS 语法错误：$f"
+      cat /tmp/istoreos-js-check.err
+      js_bad=1
+    fi
+  done < <(find "$qs" "$luci" -type f -name '*.js' -print0)
+  rm -f /tmp/istoreos-js-check.err
+  [ "$js_bad" -eq 0 ] || exit 1
+  echo "node --check: quickstart / luci-app-quickstart 的 JS 全部通过"
+else
+  if [ "${CI:-}" = "true" ]; then
+    echo "::error::CI 上找不到 node，JS 语法门禁没有执行（runner 镜像变了？）"
+    exit 1
+  fi
+  echo "::warning::没有 node，跳过 JS 语法门禁（本地可选；CI 上必须跑到）"
+fi
+
 echo "quickstart ${QS_VERSION} @ ${NAS_COMMIT:0:12}; luci-app-quickstart ${LUCI_VERSION} @ ${LUCI_COMMIT:0:12}"
