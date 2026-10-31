@@ -1,0 +1,28 @@
+name: Test release permissions
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: probe release create/delete with GITHUB_TOKEN
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -x
+          if gh release view r-perm-test --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release r-perm-test already exists"
+          else
+            gh release create r-perm-test --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --title "permission probe" --notes "temporary test, safe to delete"
+          fi
+          echo "CREATE OK"
+          gh release delete r-perm-test --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+          echo "DELETE OK"
