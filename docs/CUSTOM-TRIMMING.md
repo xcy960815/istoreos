@@ -1133,3 +1133,34 @@ a15aea9a0e 对 CI 做加固（功能零增删）：构建 job 降为 `contents: 
 固件功能零增删，seed 521 行不变。r44 无镜像产出；修复后重新构建为 r45。
 
 后续 AI：**改 pin 脚本里的常量名时全局 grep 旧名**——`set -euo pipefail` 下未定义引用即失败；**不要**把构建 job 的写权限加回去；不要把 LuCI 钉点从 commit 退回 tag。
+
+## 四十三、Argon 侧栏「搜索菜单」样式修复（2026-10-31，用户确认样式，无 seed 变更）
+
+### 背景
+
+Argon 主题（third feed 的 submodule `jjm2473/luci-theme-argon`，luci-24 分支）自带的菜单搜索很丑，用户 2026-10-31 发截图要求优化：点一下空的搜索框就弹一个 `min-height:10em` 的大空框，右上角「输入为空」（被 `direction:rtl` 推到右边），面板直角无阴影、滚动条槽常驻。根因在主题源码：`menu-argon.js` 的 `do_search()` 无条件先塞 "Empty Input" 提示再 return，`header.htm` 给结果 `ul` 写死 `min-height: 10em`。
+
+### 功能视角（变更后设备能做什么）
+
+| 变更 | 效果 |
+|---|---|
+| 空输入不弹层 | 点/聚焦空的搜索框不再出现「输入为空」大空框；清空输入即收起 |
+| 面板高度自适应 | 结果随内容伸缩（`min-height:10em` → 去掉，上限 20em→16em），一行结果就是一行高 |
+| 面板视觉 | 圆角 .75rem + 阴影，与输入框圆角统一；`overflow-y: scroll→auto`（无溢出无滚动条槽） |
+| 「未找到」居中 | `li.search-tips` 居中弱化（原来 rtl 推到右侧）；暗色模式颜色跟随 dark.css |
+| 搜索功能本身 | 不变：按菜单标题/链接尾段模糊匹配，点击跳转后收起 |
+
+### 机制（第 ⑤ 条构建例外）
+
+主题不在本仓库、来自 feed，照 §二十二 模式走 CI 补丁：新增 `.github/scripts/patch-argon-menu-search.sh`（AGENTS.md 例外清单已更新为五条），在「Update and install feeds」之后、`make defconfig` 之前对 `package/feeds/third/luci-theme-argon` 打补丁（js/htm/cascade.css/dark.css/cascade.less 共 12 处精确替换）。幂等（重复跑 SKIP）；任何锚点对不上＝third feed 的主题改了写法，`::error::` 退出人工复核，不许静默跳过；改完跑 `node --check` 与 grep 终检。上游 `#search` 死代码规则未动。已用 pristine 主题副本三态验证（有结果/未找到/空输入点击，mock 截图确认）+ 脚本全新/幂等/报错三条路径本地全测。
+
+### 影响与包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 改 | `.github/scripts/patch-argon-menu-search.sh`（新增）、`.github/workflows/build-istoreos.yml`（加 step）、`AGENTS.md`（例外四条→五条）、`BUILD-CUSTOM.md`（本地构建步骤） |
+| seed | **无变化**（521） |
+| 改的是 | 构建树里 feeds 的主题副本（不进 git），主题包版本不变 |
+| 出包 | r46 起（r45 在跑，不带此修复） |
+
+后续 AI：**不要**把该补丁的锚点替换改成整文件覆盖——third 跟踪 main 会漂移，整文件覆盖会悄悄吞掉上游其他修复；**不要**为消报错放宽锚点校验；上游若真改了主题布局，按报错复核后更新锚点并重测三态。

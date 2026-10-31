@@ -60,6 +60,9 @@ jobs:
       - name: Pin QuickStart homepage without NAS cards
         run: bash .github/scripts/pin-quickstart.sh
 
+      - name: Patch argon menu-search style
+        run: bash .github/scripts/patch-argon-menu-search.sh
+
       - name: Drop luci-theme-bootstrap (Argon only)
         run: bash .github/scripts/drop-luci-theme-bootstrap.sh
 

@@ -12,7 +12,7 @@
 | ❌ 二次裁剪(2026-10-05) | 无线全家/蜂窝modem全家/GPU固件与DRM/NFS·SMB存储/l2tp-pptp-sstp-gre-ipip-ipsec隧道/KVM宿主/Docker孤儿kmod/老式网卡驱动 | J4125 无对应硬件；文件服务归 9400F/N100。明细见 `docs/CUSTOM-TRIMMING.md` §六 |
 | ✅ 保留（固件里确实有） | 基础网络栈 / kmod-igc / firewall4 / dnsmasq-full / IPv6 / **tailscale 1.104.1 + luci-app-tailscale** / **ddns-go + luci-app-ddns-go** / openlist（含 WebDAV） / vlmcsd / ttyd / wol / zram / lm-sensors / argon 主题 / iStore 商店本体（luci-app-store、dkml） / **smartd + smartmontools + mdadm**（给首页磁盘信息查询，不是侧栏 SMART/RAID） / **luci-app-ota**（仅本仓库 Releases，§三十七） / **istoreos-ops + luci-app-istoreos-health**（OTA 前备份 + 健康巡检/Telegram 通知，§三十八/§三十九） | 路由器命根子 + 确实保留的服务。filetransfer 已删、挂载点菜单已藏（§三十一），`luci-mod-system` 和 sftp 仍留 |
 | 📦 刷机后从 iStore 商店装回（**不在构建期**） | openclash、eqos、oaf、cpufreq、luci-app-fan、diskman、gowebdav、fastnet、floatip | 这些名字在默认 feed 里没有 kconfig 符号，写进 seed 也进不了镜像。证据与逐条清单见 `docs/CUSTOM-TRIMMING.md` §九/§十。**DDNS-Go、Tailscale LuCI 不在此列**（r17 起已烘焙）。**QuickStart 首页 r33 已在 N100 验证（§二十三/§三十五）；r38 起流量图改 SSE ~1Hz（§四十），r17 还是 Argon 概览** |
-| ➕ 新增 | irqbalance；`feeds.conf.default` 的 `src-git ddnsgo`（sirpdboy/luci-app-ddns-go）；CI/本地在 defconfig 前跑 `pin-tailscale-prebuilt.sh`、`pin-quickstart.sh`、`drop-luci-theme-bootstrap.sh` | irqbalance：四张 2.5G 网卡中断分摊。ddnsgo feed：六个默认 feed 没有 DDNS-Go。Tailscale 最新稳定版不能用本树 Go 1.23.12 从源码编，改用官方 amd64 预编译 + asvow LuCI，并铺 `tailscale-durable/`（无 netifd 抢地址、zone 绑 device=tailscale0、开机 ensure），见 `docs/CUSTOM-TRIMMING.md` §二十二。自建 GitHub OTA 见 §三十七。QuickStart 只 clone 两个包、首页去掉 Samba/易有云/下载/ddnsto，存储服务只留 WebDAV，侧栏不要 RAID/SMART、不要挂载点，留下 smartd+smartmontools+mdadm 给磁盘信息，loading 等到 Disk.Status，见 §二十三/§三十一～§三十五。Bootstrap 主题：`luci-light` 硬依赖，要脚本拆掉，见 §二十四 |
+| ➕ 新增 | irqbalance；`feeds.conf.default` 的 `src-git ddnsgo`（sirpdboy/luci-app-ddns-go）；CI/本地在 defconfig 前跑 `pin-tailscale-prebuilt.sh`、`pin-quickstart.sh`、`drop-luci-theme-bootstrap.sh`、`patch-argon-menu-search.sh` | irqbalance：四张 2.5G 网卡中断分摊。ddnsgo feed：六个默认 feed 没有 DDNS-Go。Tailscale 最新稳定版不能用本树 Go 1.23.12 从源码编，改用官方 amd64 预编译 + asvow LuCI，并铺 `tailscale-durable/`（无 netifd 抢地址、zone 绑 device=tailscale0、开机 ensure），见 `docs/CUSTOM-TRIMMING.md` §二十二。自建 GitHub OTA 见 §三十七。QuickStart 只 clone 两个包、首页去掉 Samba/易有云/下载/ddnsto，存储服务只留 WebDAV，侧栏不要 RAID/SMART、不要挂载点，留下 smartd+smartmontools+mdadm 给磁盘信息，loading 等到 Disk.Status，见 §二十三/§三十一～§三十五。Bootstrap 主题：`luci-light` 硬依赖，要脚本拆掉，见 §二十四。Argon 搜索菜单样式修复，见 §四十三 |
 
 参数：EFI+BIOS 双引导、只要 squashfs（显式关掉 x86 默认的 ext4 根镜像）、kernel 分区 32MB、root 分区 512MB、另出一份 EFI LiveCD ISO（Ventoy 可启动，**不是**一键安装器）、中文界面。224MB+默认 ext4 会在 `make_ext4fs` 阶段把 `target/linux` 打挂，见 `docs/CUSTOM-TRIMMING.md` §十七。Ventoy 装到 N100 傲腾的步骤见 §十九。
 
@@ -49,6 +49,9 @@ bash .github/scripts/pin-quickstart.sh
 
 # 3e. luci-light 默认依赖 Bootstrap 主题。不改的话 seed 删了也会被 defconfig 加回。见 §二十四
 bash .github/scripts/drop-luci-theme-bootstrap.sh
+
+# 3f. Argon 侧栏「搜索菜单」样式修复（空输入不弹大空框、面板自适应+圆角阴影）。见 §四十三
+bash .github/scripts/patch-argon-menu-search.sh
 
 # 4. 应用裁剪配置
 cp config-custom.seed .config
