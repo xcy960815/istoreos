@@ -210,4 +210,4 @@ grep -q 'admin/vpn/tailscale' "$luci/root/usr/share/luci/menu.d/luci-app-tailsca
   exit 1
 }
 
-echo "tailscale -> official ${TS_VERSION} amd64; luci-app-tailscale ${LUCI_TAG} at $luci (+ durable helper/NeedsLogin + authkey + Services menu)"
+echo "tailscale -> official ${TS_VERSION} amd64; luci-app-tailscale ${LUCI_COMMIT:0:12} at $luci (+ durable helper/NeedsLogin + authkey + Services menu)"

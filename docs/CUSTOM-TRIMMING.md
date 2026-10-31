@@ -1117,3 +1117,19 @@ sed -i '/istoreos-health/d' /etc/crontabs/root; /etc/init.d/cron reload
 4. 下载完成后仍需手动点 Flash；取消下载显示「已取消」。
 
 后续 AI：**不要**让 OTA 自动刷写；**不要**改回 koolcenter 源；改文案先改 `po/zh-cn/ota.po` 并重新编包，`/bin/ota` 里的中文是直接 echo 的。
+
+## 四十二、CI 权限拆分与门禁加固；r44 pin 脚本漏改变量名（2026-10-31，无 seed 变更）
+
+### 背景
+
+a15aea9a0e 对 CI 做加固（功能零增删）：构建 job 降为 `contents: read`，发布独立成 `publish` job（`contents: write` 只在那里、只在 build 成功后生效）；所有 action 钉到具体 SHA；编译后新增 manifest 关键包断言（tailscale/ddns-go/OTA/quickstart 等缺一不发 Release，已删包回来也拦）；quickstart pin 加 JS `node --check` 门禁（r40 首页白屏是 JS 语法错误、构建期没查出来）；asvow LuCI 从钉 tag 改为钉 commit `534eb3f3`（tag 可被上游移动）。
+
+### r44 失败（run 41152156312，2026-10-31）
+
+钉 commit 时把 `LUCI_TAG=v1.2.6` 改成了 `LUCI_COMMIT=534eb3f3…`，但脚本最后一行 echo 漏改，仍引用 `${LUCI_TAG}`；`set -euo pipefail` 下 unbound variable 直接退出。此时 clone、hash、版本校验、durable helper 覆盖、setting.js patch 全部已通过，只挂在汇报行，后面 QuickStart/defconfig/编译全被跳过。修复：末行改 `${LUCI_COMMIT:0:12}`（与 pin-quickstart.sh 同风格）。原文复盘见 [CI-HISTORY.md §四十二](CI-HISTORY.md)。
+
+### 影响
+
+固件功能零增删，seed 521 行不变。r44 无镜像产出；修复后重新构建为 r45。
+
+后续 AI：**改 pin 脚本里的常量名时全局 grep 旧名**——`set -euo pipefail` 下未定义引用即失败；**不要**把构建 job 的写权限加回去；不要把 LuCI 钉点从 commit 退回 tag。

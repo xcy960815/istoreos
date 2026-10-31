@@ -245,3 +245,23 @@ Pin 脚本和 LuCI clone 都绿，`make defconfig` / seed 审计也过了。卡�
 根因：脚本里的 `PKG_HASH` 抄错一位（`…a9a7c6…`，应为 `…a167c6…`）。`pkgs.tailscale.com` 的 ETag 就是文件 sha256：`108d1d96ecf410d305571e173516f27038f870919a9b89c914a167c6d33a4528`。hash 对不上，download.pl 判失败。
 
 修法：改 HASH；Tailscale 包只装 `tailscale`/`tailscaled` 两个二进制，init/config 留给 asvow LuCI，避免 rootfs 抢 `/etc/init.d/tailscale`。download 失败时按包 `make …/download -j1 V=s`，下次能看见原文。
+
+## 四十二、r44 pin 脚本漏改变量名（run 41152156312，2026-10-31）
+
+工作流 `workflow_dispatch`（构建提交 a15aea9a0e），00:48:29Z 起跑，00:52:17Z 挂，**4 分钟**。失败点：第 7 步「Pin Tailscale official amd64 + LuCI」，后续 QuickStart pin / bootstrap 删除 / defconfig / 下载 / 编译全部 skipped，publish job 未启动。
+
+该提交把 asvow LuCI 从钉 tag 改为钉 commit：`LUCI_TAG=v1.2.6` → `LUCI_COMMIT=534eb3f3acba24dac4e6fee9fa33049b004ef121`（并加 PKG_VERSION/HEAD 双校验），但脚本末行汇报 echo 漏改。step 日志原文（Tailscale 官方包替换、durable helper 覆盖、setting.js patch、zh_Hans 文案全部已成功）：
+
+```
+patch-luci-setting.sh OK
+.github/scripts/pin-tailscale-prebuilt.sh: line 213: LUCI_TAG: unbound variable
+##[error]Process completed with exit code 1.
+```
+
+脚本带 `set -euo pipefail`，`-u` 把这次纯汇报输出变成了致命错误。行 213 原文：
+
+```bash
+echo "tailscale -> official ${TS_VERSION} amd64; luci-app-tailscale ${LUCI_TAG} at $luci (+ durable helper/NeedsLogin + authkey + Services menu)"
+```
+
+修法：`${LUCI_TAG}` → `${LUCI_COMMIT:0:12}`（与 pin-quickstart.sh 末行同风格）。本文件 `bash -n` 过、同提交的其余改动（JS 门禁用的 `qs`/`luci` 在脚本 48/79 行均有定义）核查过无同类问题。功能零增删，seed 521 行不变；重跑为 r45。
