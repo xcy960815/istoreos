@@ -6,96 +6,370 @@
 
 <%
 	local fs = require "nixio.fs"
+	local rel = fs.readfile("/etc/openwrt_release") or ""
+	local curdesc = rel:match("DISTRIB_DESCRIPTION='([^']*)'") or ""
 -%>
 <div class="cbi-map" id="cbi-ota">
 	<style>
+	#cbi-ota {
+		--ota-accent: #5e72e4;
+		--ota-accent-2: #825ee4;
+		--ota-ok: #2dce89;
+		--ota-warn: #fb6340;
+		--ota-border: #e9ecef;
+		--ota-muted: #8898aa;
+		--ota-text: #32325d;
+		--ota-card: #fff;
+		--ota-soft: #f7f9fc;
+	}
+	/* Argon 的 .cbi-section 自己也是白卡片，别再套一层 */
+	#cbi-ota.cbi-section,
+	#cbi-ota .cbi-section {
+		padding: 0;
+		border: 0;
+		background: none;
+		box-shadow: none;
+		margin: 0;
+	}
+	/* 跟随 Argon 深色模式（body[theme] 由主题 header 输出；normal 跟随系统） */
+	body[theme="dark"] #cbi-ota {
+		--ota-border: #3a3a3d;
+		--ota-muted: #9aa2ad;
+		--ota-text: #d7dae0;
+		--ota-card: #232324;
+		--ota-soft: #2b2b2d;
+	}
+	@media (prefers-color-scheme: dark) {
+		body[theme="normal"] #cbi-ota {
+			--ota-border: #3a3a3d;
+			--ota-muted: #9aa2ad;
+			--ota-text: #d7dae0;
+			--ota-card: #232324;
+			--ota-soft: #2b2b2d;
+		}
+	}
+	#cbi-ota .ota-card {
+		background: var(--ota-card);
+		border: 1px solid var(--ota-border);
+		border-radius: 12px;
+		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
+		padding: 20px 22px;
+		margin: 0 0 16px;
+	}
+	#cbi-ota .ota-title {
+		margin: 0;
+		font-size: 18px;
+		font-weight: 600;
+		line-height: 1.3;
+		color: var(--ota-text);
+	}
+	#cbi-ota .ota-sub {
+		margin: 6px 0 0;
+		font-size: 13px;
+		line-height: 1.6;
+		color: var(--ota-muted);
+	}
+	#cbi-ota .ota-cur {
+		margin: 8px 0 0;
+		font-size: 12px;
+		color: var(--ota-muted);
+	}
+	#cbi-ota .ota-cur b { color: var(--ota-text); font-weight: 600; }
+
+	#cbi-ota .ota-state { margin-top: 18px; }
+	#cbi-ota .ota-empty {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		padding: 16px 12px 4px;
+	}
+	#cbi-ota .ota-empty-mark {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 44px;
+		height: 44px;
+		margin-bottom: 12px;
+		border-radius: 50%;
+		background: var(--ota-soft);
+		color: var(--ota-accent);
+		font-size: 22px;
+		line-height: 1;
+	}
+	#cbi-ota .ota-feedback {
+		min-height: 0;
+		margin-bottom: 10px;
+		font-size: 13px;
+		color: var(--ota-muted);
+	}
+	#cbi-ota .ota-feedback:empty { display: none; }
+	#cbi-ota .ota-btn {
+		min-width: 132px;
+		padding: 8px 18px;
+		border-radius: 8px;
+		font-size: 14px;
+	}
+	#cbi-ota .ota-step {
+		margin-top: 10px;
+		font-size: 12px;
+		color: var(--ota-muted);
+	}
+
+	#cbi-ota .ota-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		flex-wrap: wrap;
+		padding: 14px 16px;
+		border-radius: 10px;
+		background: var(--ota-soft);
+	}
+	#cbi-ota .ota-row-top { align-items: flex-start; }
+	#cbi-ota .ota-row-main {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		min-width: 0;
+	}
+	#cbi-ota .ota-row-title { font-weight: 600; color: var(--ota-text); }
+	#cbi-ota .ota-dot {
+		flex: 0 0 auto;
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+	}
+	#cbi-ota .ota-dot-new { background: var(--ota-warn); box-shadow: 0 0 0 4px rgba(251, 99, 64, .12); }
+	#cbi-ota .ota-dot-ok { background: var(--ota-ok); box-shadow: 0 0 0 4px rgba(45, 206, 137, .12); }
+	#cbi-ota .ota-spinner {
+		flex: 0 0 auto;
+		width: 14px;
+		height: 14px;
+		border: 2px solid rgba(94, 114, 228, .25);
+		border-top-color: var(--ota-accent);
+		border-radius: 50%;
+		animation: ota-spin .8s linear infinite;
+	}
+	@keyframes ota-spin { to { transform: rotate(360deg); } }
+
+	#cbi-ota .ota-linkbtn {
+		padding: 4px 6px;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: var(--ota-warn);
+		font-size: 13px;
+		cursor: pointer;
+	}
+	#cbi-ota .ota-linkbtn:hover { background: rgba(251, 99, 64, .08); }
+	#cbi-ota .ota-linkbtn:disabled { background: none; color: var(--ota-muted); cursor: not-allowed; }
+
+	#cbi-ota .ota-progress { margin-top: 12px; }
+	#cbi-ota progress {
+		display: block;
+		width: 100%;
+		height: 10px;
+		border: 0;
+		border-radius: 999px;
+		background: var(--ota-border);
+		overflow: hidden;
+		-webkit-appearance: none;
+		appearance: none;
+	}
+	#cbi-ota progress::-webkit-progress-bar { background: var(--ota-border); border-radius: 999px; }
+	#cbi-ota progress::-webkit-progress-value {
+		border-radius: 999px;
+		background: linear-gradient(90deg, var(--ota-accent), var(--ota-accent-2));
+		transition: width .3s ease;
+	}
+	#cbi-ota progress::-moz-progress-bar {
+		border-radius: 999px;
+		background: linear-gradient(90deg, var(--ota-accent), var(--ota-accent-2));
+	}
+
+	#cbi-ota .ota-ok {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 12px 16px;
+		border: 1px solid rgba(45, 206, 137, .25);
+		border-radius: 10px;
+		background: rgba(45, 206, 137, .08);
+	}
+	#cbi-ota .ota-check {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin-top: 14px;
+		font-size: 14px;
+		color: var(--ota-text);
+		cursor: pointer;
+	}
+	#cbi-ota .ota-check input {
+		width: 16px;
+		height: 16px;
+		accent-color: var(--ota-accent);
+	}
+	#cbi-ota .ota-actions {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		flex-wrap: wrap;
+		margin-top: 16px;
+	}
+	#cbi-ota .ota-actions .ota-step { margin-top: 0; }
+
+	#cbi-ota .ota-details-title {
+		margin-bottom: 12px;
+		font-size: 15px;
+		font-weight: 600;
+		color: var(--ota-text);
+	}
+	#cbi-ota .ota-meta {
+		display: flex;
+		flex-direction: column;
+		border: 1px solid var(--ota-border);
+		border-radius: 10px;
+		overflow: hidden;
+	}
+	#cbi-ota .ota-meta-row {
+		display: flex;
+		gap: 16px;
+		padding: 10px 14px;
+		border-top: 1px solid var(--ota-border);
+		font-size: 13px;
+	}
+	#cbi-ota .ota-meta-row:first-child { border-top: 0; }
+	#cbi-ota .ota-meta-k { flex: 0 0 92px; color: var(--ota-muted); }
+	#cbi-ota .ota-meta-v { flex: 1 1 auto; min-width: 0; color: var(--ota-text); word-break: break-all; }
+	#cbi-ota .ota-meta-v code {
+		padding: 2px 6px;
+		border-radius: 5px;
+		background: var(--ota-soft);
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		font-size: 12px;
+	}
+	#cbi-ota .ota-note {
+		margin: 12px 0 0;
+		font-size: 12px;
+		line-height: 1.6;
+		color: var(--ota-muted);
+	}
+	#cbi-ota .ota-note a { color: var(--ota-accent); }
+
+	#cbi-ota #upgrade_log h2,
+	#cbi-ota #history_log h2 {
+		margin: 0 0 12px;
+		font-size: 15px;
+		font-weight: 600;
+		color: var(--ota-text);
+	}
+
+	/* 旧版 ota.log 还带 <pre>，照样排得好看 */
+	#cbi-ota #upgrade_log pre,
+	#cbi-ota #history_log pre {
+		margin: 0;
+		font: inherit;
+		line-height: 1.8;
+		white-space: pre-wrap;
+		color: var(--ota-text);
+	}
+	#cbi-ota #upgrade_log p,
+	#cbi-ota #history_log p { margin: 10px 0 0; font-size: 12px; color: var(--ota-muted); }
+	#cbi-ota #upgrade_log a,
+	#cbi-ota #history_log a { color: var(--ota-accent); }
+
+	/* 状态切换：沿用原来的 state-ctl */
 	#cbi-ota .state-ctl .state {
 		display: none !important;
 		padding: 0 !important;
 		margin: 0 !important;
 		border: 0 !important;
 	}
-
 	#cbi-ota .state-ctl.state-ctl-unchecked .state.state-unchecked,
 	#cbi-ota .state-ctl.state-ctl-checked .state.state-checked,
 	#cbi-ota .state-ctl.state-ctl-downloading .state.state-downloading,
-	#cbi-ota .state-ctl.state-ctl-downloaded .state.state-downloaded
-	{
-		display: inherit !important;
+	#cbi-ota .state-ctl.state-ctl-downloaded .state.state-downloaded {
+		display: block !important;
 	}
-	#cbi-ota .ota-progress { max-width: 420px; margin: 8px 0; }
-	#cbi-ota .ota-progress progress { display: block; width: 100%; height: 16px; accent-color: #5e72e4; }
-
 	</style>
 
 	<div class="cbi-section state-ctl state-ctl-unchecked">
-		<div class="cbi-section-descr"><%:Check and upgrade from this fork's GitHub Releases (not official koolcenter). Checksum required; flash only after you confirm.%></div>
-		<% if image_invalid then %>
-			<div class="cbi-section-error"><%:The image file does not contain a supported format. Maybe try again later.%></div>
-		<% end %>
-		<div class="cbi-section-node">
-			<div class="state state-unchecked">
-				<form>
-					<div class="cbi-value">
-						<label class="cbi-value-title" id="check_result"></label>
-						<div class="cbi-value-field">
-							<button type="button" class="cbi-button cbi-button-reload" name="check"><%:Check update%></button>
-							<div class="cbi-value-description"><%:Step 1/3: Check update%></div>
+		<div class="ota-card">
+			<h3 class="ota-title"><%:Upgrade firmware On the Air%></h3>
+			<p class="ota-sub"><%:Check and upgrade from this fork's GitHub Releases (not official koolcenter). Checksum required; flash only after you confirm.%></p>
+			<% if curdesc ~= "" then %>
+				<p class="ota-cur"><%:Current system%>: <b><%=curdesc%></b></p>
+			<% end %>
+			<% if image_invalid then %>
+				<div class="cbi-section-error"><%:The image file does not contain a supported format. Maybe try again later.%></div>
+			<% end %>
+
+			<div class="state state-unchecked ota-state">
+				<div class="ota-empty">
+					<div class="ota-empty-mark">&#8635;</div>
+					<div class="ota-feedback" id="check_result"></div>
+					<button type="button" class="cbi-button cbi-button-action ota-btn" name="check"><%:Check update%></button>
+					<div class="ota-step"><%:Step 1/3: Check update%></div>
+				</div>
+			</div>
+
+			<div class="state state-checked ota-state">
+				<div class="ota-row">
+					<div class="ota-row-main">
+						<span class="ota-dot ota-dot-new"></span>
+						<div>
+							<div class="ota-row-title"><%:Found new firmware%></div>
+							<div class="ota-feedback" id="download_result"></div>
 						</div>
 					</div>
-				</form>
+					<button type="button" class="cbi-button cbi-button-apply ota-btn" name="download"><%:Download firmware%></button>
+				</div>
+				<div class="ota-step"><%:Step 2/3: Download firmware%></div>
 			</div>
-			<div class="state state-checked">
-				<form>
-					<div class="cbi-value">
-						<label class="cbi-value-title" id="download_result"><%:Found new firmware%></label>
-						<div class="cbi-value-field">
-							<button type="button" class="cbi-button cbi-button-apply" name="download"><%:Download firmware%></button>
-							<div class="cbi-value-description"><%:Step 2/3: Download firmware%></div>
-						</div>
+
+			<div class="state state-downloading ota-state">
+				<div class="ota-row ota-row-top">
+					<div class="ota-row-main">
+						<span class="ota-spinner"></span>
+						<div class="ota-row-title" id="download_progress"><%:Downloading%></div>
 					</div>
-				</form>
+					<button type="button" class="ota-linkbtn" name="cancel"><%:Cancel download%></button>
+				</div>
+				<div class="ota-progress"><progress id="download_bar" max="100"></progress></div>
+				<div class="ota-step"><%:Step 2/3: Download firmware%></div>
 			</div>
-			<div class="state state-downloading">
-				<form>
-					<div class="cbi-value">
-						<label class="cbi-value-title" id="download_progress"><%:Downloading%></label>
-						<div class="cbi-value-field">
-							<div class="ota-progress"><progress id="download_bar" max="100" aria-label="<%:Download progress%>"></progress></div>
-							<button type="button" class="cbi-button cbi-button-reset" name="cancel"><%:Cancel download%></button>
-							<div class="cbi-value-description"><%:Step 2/3: Download firmware%></div>
-						</div>
-					</div>
-				</form>
-			</div>
-			<div class="state state-downloaded">
+
+			<div class="state state-downloaded ota-state">
 				<form method="post" action="<%=url('admin/system/ota')%>" onsubmit="return confirm('<%:Flash the downloaded image now? A curated config backup runs first (soft-fail if disk full). Do not power off during upgrade.%>');">
 					<input type="hidden" name="apply" value="1" />
 					<input type="hidden" name="token" value="<%=token%>" />
-					<div class="cbi-value">
-						<label class="cbi-value-title" for="keep"><%:Keep settings and retain the current configuration%></label>
-						<div class="cbi-value-field">
-							<input type="checkbox" name="keep" value="1" id="keep" checked="checked" />
-						</div>
+					<div class="ota-ok">
+						<span class="ota-dot ota-dot-ok"></span>
+						<div class="ota-row-title"><%:Firmware downloaded (SHA256 verified)%></div>
 					</div>
-					<div class="cbi-value cbi-value-last">
-						<label class="cbi-value-title"><%:Firmware downloaded (SHA256 verified)%></label>
-						<div class="cbi-value-field">
-							<button type="submit" class="cbi-button cbi-input-apply"><%:Flash image%></button>
-							<div class="cbi-value-description"><%:Step 3/3: Flash image%> — <%:manual confirm only, never automatic%></div>
-						</div>
+					<label class="ota-check" for="keep">
+						<input type="checkbox" name="keep" value="1" id="keep" checked="checked" />
+						<span><%:Keep settings and retain the current configuration%></span>
+					</label>
+					<div class="ota-actions">
+						<button type="submit" class="cbi-button cbi-button-apply ota-btn"><%:Flash image%></button>
+						<span class="ota-step"><%:Step 3/3: Flash image%> &mdash; <%:manual confirm only, never automatic%></span>
 					</div>
 				</form>
 			</div>
 		</div>
+
 		<div class="state state-checked state-downloading state-downloaded">
-			<div class="cbi-section-descr">
-				<h2><%:The latest firmware%>:</h2>
+			<div class="ota-card ota-details">
+				<div class="ota-details-title"><%:The latest firmware%></div>
 				<div id="upgrade_log"></div>
 			</div>
 		</div>
+
 		<div class="state state-unchecked">
-			<div class="cbi-section-descr">
+			<div class="ota-card ota-details">
 				<div id="history_log"></div>
 			</div>
 		</div>
@@ -149,7 +423,7 @@
 						break;
 					case 1:
 						check_result.innerText = "<%:Already the latest firmware%>";
-						history_log.innerHTML = '<h2><%:History Log%>:</h2>' + d.msg;
+						history_log.innerHTML = d.msg;
 						break;
 					default:
 						check_result.innerText = "<%:Check failed%>";

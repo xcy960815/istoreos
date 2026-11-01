@@ -144,3 +144,6 @@ msgstr ""
 
 msgid "If the device has an LED status indicator, you can also check it."
 msgstr "如果设备有状态指示灯也可查看它。"
+
+msgid "Current system"
+msgstr "当前系统"

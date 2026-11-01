@@ -4,19 +4,21 @@
 > 用于为家里的 J4125 四口 2.5G 软路由（LAN IP `192.168.100.1`）构建裁剪版固件。
 > 用户在 2026-10-05 明确要求删除下列功能，**除非用户再次明确要求，不得在 seed 中加回**。
 
-## 当前进度（2026-10-31，后续 AI 先读这里）
+## 当前进度（2026-11-02，后续 AI 先读这里）
 
-**最新镜像是 r43**（2026-10-30，提交 `8940a8b6fd`，[run 41031394295](https://github.com/xcy960815/istoreos/actions/runs/41031394295)，Releases 已发布）。seed `=y` **521**。含 QuickStart 首页 SSE 流量图、Tailscale「授权登录」、OTA 中文界面 + 下载进度。**r34/r35 未出包**；r36～r43 均已发 Releases。
+**最新镜像是 r46**（2026-10-31，提交 `31a76e4a1c`，Releases 已发布；`target=31a76e4a1c`）。seed `=y` **521**。含 Argon 菜单搜索修复（§四十三）与 workflow 级发布权限（§四十四）。**r44 构建失败、r45 只有 tag 没有资产**；r46 是 r43 之后第一个可刷版本。r47 起带 OTA「当前版本未知」修复与新界面（§四十五）。
 
-**记录在案的现场验证仍是 r33**（`680cb032d5`）：首页磁盘信息有系统根目录；侧栏无 RAID/SMART。r33 已整盘写入 N100 机内 **16G 傲腾**（`MPEK1J016GAL`）。r38～r43 的界面改动（SSE / 授权登录 / OTA 中文进度）尚未记录刷机验证，刷后按 §四十/§四十一 自检。
+**J4125 已确认刷上裁剪版 r46**（2026-11-02 SSH 复核：`DISTRIB_DESCRIPTION='iStoreOS 24.10.8 r46'`，`DISTRIB_REVISION='r0-31a76e4'`，`/bin/ota` 为旧逻辑、`/tmp/firmware.img` 已下载）。此前「未确认」的说法作废。**r46 自检时 OTA 页会显示「当前版本: 未知」**——这是 §四十五 的已知缺陷，已修、待 r47。
 
-**J4125 刷裁剪版：备份已齐，仍未确认已经刷上。** 2026-10-19 18:19 SSH 仍是官方 `24.10.8 2026073111`。配置包在维护机 `~/Documents/j4125-backup-20261018/`，**还原用 `j4125-keep-20261019.tar.gz`**（1019 那份；1018 之后 OpenClash/DHCP 又写过盘）。含端口转发、OpenClash 两份 YAML+custom、DDNS-Go yaml、OpenList 库、Tailscale state、PPPoE、DHCP 静态租约。**不要整包还原**（会把 Docker/Samba/UPnP 加回）。`/mnt/sata1-4` 按用户要求没拷；gowebdav 根目录和系统日志仍指着这块盘，刷完路径会空。明细 §三十六。
+**J4125 上的 r46 只做了 SSH 级核对，界面未逐页验证**——r46 刷机后 OTA 页「当前版本」显示未知（§四十五），首页/Argon 菜单搜索等 r38～r46 的界面改动仍待按 §四十/§四十一/§四十三 自检。历史现场验证记录：r33（`680cb032d5`）首页磁盘信息有系统根目录、侧栏无 RAID/SMART，已整盘写入 N100 机内 **16G 傲腾**（`MPEK1J016GAL`）。
+
+**J4125 刷裁剪版：已刷（r46）。** 2026-10-19 18:19 SSH 仍是官方 `24.10.8 2026073111`；2026-11-02 复核已是本 fork 的 r46。配置包在维护机 `~/Documents/j4125-backup-20261018/`，**还原用 `j4125-keep-20261019.tar.gz`**（1019 那份；1018 之后 OpenClash/DHCP 又写过盘）。含端口转发、OpenClash 两份 YAML+custom、DDNS-Go yaml、OpenList 库、Tailscale state、PPPoE、DHCP 静态租约。**不要整包还原**（会把 Docker/Samba/UPnP 加回）。`/mnt/sata1-4` 按用户要求没拷；gowebdav 根目录和系统日志仍指着这块盘，刷完路径会空。明细 §三十六。
 
 **不要**：把 Docker 加回网关（含为 nginx-proxy-manager）；用 Open-Box 换掉生产 OpenClash；把 ISO 当安装盘；整盘 `dd` 到 Ventoy。二级域名反代若做，放 **9400F**，J4125 只 DNAT 80/443。
 
 首页磁盘卡片要 `smartd` 包（含 `/etc/smartd.conf`）+ `smartctl` + `mdadm`；侧栏 RAID/SMART 仍从 controller 删除。r28 有菜单+磁盘信息；r29 拆工具后 loading；r31 空白（Raid.List 空数组提前结束转圈）；r32 等到 Disk.Status 仍转圈（无 smartd 包）。**尚未证明必须跑 smartd 后台进程**，不要为了「无盘」再拆这个包。明细 §二十三、§三十一～§三十五。
 
-**两套状态不要混：** Releases 有 r22 / r28～r33 / r36～r43；**r23～r27、r34、r35 从未出包**。N100 双口 Intel I225-V（`kmod-igc`），第一口 WAN、第二口 LAN `192.168.100.1`。r17 是 Argon 概览（没有 QuickStart 首页）；r43 是最新，r33 是最后一次记录在案的 N100 验证版。
+**两套状态不要混：** Releases 有 r22 / r28～r33 / r36～r43 / **r46**；**r23～r27、r34、r35 从未出包，r44 构建失败，r45 只有 tag**。N100 双口 Intel I225-V（`kmod-igc`），第一口 WAN、第二口 LAN `192.168.100.1`。r17 是 Argon 概览（没有 QuickStart 首页）；**r46 是最新**，r33 是最后一次记录在案的 N100 界面验证版。
 
 > 以下按时间顺序追加，是变更日志；条目里的「未提交 / 未构建 / 构建中」是**当时**的动作状态，当前结论以本节开头三段和下方汇总表为准。
 
@@ -954,7 +956,7 @@ r32 已含 smartctl、mdadm、§三十四 的 loading 补丁，N100 首页仍显
 |---|---|
 | seed 重新 `=y` | `luci-app-ota`、`luci-i18n-ota-zh-cn`（`CONFIG_PACKAGE_*` +2） |
 | 改写 | `package/diy/luci-app-ota/root/bin/ota`（GitHub API + jsonfilter）；`target/linux/*/base-files/lib/upgrade/ota.sh`（占位防koolcenter；勿再放进 luci-app-ota，否则与 base-files 文件冲突）；`ota.htm` 强制确认刷写；`ota_config` 可改 owner/repo/asset_suffix |
-| CI | `Apply custom config` 写入 `CONFIG_VERSION_CODE="r${GITHUB_RUN_NUMBER}"`（进 `DISTRIB_REVISION`）；Release 额外上传 `ota.meta` |
+| CI | `Apply custom config` 写入 `CONFIG_VERSION_CODE="r${GITHUB_RUN_NUMBER}"`（进 `DISTRIB_DESCRIPTION`；`DISTRIB_REVISION` 仍是 `scripts/getver.sh` 的 `r0-<sha>`，见 §四十五）；Release 额外上传 `ota.meta` |
 | 菜单 | 见 §二十二「菜单位置」 |
 
 ### 刷机后自检
@@ -1184,3 +1186,62 @@ r45 build 全绿、publish 连挂 3 次 403（`Resource not accessible by integr
 | 仓库设置 | `default_workflow_permissions`: read → **write**（一次性 API 变更，无 UI 操作记录，特意在此记账） |
 
 后续 AI：**不要**把 workflow 级 `permissions: contents: write` 降回 job 级——已被三次 403 + 探针实证无效；**给本 workflow 加新 job 时必须显式声明最小 permissions**；若 GitHub 恢复兑现 job 级声明，可以试着重做「workflow 级 read + publish job 级 write」的更小形态，改前先跑一次性探针验证。
+
+## 四十五、OTA「当前版本：未知」根因 + 页面重排（2026-11-02，无 seed 变更）
+
+### 现象
+
+r46 刷好后进 **系统 → OTA**，页面写「当前版本: 未知」，点「检查更新」明明已经是最新版仍提示有新固件可下。用户附截图（2026-11-02）。
+
+### 根因：CI 的 `rNN` 进的是 `DISTRIB_DESCRIPTION`，不是 `DISTRIB_REVISION`
+
+设备实测：
+
+```sh
+DISTRIB_REVISION='r0-31a76e4'
+DISTRIB_DESCRIPTION='iStoreOS 24.10.8 r46'
+```
+
+链路：
+
+| 变量 | 来源 | r46 上的值 |
+|---|---|---|
+| `DISTRIB_REVISION`（模板 `%R`） | `include/toplevel.mk` 的 `REVISION:=$(shell scripts/getver.sh)`，即 `git describe` | `r0-31a76e4` |
+| `DISTRIB_DESCRIPTION`（`%D %V %C`，`%C`） | `CONFIG_VERSION_CODE` ← `include/version.mk`；CI 的 `Apply custom config` 写 `CONFIG_VERSION_CODE="r${GITHUB_RUN_NUMBER}"` | `iStoreOS 24.10.8 r46` |
+
+旧 `current_tag()` 只读 `DISTRIB_REVISION`，而 `r0-31a76e4` 不匹配 `r[0-9]+` 白名单，又因为没有 `/etc/istoreos-trim-release`，于是 `echo ""` → 页面显示「未知」。比较函数 `tag_num('')` 得空，`latest > cur` 恒真，所以「已经最新」也被当成有新版。
+
+**不要**为此改 `scripts/getver.sh` 或 `package/base-files/files/etc/openwrt_release`：前者是全树共用的 `git describe`，后者改模板会影响所有 `DISTRIB_*` 消费方（`luci` 页脚、`stage2` 升级日志）。修复放在 OTA 自己的解析里。
+
+### 改法
+
+`package/diy/luci-app-ota/root/bin/ota`：
+
+| 函数 | 变化 |
+|---|---|
+| `current_tag()` | 先按老规矩认 `DISTRIB_REVISION` 的纯 `rNN`；不匹配再从 `DISTRIB_DESCRIPTION` 取**行尾** `rNN`（`sed -nE 's/.*[[:space:]](r[0-9]+)$/\1/p'`，`r0-<sha>` 这种带后缀的不会被误认）；最后才回落 `/etc/istoreos-trim-release` |
+| `hesc()`（新增） | 最小 HTML 转义 `& < > "`；meta 里的资产名 / 链接来自 GitHub API，属于外部输入 |
+| `prepare_check()` | 原来 `echo "<pre>"` 拼纯文本，改成输出 `.ota-meta` 结构的行（GitHub / 当前版本 / 最新版本 + 资产名 / SHA256 / 发布说明链接） |
+
+`luasrc/view/admin_system/ota.htm` 重排（**只动样式与结构，状态机与所有元素 id 原样保留**）：
+
+- 卡片式布局，圆角 12px + 淡阴影；标题、副标题、`当前系统: <DISTRIB_DESCRIPTION>` 一行（模板里读 `/etc/openwrt_release`）。
+- 三步状态各一张卡片内容：未检查（灰色圆标 + 「检查更新」）、已发现新版（橙色圆点 + 下载按钮）、下载中（旋转圈 + 渐变进度条 + 「取消下载」）、已下载（绿色圆点 + 保留设置勾选 + 「刷写固件」）。
+- 「最新固件」与「历史更新日志」各自成卡；`.ota-meta` 用 key/value 两列，`code` 包 SHA256。
+- 状态切换仍靠 `.state-ctl.state-ctl-{unchecked,checked,downloading,downloaded}`，`state_switch()` 与全部 JS 逻辑未改。
+- **兼容旧日志**：老设备上 `ota.log` 里可能还是 `<pre>`（r46 及以前生成的），样式表对 `#upgrade_log/#history_log pre` 做了 `font:inherit; pre-wrap`，不至于难看。
+
+`po/zh-cn` 加 `Current system` → `当前系统`；`PKG_RELEASE` 5 → 6。
+
+### 影响
+
+| 项 | 状态 |
+|---|---|
+| 固件功能 | 无增删；OTA 行为不变（仍需手动确认刷写、仍校验 `sha256sums`/`ota.meta`） |
+| seed | **无变化**（521） |
+| 生效版本 | r47 起。r46 及更早的 `/bin/ota` 仍是旧解析，会继续显示「未知」——属预期，不要当成回归 |
+| 已核对 | `sh -n` 通过；用 r46 的 `DISTRIB_*` 测 `current_tag` → `r46`；用 `DISTRIB_REVISION='r47'` 测 → `r47`；只有 `r0-<sha>`、无行尾 `rNN` 时 → 空（维持「未知」） |
+
+后续 AI：`current_tag()` 同时读两个字段是有意的双保险，**不要**删掉 `DISTRIB_DESCRIPTION` 分支去「简化」；如果以后 CI 改成把 `rNN` 也写进 `DISTRIB_REVISION`（更干净），也必须保留行尾 `rNN` 解析直到确认存量设备都换过；`hesc()` 必须继续包住一切来自 GitHub API 的字符串。
+
+界面规范已单独成文：[`docs/UI-STYLE.md`](UI-STYLE.md)（令牌、组件类、状态机约定、深色模式、i18n、本地预览、自检清单）。本页是该文档的样例，**以后改别的页面按那份指南来**，不要另起一套。

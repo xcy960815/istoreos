@@ -77,7 +77,8 @@ jobs:
         run: |
           cp config-custom.seed .config
           make defconfig
-          # Stamp DISTRIB_REVISION as r<run_number> for GitHub OTA comparison (§三十七)
+          # 版本戳 r<run_number>：写 CONFIG_VERSION_CODE → 进 DISTRIB_DESCRIPTION 末尾（§三十七、§四十五）。
+          # DISTRIB_REVISION 是 scripts/getver.sh 的 git describe（r0-<sha>），不要拿它当版本号。
           sed -i '/^CONFIG_VERSION_CODE=/d' .config
           echo "CONFIG_VERSION_CODE=\"r${GITHUB_RUN_NUMBER}\"" >> .config
           grep -E '^CONFIG_VERSION_CODE=' .config

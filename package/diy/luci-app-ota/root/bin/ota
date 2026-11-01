@@ -41,20 +41,35 @@ ota_init() {
 	mkdir -p "$STATE_DIR" >/dev/null 2>&1 || true
 }
 
-# Current trimmed build id: prefer DISTRIB_REVISION when it looks like rNN (CI stamps VERSION_CODE).
+# Current trimmed build id: 先认 DISTRIB_REVISION 的纯 rNN，再认 DISTRIB_DESCRIPTION 行尾的 rNN。
+# 注意：DISTRIB_REVISION 来自 scripts/getver.sh（git describe），实际是 r0-<sha>；
+# CI 写的 CONFIG_VERSION_CODE（rNN）进的是 DISTRIB_DESCRIPTION 末尾。
+# 两处都看：r46 固件上 DISTRIB_REVISION='r0-31a76e4'、DISTRIB_DESCRIPTION='iStoreOS 24.10.8 r46'，
+# 只认前者会显示「当前版本: 未知」，于是明明最新还提示可升级。
 current_tag() {
-	local rev
+	local rev desc tag
 	rev=$(grep 'DISTRIB_REVISION=' /etc/openwrt_release 2>/dev/null | sed -E "s/.*'(.+)'.*/\1/")
 	case "$rev" in
 		r[0-9]|r[0-9][0-9]|r[0-9][0-9][0-9]|r[0-9][0-9][0-9][0-9]|r[0-9][0-9][0-9][0-9][0-9])
 			echo "$rev"; return 0
 		;;
 	esac
+	desc=$(grep 'DISTRIB_DESCRIPTION=' /etc/openwrt_release 2>/dev/null | sed -E "s/.*'(.+)'.*/\1/")
+	# 只认行尾的 rNN；r0-<sha> 这种带后缀的不算
+	tag=$(printf '%s\n' "$desc" | sed -nE 's/.*[[:space:]](r[0-9]+)$/\1/p')
+	if [ -n "$tag" ]; then
+		echo "$tag"; return 0
+	fi
 	if [ -f /etc/istoreos-trim-release ]; then
 		tr -d ' \n' </etc/istoreos-trim-release
 		return 0
 	fi
 	echo ""
+}
+
+# 最小 HTML 转义，meta 里的文件名/链接都来自 GitHub API
+hesc() {
+	printf '%s' "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g'
 }
 
 tag_num() {
@@ -153,16 +168,16 @@ prepare_check() {
 	remote=$(meta_get TAG)
 	: >"$STATE_DIR/ota.log"
 	{
-		echo "<pre>"
-		echo "GitHub: ${owner}/${repo}"
-		echo "当前版本: ${cur:-未知}"
-		echo "最新版本: $remote ($(meta_get ASSET))"
-		echo "SHA256:  $(meta_get SHA256)"
-		echo "</pre>"
+		echo '<div class="ota-meta">'
+		printf '<div class="ota-meta-row"><span class="ota-meta-k">GitHub</span><span class="ota-meta-v">%s</span></div>\n' "$(hesc "${owner}/${repo}")"
+		printf '<div class="ota-meta-row"><span class="ota-meta-k">当前版本</span><span class="ota-meta-v">%s</span></div>\n' "$(hesc "${cur:-未知}")"
+		printf '<div class="ota-meta-row"><span class="ota-meta-k">最新版本</span><span class="ota-meta-v"><b>%s</b> <code>%s</code></span></div>\n' "$(hesc "$remote")" "$(hesc "$(meta_get ASSET)")"
+		printf '<div class="ota-meta-row"><span class="ota-meta-k">SHA256</span><span class="ota-meta-v"><code>%s</code></span></div>\n' "$(hesc "$(meta_get SHA256)")"
 		if [ -n "$(meta_get HTML_URL)" ]; then
-			echo "<p><a href=\"$(meta_get HTML_URL)\" target=\"_blank\" rel=\"noopener\">发布说明</a></p>"
+			printf '<div class="ota-meta-row"><span class="ota-meta-k">发布说明</span><span class="ota-meta-v"><a href="%s" target="_blank" rel="noopener">在 GitHub 查看</a></span></div>\n' "$(hesc "$(meta_get HTML_URL)")"
 		fi
-		echo "<p>校验通过后，请在下一步确认是否保留设置并手动刷写，系统不会自动刷写。</p>"
+		echo '</div>'
+		echo '<p class="ota-note">校验通过后，请在下一步确认是否保留设置并手动刷写，系统不会自动刷写。</p>'
 	} >>"$STATE_DIR/ota.log"
 
 	if [ -n "$cur" ] && [ "$cur" = "$remote" ]; then
