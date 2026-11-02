@@ -211,9 +211,14 @@ print("zh_Hans Need to log in → 授权登录")
 PY
 fi
 
+# --- 4) status_bar / login_status 局部换皮（§四十七；不动整页表单） ---
+python3 "$(cd "$(dirname "$0")" && pwd)/apply-status-skin.py" "$SETTING_JS"
+
 # Sanity: patched markers
 grep -q 'Waiting for auth URL' "$SETTING_JS" || { echo "::error::setting.js 缺少 Waiting for auth URL 分支"; exit 1; }
 grep -q 'noopener noreferrer' "$SETTING_JS" || { echo "::error::setting.js 缺少 AuthURL 链接"; exit 1; }
 grep -q 'parseStatus' "$SETTING_JS" || { echo "::error::setting.js 缺少 AuthURL await"; exit 1; }
 grep -q 'cbi-button-apply' "$SETTING_JS" && { echo "::error::setting.js 仍含 cbi-button-apply"; exit 1; }
+grep -q 'ts-pill' "$SETTING_JS" || { echo "::error::setting.js 缺少 ts-pill 状态皮"; exit 1; }
+grep -q 'cbi-tailscale-status' "$SETTING_JS" || { echo "::error::setting.js 缺少 cbi-tailscale-status"; exit 1; }
 echo "patch-luci-setting.sh OK"

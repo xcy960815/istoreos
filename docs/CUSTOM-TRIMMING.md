@@ -6,7 +6,7 @@
 
 ## 当前进度（2026-11-02，后续 AI 先读这里）
 
-**最新镜像是 r46**（2026-10-31，提交 `31a76e4a1c`，Releases 已发布；`target=31a76e4a1c`）。seed `=y` **521**。含 Argon 菜单搜索修复（§四十三）与 workflow 级发布权限（§四十四）。**r44 构建失败、r45 只有 tag 没有资产**；r46 是 r43 之后第一个可刷版本。r47 起带 OTA「当前版本未知」修复与新界面（§四十五），并含刷写等待页/健康巡检操作区/vlmcsd 状态条换皮（§四十六）。
+**最新镜像是 r46**（2026-10-31，提交 `31a76e4a1c`，Releases 已发布；`target=31a76e4a1c`）。seed `=y` **521**。含 Argon 菜单搜索修复（§四十三）与 workflow 级发布权限（§四十四）。**r44 构建失败、r45 只有 tag 没有资产**；r46 是 r43 之后第一个可刷版本。r47 起带 OTA「当前版本未知」修复与新界面（§四十五），并含刷写等待页/健康巡检操作区/vlmcsd 状态条换皮（§四十六），以及 WoL/重启/备份更新外壳/OpenList 状态/Tailscale 登录状态换皮（§四十七）。
 
 **J4125 已确认刷上裁剪版 r46**（2026-11-02 SSH 复核：`DISTRIB_DESCRIPTION='iStoreOS 24.10.8 r46'`，`DISTRIB_REVISION='r0-31a76e4'`，`/bin/ota` 为旧逻辑、`/tmp/firmware.img` 已下载）。此前「未确认」的说法作废。**r46 自检时 OTA 页会显示「当前版本: 未知」**——这是 §四十五 的已知缺陷，已修、待 r47。
 
@@ -1284,3 +1284,48 @@ DISTRIB_DESCRIPTION='iStoreOS 24.10.8 r46'
 | 出包 | 下一轮构建起（r47 若已含 §四十五，本节能叠进同一镜像或紧随其后） |
 
 后续 AI：**不要**为这三处 UI 去改 controller / XHR 路径 / 元素 id；**不要**把 vlmcsd 皮肤整包 vendoring 进 `package/diy`——继续走构建期补丁，跟 Argon 菜单搜索同一模式；上游若改了 `vlmcsd_status.htm` 结构，按脚本报错复核后再更新 `.github/scripts/vlmcsd-status/`。
+
+## 四十七、WoL / 重启 / 备份更新外壳 / OpenList 状态 / Tailscale 登录状态「只换皮」（2026-11-02，无 seed 变更）
+
+### 背景
+
+§四十六 对齐了 OTA 刷写等待页、健康巡检操作区与 vlmcsd 状态条。本批继续把另外五处**稳妥可换皮**的页面接到同一套 [`docs/UI-STYLE.md`](UI-STYLE.md) 令牌：**不改功能 / id / name / RPC / 状态机**；seed **无变化**。
+
+1. 服务 → 网络唤醒 `luci-app-wol`（luci feed `wol.js`，构建期补丁）
+2. 系统 → 重启 `luci-mod-system` `reboot.js`（构建期补丁）
+3. Tailscale 全局设置 **登录/状态区局部换皮**（扩展既有 `tailscale-durable/patch-luci-setting.sh`，整页表单不大改）
+4. OpenList 设置页 **运行状态 + 打开 Web UI** 局部换皮（luci feed `openlist/config.js`，构建期补丁）
+5. 系统 → 备份与更新 `flash.js`：**仅外层分区/卡片壳**，不动校验/上传/刷写流程与关键 id
+
+**明确不动**：防火墙、接口、DHCP、状态概况/实时图、iStore、ttyd、DDNS-GO、QuickStart SPA、网络向导。
+
+### 功能视角（变更后设备看到什么）
+
+| 变更 | 效果 |
+|---|---|
+| 网络唤醒 | 标题/说明/表单区卡片化 + 统一按钮尺寸；唤醒逻辑与 `#maincontent .cbi-map` 保存路径不变 |
+| 重启 | 居中卡片 + 警告条 + 主按钮；`system.reboot` RPC 与重连等待不变 |
+| Tailscale 状态/登录 | 顶部状态条与登录态改成圆点药丸/链接按钮；`authkey`、AuthURL 等待、登出仍按原补丁 |
+| OpenList 状态 | 运行中/未运行药丸 + 「打开 Web UI」按钮；`service_status` / poll / instance1 不变 |
+| 备份与更新 | 各分区外层像卡片；生成归档/上传/校验/刷写/mtd 下载流程与 `data-name` 不变 |
+| 深色模式 | 均跟 Argon `body[theme]` + `prefers-color-scheme` 变量覆盖 |
+| seed | **无变化**（521） |
+
+### 机制
+
+| 路径 | 做法 |
+|---|---|
+| luci feed 副本 | 第 ⑦⑧⑨ 条构建例外：`patch-wol-ui.sh`、`patch-luci-mod-system-ui.sh`、`patch-openlist-status.sh`（及对应 `*-ui/` / `openlist-status/` apply 脚本）。feeds install 之后、defconfig 之前；幂等；锚点对不上 `::error::` |
+| Tailscale | 仍走第 ② 条：`tailscale-durable/apply-status-skin.py` 由 `patch-luci-setting.sh` 调用 |
+| i18n | 尽量复用既有 msgid；新增 `Service status` 时构建期写入 feed 的 `po/zh_Hans` |
+| 上游真实路径 | `applications/luci-app-wol/.../wol.js`；`modules/luci-mod-system/.../system/{reboot,flash}.js`；`applications/luci-app-openlist/.../openlist/config.js`；asvow `setting.js`（pin 进 `package/luci-app-tailscale`） |
+
+### 影响与包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 改 | 上述 patch 脚本与 apply 辅助；`build-istoreos.yml` 加 step；`AGENTS.md` 例外六条→九条；`BUILD-CUSTOM.md` 本地步骤 3h；`docs/UI-STYLE.md` 指路 |
+| seed | **无变化**（521） |
+| 出包 | 下一轮构建起进镜像 |
+
+后续 AI：**不要**为这五处 UI 去改 RPC / 元素 id / 刷写校验流程；**不要**动用户点名排除的页面；flash 只许动外层壳。上游若改了锚点字符串，按脚本报错复核后再更新 apply 脚本。
