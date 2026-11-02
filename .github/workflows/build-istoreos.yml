@@ -70,6 +70,9 @@ jobs:
       - name: Patch argon menu-search style
         run: bash .github/scripts/patch-argon-menu-search.sh
 
+      - name: Patch vlmcsd status strip style
+        run: bash .github/scripts/patch-vlmcsd-status.sh
+
       - name: Drop luci-theme-bootstrap (Argon only)
         run: bash .github/scripts/drop-luci-theme-bootstrap.sh
 

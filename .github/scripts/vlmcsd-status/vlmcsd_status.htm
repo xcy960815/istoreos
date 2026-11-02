@@ -1,0 +1,123 @@
+<%#
+  Status strip for luci-app-vlmcsd (skinned per docs/UI-STYLE.md).
+  Keep id/XHR path/poll interval; display only.
+-%>
+<script type="text/javascript">//<![CDATA[
+XHR.poll(3, '<%=url([[admin]], [[services]], [[vlmcsd]], [[status]])%>', null,
+	function(x, data) {
+		var tb = document.getElementById('vlmcsd_status');
+		if (data && tb) {
+			if (data.running) {
+				tb.innerHTML = '<span class="vlmcsd-pill vlmcsd-pill-ok"><span class="vlmcsd-dot"></span><%:KMS is running%></span>';
+			} else {
+				tb.innerHTML = '<span class="vlmcsd-pill vlmcsd-pill-off"><span class="vlmcsd-dot"></span><%:KMS is not running%></span>';
+			}
+		}
+	}
+);
+//]]>
+</script>
+<div id="cbi-vlmcsd">
+	<style>
+	#cbi-vlmcsd {
+		--vlmcsd-accent: #5e72e4;
+		--vlmcsd-ok: #2dce89;
+		--vlmcsd-warn: #fb6340;
+		--vlmcsd-border: #e9ecef;
+		--vlmcsd-muted: #8898aa;
+		--vlmcsd-text: #32325d;
+		--vlmcsd-card: #fff;
+		--vlmcsd-soft: #f7f9fc;
+	}
+	#cbi-vlmcsd.cbi-section,
+	#cbi-vlmcsd .cbi-section,
+	#cbi-vlmcsd fieldset.cbi-section {
+		padding: 0;
+		border: 0;
+		background: none;
+		box-shadow: none;
+		margin: 0;
+	}
+	body[theme="dark"] #cbi-vlmcsd {
+		--vlmcsd-border: #3a3a3d;
+		--vlmcsd-muted: #9aa2ad;
+		--vlmcsd-text: #d7dae0;
+		--vlmcsd-card: #232324;
+		--vlmcsd-soft: #2b2b2d;
+	}
+	@media (prefers-color-scheme: dark) {
+		body[theme="normal"] #cbi-vlmcsd {
+			--vlmcsd-border: #3a3a3d;
+			--vlmcsd-muted: #9aa2ad;
+			--vlmcsd-text: #d7dae0;
+			--vlmcsd-card: #232324;
+			--vlmcsd-soft: #2b2b2d;
+		}
+	}
+	#cbi-vlmcsd .vlmcsd-card {
+		background: var(--vlmcsd-card);
+		border: 1px solid var(--vlmcsd-border);
+		border-radius: 12px;
+		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
+		padding: 16px 18px;
+		margin: 0 0 16px;
+	}
+	#cbi-vlmcsd .vlmcsd-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+	#cbi-vlmcsd .vlmcsd-label {
+		font-size: 13px;
+		color: var(--vlmcsd-muted);
+	}
+	#cbi-vlmcsd .vlmcsd-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 12px;
+		border-radius: 999px;
+		background: var(--vlmcsd-soft);
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--vlmcsd-text);
+		font-style: normal;
+	}
+	#cbi-vlmcsd .vlmcsd-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: var(--vlmcsd-muted);
+		box-shadow: 0 0 0 4px rgba(136, 152, 170, .12);
+	}
+	#cbi-vlmcsd .vlmcsd-pill-ok .vlmcsd-dot {
+		background: var(--vlmcsd-ok);
+		box-shadow: 0 0 0 4px rgba(45, 206, 137, .12);
+	}
+	#cbi-vlmcsd .vlmcsd-pill-off .vlmcsd-dot {
+		background: var(--vlmcsd-warn);
+		box-shadow: 0 0 0 4px rgba(251, 99, 64, .12);
+	}
+	#cbi-vlmcsd #vlmcsd_status {
+		margin: 0;
+		min-height: 1.5em;
+	}
+	#cbi-vlmcsd #vlmcsd_status em {
+		font-style: normal;
+		color: var(--vlmcsd-muted);
+		font-size: 13px;
+	}
+	</style>
+	<div class="cbi-section">
+		<div class="vlmcsd-card">
+			<div class="vlmcsd-row">
+				<span class="vlmcsd-label"><%:Service status%></span>
+				<p id="vlmcsd_status">
+					<em><%:Collecting data...%></em>
+				</p>
+			</div>
+		</div>
+	</div>
+</div>

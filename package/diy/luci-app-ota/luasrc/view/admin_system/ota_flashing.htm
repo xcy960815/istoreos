@@ -8,6 +8,137 @@
 	<head>
 		<title><%=luci.sys.hostname()%> - <%= title or translate("Rebooting...") %></title>
 		<link rel="stylesheet" type="text/css" media="screen" href="<%=media%>/cascade.css" />
+		<style type="text/css">
+		#cbi-ota-flashing {
+			--ota-accent: #5e72e4;
+			--ota-accent-2: #825ee4;
+			--ota-warn: #fb6340;
+			--ota-border: #e9ecef;
+			--ota-muted: #8898aa;
+			--ota-text: #32325d;
+			--ota-card: #fff;
+			--ota-soft: #f7f9fc;
+			--ota-page: #f4f6fb;
+		}
+		body[theme="dark"] #cbi-ota-flashing {
+			--ota-border: #3a3a3d;
+			--ota-muted: #9aa2ad;
+			--ota-text: #d7dae0;
+			--ota-card: #232324;
+			--ota-soft: #2b2b2d;
+			--ota-page: #1a1a1b;
+		}
+		@media (prefers-color-scheme: dark) {
+			body[theme="normal"] #cbi-ota-flashing,
+			body:not([theme]) #cbi-ota-flashing {
+				--ota-border: #3a3a3d;
+				--ota-muted: #9aa2ad;
+				--ota-text: #d7dae0;
+				--ota-card: #232324;
+				--ota-soft: #2b2b2d;
+				--ota-page: #1a1a1b;
+			}
+		}
+		html, body { height: 100%; }
+		body {
+			margin: 0;
+			background: var(--ota-page, #f4f6fb);
+			font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+		}
+		#cbi-ota-flashing {
+			min-height: 100%;
+			display: flex;
+			flex-direction: column;
+			background: var(--ota-page);
+			color: var(--ota-text);
+		}
+		#cbi-ota-flashing .ota-flash-top {
+			padding: 18px 22px;
+			border-bottom: 1px solid var(--ota-border);
+			background: var(--ota-card);
+		}
+		#cbi-ota-flashing .ota-flash-brand {
+			margin: 0;
+			font-size: 15px;
+			font-weight: 600;
+			color: var(--ota-text);
+		}
+		#cbi-ota-flashing .ota-flash-main {
+			flex: 1 1 auto;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 32px 16px;
+		}
+		#cbi-ota-flashing .ota-card {
+			width: 100%;
+			max-width: 560px;
+			background: var(--ota-card);
+			border: 1px solid var(--ota-border);
+			border-radius: 12px;
+			box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
+			padding: 28px 24px;
+			text-align: center;
+		}
+		#cbi-ota-flashing .ota-title {
+			margin: 0;
+			font-size: 18px;
+			font-weight: 600;
+			line-height: 1.3;
+			color: var(--ota-text);
+		}
+		#cbi-ota-flashing .ota-msg {
+			margin: 14px 0 0;
+			font-size: 13px;
+			line-height: 1.7;
+			color: var(--ota-muted);
+			text-align: left;
+			word-break: break-word;
+		}
+		#cbi-ota-flashing .ota-msg a { color: var(--ota-accent); }
+		#cbi-ota-flashing .ota-wait {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 12px;
+			margin-top: 22px;
+			padding: 14px 16px;
+			border-radius: 10px;
+			background: var(--ota-soft);
+			font-size: 14px;
+			font-weight: 600;
+			color: var(--ota-text);
+		}
+		#cbi-ota-flashing .ota-wait img {
+			width: 22px;
+			height: 22px;
+			vertical-align: middle;
+		}
+		#cbi-ota-flashing .ota-spinner {
+			flex: 0 0 auto;
+			width: 16px;
+			height: 16px;
+			border: 2px solid rgba(94, 114, 228, .25);
+			border-top-color: var(--ota-accent);
+			border-radius: 50%;
+			animation: ota-flash-spin .8s linear infinite;
+		}
+		@keyframes ota-flash-spin { to { transform: rotate(360deg); } }
+		#cbi-ota-flashing .ota-warn {
+			margin: 16px 0 0;
+			font-size: 12px;
+			line-height: 1.6;
+			color: var(--ota-warn);
+		}
+		#cbi-ota-flashing #applyreboot-section.cbi-section,
+		#cbi-ota-flashing .cbi-section {
+			padding: 0;
+			border: 0;
+			background: none;
+			box-shadow: none;
+			margin: 0;
+		}
+		</style>
 		<script type="text/javascript">//<![CDATA[
 			window.setTimeout(function() {
 				var nonce = new Date().getTime();
@@ -28,26 +159,23 @@
 		//]]></script>
 	</head>
 	<body>
-		<header>
-			<div class="fill">
-				<div class="container">
-					<p class="brand"><%=luci.sys.hostname() or "?"%></p>
-				</div>
+		<div id="cbi-ota-flashing">
+			<div class="ota-flash-top">
+				<p class="ota-flash-brand"><%=luci.sys.hostname() or "?"%></p>
 			</div>
-		</header>
-		&#160;
-		<div class="main">
-			<div id="maincontainer">
-				<div id="maincontent" class="container">
-					<h2 name="content" id="applyreboot-container" ><%:System%> - <%= title or translate("Rebooting...") %></h2>
+			<div class="ota-flash-main">
+				<div class="ota-card">
+					<h2 class="ota-title" name="content" id="applyreboot-container"><%:System%> - <%= title or translate("Rebooting...") %></h2>
 					<div class="cbi-section" id="applyreboot-section">
-						<div>
+						<div class="ota-msg">
 							<%= msg or translate("Changes applied.") %>
 						</div>
-						<div>
-							<img src="<%=resource%>/icons/loading.svg" alt="<%:Loading%>" style="vertical-align:middle" />
-							<%:Waiting for device...%>
+						<div class="ota-wait">
+							<span class="ota-spinner" aria-hidden="true"></span>
+							<img src="<%=resource%>/icons/loading.svg" alt="<%:Loading%>" />
+							<span><%:Waiting for device...%></span>
 						</div>
+						<p class="ota-warn"><%:Do not power off the device during the upgrade.%></p>
 					</div>
 				</div>
 			</div>

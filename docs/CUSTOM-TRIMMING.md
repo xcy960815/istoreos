@@ -6,7 +6,7 @@
 
 ## 当前进度（2026-11-02，后续 AI 先读这里）
 
-**最新镜像是 r46**（2026-10-31，提交 `31a76e4a1c`，Releases 已发布；`target=31a76e4a1c`）。seed `=y` **521**。含 Argon 菜单搜索修复（§四十三）与 workflow 级发布权限（§四十四）。**r44 构建失败、r45 只有 tag 没有资产**；r46 是 r43 之后第一个可刷版本。r47 起带 OTA「当前版本未知」修复与新界面（§四十五）。
+**最新镜像是 r46**（2026-10-31，提交 `31a76e4a1c`，Releases 已发布；`target=31a76e4a1c`）。seed `=y` **521**。含 Argon 菜单搜索修复（§四十三）与 workflow 级发布权限（§四十四）。**r44 构建失败、r45 只有 tag 没有资产**；r46 是 r43 之后第一个可刷版本。r47 起带 OTA「当前版本未知」修复与新界面（§四十五），并含刷写等待页/健康巡检操作区/vlmcsd 状态条换皮（§四十六）。
 
 **J4125 已确认刷上裁剪版 r46**（2026-11-02 SSH 复核：`DISTRIB_DESCRIPTION='iStoreOS 24.10.8 r46'`，`DISTRIB_REVISION='r0-31a76e4'`，`/bin/ota` 为旧逻辑、`/tmp/firmware.img` 已下载）。此前「未确认」的说法作废。**r46 自检时 OTA 页会显示「当前版本: 未知」**——这是 §四十五 的已知缺陷，已修、待 r47。
 
@@ -1245,3 +1245,42 @@ DISTRIB_DESCRIPTION='iStoreOS 24.10.8 r46'
 后续 AI：`current_tag()` 同时读两个字段是有意的双保险，**不要**删掉 `DISTRIB_DESCRIPTION` 分支去「简化」；如果以后 CI 改成把 `rNN` 也写进 `DISTRIB_REVISION`（更干净），也必须保留行尾 `rNN` 解析直到确认存量设备都换过；`hesc()` 必须继续包住一切来自 GitHub API 的字符串。
 
 界面规范已单独成文：[`docs/UI-STYLE.md`](UI-STYLE.md)（令牌、组件类、状态机约定、深色模式、i18n、本地预览、自检清单）。本页是该文档的样例，**以后改别的页面按那份指南来**，不要另起一套。
+
+## 四十六、OTA 刷写页 / 健康巡检操作区 / vlmcsd 状态条「只换皮」（2026-11-02，无 seed 变更）
+
+### 背景
+
+§四十五 把 OTA 主页面按 [`docs/UI-STYLE.md`](UI-STYLE.md) 重排为卡片式。同日继续把另外三处老皮对齐同一套令牌，**不改功能**：
+
+1. OTA 刷写等待页 `ota_flashing.htm`（刷写后的独立整页，轮询 `loading.svg` 判断设备回来）
+2. 健康巡检「操作」区 `istoreos-health/actions.htm`（测 Telegram / 立即巡检）
+3. 上游 `luci-app-vlmcsd` 状态条 `vlmcsd/vlmcsd_status.htm`（third feed，构建期补丁）
+
+### 功能视角（变更后设备看到什么）
+
+| 变更 | 效果 |
+|---|---|
+| OTA 刷写等待页 | 居中卡片 + 令牌色 + CSS 转圈；标题/提示/等待文案与自动跳转逻辑不变 |
+| 健康巡检操作区 | 卡片 + 统一按钮尺寸 + 等宽输出块；两个按钮 id 与 POST 路径不变 |
+| KMS 状态条 | 去掉 `<font color>`，改成圆点药丸；仍每 3s 轮询 `/admin/services/vlmcsd/status`，`id=vlmcsd_status` 不变 |
+| 深色模式 | 三处都跟 Argon `body[theme]` + `prefers-color-scheme` 变量覆盖 |
+| seed | **无变化**（521） |
+
+### 机制
+
+| 路径 | 做法 |
+|---|---|
+| diy 包内模板 | 直接改 `package/diy/luci-app-ota/.../ota_flashing.htm`、`package/diy/luci-app-istoreos-health/.../actions.htm`；选择器挂 `#cbi-ota-flashing` / `#cbi-health` |
+| 上游 feed 模板 | 新增第 ⑥ 条构建例外：`.github/scripts/patch-vlmcsd-status.sh` + `.github/scripts/vlmcsd-status/`（皮肤源文件与 zh-cn 增量 msgid）。feeds install 之后、defconfig 之前跑；幂等；锚点对不上则 `::error::` |
+| i18n | 模板英文 msgid；OTA/health 的 `po/zh-cn` 同提交补齐；vlmcsd 的 po 在构建期追加到 feed 副本 |
+| PKG_RELEASE | `luci-app-ota` 6→7；`luci-app-istoreos-health` 3→4 |
+
+### 影响与包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 改 | 上述两个 diy 模板 + 各自 `po/zh-cn`；`patch-vlmcsd-status.sh`、`vlmcsd-status/*`；`build-istoreos.yml` 加 step；`AGENTS.md` 例外五条→六条；`BUILD-CUSTOM.md` 本地步骤 3g |
+| seed | **无变化**（521） |
+| 出包 | 下一轮构建起（r47 若已含 §四十五，本节能叠进同一镜像或紧随其后） |
+
+后续 AI：**不要**为这三处 UI 去改 controller / XHR 路径 / 元素 id；**不要**把 vlmcsd 皮肤整包 vendoring 进 `package/diy`——继续走构建期补丁，跟 Argon 菜单搜索同一模式；上游若改了 `vlmcsd_status.htm` 结构，按脚本报错复核后再更新 `.github/scripts/vlmcsd-status/`。

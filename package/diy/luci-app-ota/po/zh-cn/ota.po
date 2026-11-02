@@ -147,3 +147,15 @@ msgstr "如果设备有状态指示灯也可查看它。"
 
 msgid "Current system"
 msgstr "当前系统"
+
+msgid "Do not power off the device during the upgrade."
+msgstr "升级期间请勿断电。"
+
+msgid "Waiting for device..."
+msgstr "正在等待设备…"
+
+msgid "System"
+msgstr "系统"
+
+msgid "Loading"
+msgstr "加载中"

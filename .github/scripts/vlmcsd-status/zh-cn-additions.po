@@ -1,0 +1,11 @@
+msgid "KMS is running"
+msgstr "KMS 运行中"
+
+msgid "KMS is not running"
+msgstr "KMS 未运行"
+
+msgid "Service status"
+msgstr "服务状态"
+
+msgid "Collecting data..."
+msgstr "正在收集数据…"
