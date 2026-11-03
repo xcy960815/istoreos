@@ -134,9 +134,9 @@ flowchart LR
 
 - 两个语法检查并行执行，覆盖 `.github/scripts` 与 `package/diy` 的 Shell 脚本（含无 `.sh` 后缀的服务/OTA/运维入口），以及 `.github/scripts` 的 Python 补丁；只解析，不执行脚本。任一失败就不启动长时间编译。
 - feeds、补丁、defconfig / seed 审计、源码下载与编译仍在同一个 runner，沿用 `dl` 缓存、350 分钟超时和失败诊断；不传输整棵 OpenWrt 构建树。
-- 构建完成后上传镜像 artifact；独立 `verify` job 下载后检查 EFI/BIOS 镜像、ISO、manifest 和校验清单是否齐全，逐文件验证 SHA256、检查 gzip 完整性，再执行原有关键包/禁用包断言。
+- 构建完成后上传镜像 artifact；独立 `verify` job 下载后检查 EFI/BIOS 镜像、ISO、manifest 和校验清单是否齐全，逐文件验证 SHA256，再执行原有关键包/禁用包断言。combined 镜像在 gzip 后附有 OpenWrt 升级元数据，不能用通用 `gzip --test` 拦截（§四十九）。
 - `publish` 只在 `verify` 成功后运行，下载同一份 artifact 发布 Releases。artifact 表示编译产物，**校验成功以 `verify` job 为准**；不要把构建节点绿色当作已经可以刷机。
-- 检查、构建、校验均显式 `contents: read`；发布显式 `contents: write`；workflow 级写权限保留（§四十四）。校验或发布失败，可在 Actions 重跑失败 job；同一次 run 的构建 artifact 有效期仍是 14 天。
+- 检查、构建、校验均显式 `contents: read`；发布显式 `contents: write`；workflow 级写权限保留（§四十四）。暂态校验/发布失败可重跑失败 job，复用 14 天内的同 run artifact。**修了 workflow 后，重跑旧 run 仍使用旧提交，不会载入修复**；需新建运行，或用修正后的校验检查原 artifact 后补发原版本，不能冒充新版本镜像。
 
 拆分会增加一次镜像 artifact 下载和两个短检查 job 的启动开销。版本号仍使用原 workflow 的 `run_number`，无需搬运 `build_dir` / `staging_dir`，也不新增 workflow 或触发器。实现与验证记录见 `docs/CUSTOM-TRIMMING.md` §四十八。
 

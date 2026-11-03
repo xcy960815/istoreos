@@ -1343,17 +1343,27 @@ DISTRIB_DESCRIPTION='iStoreOS 24.10.8 r46'
 | `check-shell` | 按 shebang 对 `.github/scripts`、`package/diy` 中的脚本跑 `bash -n` / `sh -n`，包含无扩展名的服务、OTA、运维入口；语法失败不启动构建 |
 | `check-python` | 用 Python `compile(..., 'exec')` 解析 `.github/scripts/**/*.py`，不运行补丁、不生成字节码；与 Shell 检查并行 |
 | `build` | 保留原 feeds / pin / UI 补丁 / defconfig / seed 审计 / 下载 / 编译 / 日志和缓存步骤；上传最终镜像 artifact，缺产物报错 |
-| `verify` | 下载构建 artifact；要求唯一 EFI 与 BIOS 镜像、至少一份 ISO 和 manifest、非空 `sha256sums`；逐个校验所有上传的 img.gz / ISO / manifest 的 SHA256（兼容 `*filename`），检查 gzip 完整性；原有 manifest 关键包/已删包断言移到这里，并检查每份 manifest |
+| `verify` | 下载构建 artifact；要求唯一 EFI 与 BIOS 镜像、至少一份 ISO 和 manifest、非空 `sha256sums`；逐个校验所有上传的 img.gz / ISO / manifest 的 SHA256（兼容 `*filename`）；原有 manifest 关键包/已删包断言移到这里，并检查每份 manifest。r49 曾加通用 gzip 检查，已按 §四十九 移除 |
 | `publish` | `needs: verify`；下载同一份不可变 artifact，沿用 `ota.meta`、Release 创建及同 tag 覆盖逻辑 |
 
 ### 影响与维护
 
 - 只在 job 间传最终镜像，feeds / dl / build_dir / staging_dir 留在构建 runner；不为画图拆散 OpenWrt 编译过程。代价是多一次 artifact 下载与两个短检查 job 启动。
 - `build` 成功只表示编译和上传成功，**产物通过校验要看 `verify`**。校验失败仍会留下构建 artifact 供诊断，不会发布 Release；artifact 不是刷机验收结论。
-- 校验/发布失败后可重跑失败 job，复用同 run 的构建 artifact（14 天内）；不重编固件、不重新上传另一份镜像 artifact。
+- 暂态校验/发布失败可重跑失败 job，复用同 run 的构建 artifact（14 天内）；修正 workflow 的新提交不会被旧 run 的重跑载入，r49 的恢复见 §四十九。
 - 所有新 job 显式 `contents: read`；仅 `publish` 为 `write`，workflow 顶层 `contents: write` 保留（§四十四）；action 继续钉 SHA、checkout 不留 token。
 - 本轮改动：`.github/workflows/build-istoreos.yml`、`BUILD-CUSTOM.md` 与本节。未改 seed、源码包或 feed；实际 Actions 运行与固件编译结果以本轮云端构建为准。
 
 本地验证：`actionlint 1.7.12` 通过；直接执行新 job 的语法检查，24 个 Shell 脚本、5 个 Python 补丁通过；使用已发布 r48 的真实 manifest（已核对其 Release SHA256）和小型合成镜像，15 个校验场景全部符合预期，覆盖文本/二进制 SHA256 格式、缺文件/校验项、文件损坏、非法 gzip、缺关键包、已删包回归、重复 EFI 与第二份 manifest。另比对新旧 workflow，确认原构建步骤（仅移走 manifest 断言并加缺产物报错）、发布步骤、触发方式、并发组、350 分钟超时、action SHA 和权限边界按上述设计保留；本地未执行固件编译，未做刷机验证。
 
 后续 AI：**不要**为了细分可视节点上传整棵构建树；**不要**让发布绕过 `verify`，也不要删掉原有 seed / manifest 门禁。阶段图和失败后的重跑方式见 `BUILD-CUSTOM.md`「Actions 阶段图」。
+
+## 四十九、r49 校验误判：gzip 尾部的 OpenWrt 升级元数据（2026-11-03，无 seed 变更）
+
+r49（run `41569983777`，提交 `d90544a5ba`）编译成功，6 个发布文件的 SHA256 全部通过；`verify` 在通用 `gzip --test -- *.img.gz` 处失败，发布被跳过，Release 尚未创建。日志原文与恢复记录见 `CI-HISTORY.md` §四十九。
+
+原因是本树 `target/linux/x86/image/Makefile` 的 combined / combined-efi 镜像使用 `gzip | append-metadata`；`include/image-commands.mk` 的 `append-metadata` 通过 fwtool 在压缩流之后追加升级元数据。GNU gzip 能正常解压，但把尾部元数据当作 trailing garbage 并返回警告码 2；`set -e` 随即使 job 失败。§四十八 本地的合成纯 gzip 文件没有覆盖这一真实格式，15 项通过不能证明实际 OpenWrt 镜像兼容性。
+
+本轮修复只移除不适用的通用 gzip 门禁，保留文件齐全性、逐文件完整 SHA256、关键包与禁用包断言；**不改镜像、不剥离尾部元数据、不重算校验值、不改 seed**。完整文件 SHA256 同时覆盖压缩数据和尾部升级元数据；实际可启动性仍需设备验证。
+
+恢复使用 r49 原始 artifact（`13208063704`，构建提交 `d90544a5ba`），由临时 `recover-r49.yml` 在云端运行修正后的完整 `verify` 步骤，再沿用原发布步骤补发 **r49**，Release 的 target 仍指向实际构建提交。恢复任务完成后删除临时入口；只读 artifact 的 job 显式 `actions: read`，仅发布 job 写 Releases。不能给旧产物换新版本号，也不必重编约三小时。旧 run 的重跑继续使用旧 SHA / workflow，不能通过重跑载入本次修复。

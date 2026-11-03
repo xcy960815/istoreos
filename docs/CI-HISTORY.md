@@ -304,3 +304,27 @@ HTTP 403: Resource not accessible by integration (https://api.github.com/repos/x
 - 仓库设置 `default_workflow_permissions` 维持 **write**（从 read 切换，见 CUSTOM-TRIMMING §四十四；本 workflow 所有 job 都有显式声明，该默认只影响未来新增的无声明 job——文档已提醒要显式最小权限）。
 
 探针 workflow 已删（5f1039d5f3 提交后删除）。r45 不再补发（镜像 artifact 留 14 天，验证价值已兑现）；带主题修复与 workflow 修复的构建为 r46。
+
+## 四十九、r49 编译成功、通用 gzip 检查误判（run 41569983777，2026-11-03）
+
+构建提交 `d90544a5ba`，03:04:37Z 触发，06:02:08Z 失败。Shell / Python / 构建 job 全绿；失败 job 是 `verify`（job `125755581966`）的 `Verify image files and checksums`；`publish` 被跳过。
+
+日志中 3 个 img.gz、2 个 ISO、1 个 manifest 的 SHA256 全部 `OK`，随后原文：
+
+```text
+2026-11-03T06:01:54.5952450Z gzip: istoreos-x86-64-generic-squashfs-combined-efi.img.gz: decompression OK, trailing garbage ignored
+2026-11-03T06:02:04.0328100Z gzip: istoreos-x86-64-generic-squashfs-combined.img.gz: decompression OK, trailing garbage ignored
+2026-11-03T06:02:05.8782030Z ##[error]Process completed with exit code 2.
+```
+
+### 根因与修复
+
+- 本树 `target/linux/x86/image/Makefile:105` / `:113` 明确使用 `gzip | append-metadata`；`include/image-commands.mk` 的 `Build/append-metadata` 调用 `fwtool -I` 并可能追加签名。尾部数据属于固件格式。
+- §四十八 增加的通用 gzip 完整性检查把 GNU gzip 的警告码 2 当作失败；本地合成纯 gzip 文件未覆盖真实 fwtool 尾部，属于校验设计错误。
+- 移除这一额外门禁；完整文件 SHA256、文件齐全性与原 manifest 包门禁继续执行。源码、seed、产物字节和版本号均不变。
+- 原 artifact：`istoreos-x86_64-trimmed-r49`，ID `13208063704`，大小 `1002658558` 字节，zip SHA256 `9ebcddeb06862b2bf0a319824e0f45e946d1b40e410936799b96be2510be4eb4`。
+- 恢复路径：临时 `recover-r49.yml` 云端下载原 artifact → 修正后的 `verify`（含包断言）→ 用原发布脚本补发 r49，`target=d90544a5ba4afcb2e9436fe20c05a3531fab22a5`；旧失败 run 保留，不冒充全绿，不给旧镜像改号。临时工作流复制本轮已经修正的校验/发布步骤，固定来源 run 与原构建 SHA，完成后删除入口。
+
+修复回归：actionlint 通过；带尾部元数据且 SHA256 匹配的样例通过，生成 SHA256 后改动尾部、缺关键包、加回禁用包三个样例仍被拦截。未改动 r49 产物字节。
+
+GitHub 重跑使用原 `GITHUB_SHA` / `GITHUB_REF`，不会载入修复后的 workflow；参见 [官方重跑说明](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)。

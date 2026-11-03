@@ -343,7 +343,8 @@ jobs:
             [[ "$sum" =~ ^[[:xdigit:]]{64}$ ]] || { echo "::error::sha256sums 缺少有效校验值：$file"; exit 1; }
             printf '%s  %s\n' "$sum" "$file" | sha256sum --check -
           done
-          gzip --test -- *.img.gz
+          # x86 combined.img.gz / combined-efi.img.gz 在 gzip 后 append-metadata（§四十九），
+          # 通用 gzip --test 会对合法升级元数据返回 2；完整文件的 SHA256 已覆盖该尾部。
 
       # defconfig 的静默丢行、feed 改名、pin 脚本失效，最终都只会体现在 manifest。
       # 关键包缺一个就不该发 Release：首页/OTA/DDNS/Tailscale 都是开箱承诺。
