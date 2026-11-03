@@ -22,4 +22,4 @@
 
 **OTA（2026-10-23）**：`luci-app-ota` 已改打本仓库 GitHub Releases（§三十七），禁止再指 koolcenter。**运维（同日）**：`istoreos-ops` 提供 OTA 前 curated 备份（盘满不拦刷）与 `istoreos-health` 巡检（§三十八）；Telegram 通知 + LuCI「服务 → 健康巡检」见 §三十九（无邮件）。
 
-**进度（2026-11-02）**：最新镜像 **r46**（`31a76e4a1c`，seed 521，Releases 已发布；r44 构建失败、r45 只有 tag）。含 Argon 菜单搜索修复、workflow 级发布权限；**r47 起带 OTA「当前版本未知」修复与卡片式新界面（§四十五）；同批后续含 §四十六/§四十七 换皮**。**J4125 已刷裁剪版 r46**（2026-11-02 SSH 复核）；N100 的最后界面验证仍是 r33。J4125 配置备份在维护机 `~/Documents/j4125-backup-20261018/`（还原用 **1019** 那份，不要整包灌）。不要为 NPM 把 Docker 加回网关（反代放 9400F）；不要用 Open-Box 换生产 OpenClash。快照见 [`docs/CUSTOM-TRIMMING.md`](docs/CUSTOM-TRIMMING.md) 文首、§三十六、§四十/§四十一。
+**进度（2026-11-03）**：最新镜像 **r49**（构建提交 `d90544a5ba`，seed 521，Releases 已发布）。已含 OTA「当前版本未知」修复与 §四十五～§四十七 换皮；CI 为五阶段（§四十八）。r49 原 run 编译成功、被通用 gzip 检查误判；修复后复用原 artifact，经云端 SHA256/包清单校验补发，见 §四十九。**不要用普通 `gzip --test` 拦截 combined.img.gz 尾部的 OpenWrt 元数据**。**J4125 已刷裁剪版 r46**（2026-11-02 SSH 复核）；N100 的最后界面验证仍是 r33，发布不等于刷机验收。J4125 配置备份在维护机 `~/Documents/j4125-backup-20261018/`（还原用 **1019** 那份，不要整包灌）。不要为 NPM 把 Docker 加回网关（反代放 9400F）；不要用 Open-Box 换生产 OpenClash。快照见 [`docs/CUSTOM-TRIMMING.md`](docs/CUSTOM-TRIMMING.md) 文首、§三十六、§四十/§四十一。

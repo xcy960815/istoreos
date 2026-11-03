@@ -328,3 +328,20 @@ HTTP 403: Resource not accessible by integration (https://api.github.com/repos/x
 修复回归：actionlint 通过；带尾部元数据且 SHA256 匹配的样例通过，生成 SHA256 后改动尾部、缺关键包、加回禁用包三个样例仍被拦截。未改动 r49 产物字节。
 
 GitHub 重跑使用原 `GITHUB_SHA` / `GITHUB_REF`，不会载入修复后的 workflow；参见 [官方重跑说明](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)。
+
+### 补发中的旧提交权限限制
+
+恢复 run `41589452967` 的 `verify` 已通过真实 r49 产物的 SHA256 与包清单断言，但首次 `publish` 在创建 Release 时返回 403。该 job 的启动日志明确显示 `Actions: read`、`Contents: write`，不能归因为本 job 没拿到写权限。
+
+本次 `target_commitish=d90544a5ba` 与当前默认分支在 `.github/workflows/` 下存在差异。GitHub [Release API 官方说明](https://docs.github.com/en/rest/releases/releases#create-a-release)明确：这种目标需要 workflow 写权限，`GITHUB_TOKEN` 无法获得；OAuth / classic token 需 `workflow` scope。本机已有登录具备该 scope，因此只在本机创建固定目标的 r49 草稿，由 CI 的原上传步骤补齐资产，核对后再在本机发布草稿；个人令牌不写入仓库或 CI secret。
+
+这是本次恢复 403 的已验证解释。§四十四 旧复盘的“job 级权限被忽略”不能直接套用到所有 403；长构建期间默认分支的 workflow 是否前进也是必须核对的变量。本轮保留既有 workflow / job 权限声明，不借此调整权限形态。
+
+### 恢复完成
+
+恢复 run `41589452967` attempt 2 最终全绿，真实 r49 artifact 的文件齐全性、6 个文件 SHA256 与关键包/禁用包断言均已通过；CI 上传到预先创建的草稿。核对 8 个资产全部 uploaded、实际构建 target、EFI digest 以及 `ota.meta` 内容摘要后，于 **2026-11-03 14:32:51+08:00（06:32:51Z）** 正式发布 [r49](https://github.com/xcy960815/istoreos/releases/tag/r49)。
+
+- Release ID：`432346616`；target：`d90544a5ba4afcb2e9436fe20c05a3531fab22a5`。
+- EFI img.gz SHA256：`84560f521e24f45cec65e28791f8b6e2845097e79e7feea08278d809b095a2fe`。
+- ota.meta SHA256：`a27a9772948847e09ad6b474fccf50ce1678da1e9670ae50585d845b4e860fae`。
+- 未重新编译、未修改镜像、未更换版本号；临时 `recover-r49.yml` 完成后删除。原 run `41569983777` 保留失败记录，恢复任务链接写入 Release notes。
