@@ -1369,3 +1369,30 @@ r49（run `41569983777`，提交 `d90544a5ba`）编译成功，6 个发布文件
 恢复使用 r49 原始 artifact（`13208063704`，构建提交 `d90544a5ba`），由临时 `recover-r49.yml` 在云端运行修正后的完整 `verify` 步骤，再沿用原发布步骤补发 **r49**，Release 的 target 仍指向实际构建提交。恢复任务完成后删除临时入口；只读 artifact 的 job 显式 `actions: read`，仅发布 job 写 Releases。不能给旧产物换新版本号，也不必重编约三小时。旧 run 的重跑继续使用旧 SHA / workflow，不能通过重跑载入本次修复。
 
 **恢复结果**：run `41589452967` 最终全绿，2026-11-03 14:32:51（北京时间）r49 正式发布，8 个资产均为 uploaded，EFI 镜像与 `ota.meta` 的摘要匹配，tag / Release target 为原构建提交。补发旧提交触发的额外 workflow 权限限制，已用本机登录创建草稿、CI 上传、核对后发布的方式解决，未把个人令牌放进 CI；细节见 CI-HISTORY §四十九。临时恢复工作流随后删除；原 r49 失败记录保留。
+
+## 五十、仅移除概况页的易有云重复入口（2026-11-03，无 seed 变更）
+
+用户截图标出「状态 → 概况」底部的“易有云服务已启动 / 点击打开易有云 / 本地文件管理”区块，并明确：**只移除这里的 DOM，已有其他入口，不删除功能**。
+
+### 功能视角
+
+| 变化 | 影响 / 替代入口 |
+|---|---|
+| 概况页不再渲染易有云状态和两个重复按钮 | 页面少一个重复区块；不留空白卡片 |
+| 易有云独立页面、其他入口、服务和配置保留 | `linkease_status.htm`、controller、CBI、文件管理路径均不修改；仍从既有入口使用 |
+| 其他概况模块保留 | 系统、网络、DHCP 和其他第三方状态模板仍按原逻辑加载 |
+
+来源是 `luci-app-linkease` 的 `luasrc/view/admin_status/index/linkease.htm`，其内容仅为 `<%+linkease_status%>`；独立配置页也使用 `linkease_status.htm`，因此不能清空共享状态模板。概况页通过 `luci-lua-runtime` 的 `luasrc/view/admin_status/luaindex.htm` 枚举 `admin_status/index/*.htm`。本轮只在枚举条件增加 `inc ~= "linkease.htm"`，使这一概况区块不生成 DOM，也不注册该区块自己的轮询；其他页面的状态与服务行为不变。无论应用来自已有系统还是后来安装，该过滤均有效。
+
+### 文件 / 包明细
+
+| 动作 | 内容 |
+|---|---|
+| 第 ⑩ 条构建例外 | `.github/scripts/patch-overview-linkease-entry.sh`：feeds install 后对 `luci-lua-runtime` 的概况模板加载器做一处精确替换；幂等，锚点漂移即报错，不清空或替换整个文件 |
+| 构建接入 | `build-istoreos.yml` 在 defconfig 前调用；`BUILD-CUSTOM.md` 补步骤 3i |
+| 包 / seed | 无增删；`config-custom.seed` 完全不改，仍为 521 个 `CONFIG_PACKAGE_*=y`；不把易有云烘焙进固件，不卸载用户自行安装的应用 |
+| 其他不动 | QuickStart、iStore、易有云独立页面 / 其他入口、服务、配置、OpenList / WebDAV；没有 CSS 隐藏、前端依赖或新增文案 |
+
+后续 AI：用户授权的是**这一处重复 UI 入口**，不要据此移除软件包或服务，也不要清空全局 `linkease_status.htm`。本节是 §四十七「概况页不动」之后用户新授权的一处精确例外，不扩展到概况页其他模块。
+
+本地验证：基于 luci feed 的真实 `luaindex.htm`，执行新补丁并用隔离的 Lua 运行时验证模板枚举：只移除 `admin_status/index/linkease`，其他模板（含 `linkeasefull`）照常加载；重复执行不改文件；上游锚点漂移和文件缺失均失败且不改原文件；feed 源目录回退路径通过。`bash -n`、actionlint、`git diff --check` 通过；seed 与 package/target 源码无 diff。尚未刷机验证，本轮镜像由云端重新构建。

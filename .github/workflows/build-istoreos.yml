@@ -139,6 +139,9 @@ jobs:
           bash .github/scripts/patch-luci-mod-system-ui.sh
           bash .github/scripts/patch-openlist-status.sh
 
+      - name: Remove duplicate LinkEase overview entry
+        run: bash .github/scripts/patch-overview-linkease-entry.sh
+
       - name: Drop luci-theme-bootstrap (Argon only)
         run: bash .github/scripts/drop-luci-theme-bootstrap.sh
 

@@ -62,6 +62,9 @@ bash .github/scripts/patch-wol-ui.sh
 bash .github/scripts/patch-luci-mod-system-ui.sh
 bash .github/scripts/patch-openlist-status.sh
 
+# 3i. 仅移除「状态 → 概况」页的易有云重复区块；独立页面、服务和其他入口保留（§五十）
+bash .github/scripts/patch-overview-linkease-entry.sh
+
 # 4. 应用裁剪配置
 cp config-custom.seed .config
 make defconfig            # 展开成完整 .config（实际包数以首次构建日志为准）
