@@ -120,6 +120,26 @@ git push --force-with-lease origin custom-24.10  # rebase 改写了已推送历�
 - 由于全部定制收敛在一个 seed 文件，上游 99% 的提交都与它无冲突；符号改名（罕见）时 `make defconfig` 会静默丢掉那一行，本地不会有任何提示；CI 的 seed 审计会把"已知清单外的未生效行"判失败（几分钟内），看 artifact 里的 seed-audit.txt 按报告改 seed。本地构建后可自己跑 `bash .github/scripts/seed-audit.sh` 检查
 - 云端构建走本仓库自己的 workflow（不引 P3TERX 等第三方模板；r10 起稳定出镜像，最近一次成功是 r43（2026-10-30））：`.github/workflows/build-istoreos.yml` 手动触发，seed 审计逻辑在 `.github/scripts/seed-audit.sh`（装好 feeds、跑过 defconfig 后可本地执行）。取舍理由见 `docs/CUSTOM-TRIMMING.md` §十二。构建成功后镜像自动发 GitHub Releases（tag `r<run_number>`，长期下载位；Actions artifact 仍在、14 天过期），见 `docs/CUSTOM-TRIMMING.md` §二十五。**2026-10-31 加固**：build / publish 拆成两个 job，`contents: write` 只给 publish；所有 action 钉 commit SHA、checkout 不留 token；发 Release 前用 `.manifest` 断言关键包齐全且已删包没回来；`pin-quickstart.sh` 增加 `node --check` JS 门禁，`pin-tailscale-prebuilt.sh` 改钉 asvow LuCI commit
 
+## Actions 阶段图（2026-11-03）
+
+手动运行 **Build iStoreOS trimmed** 后，Actions 原生依赖图显示五个 job：
+
+```mermaid
+flowchart LR
+    shell[Shell 脚本检查] --> build[构建固件]
+    python[Python 补丁检查] --> build
+    build --> verify[校验固件]
+    verify --> publish[发布 Releases]
+```
+
+- 两个语法检查并行执行，覆盖 `.github/scripts` 与 `package/diy` 的 Shell 脚本（含无 `.sh` 后缀的服务/OTA/运维入口），以及 `.github/scripts` 的 Python 补丁；只解析，不执行脚本。任一失败就不启动长时间编译。
+- feeds、补丁、defconfig / seed 审计、源码下载与编译仍在同一个 runner，沿用 `dl` 缓存、350 分钟超时和失败诊断；不传输整棵 OpenWrt 构建树。
+- 构建完成后上传镜像 artifact；独立 `verify` job 下载后检查 EFI/BIOS 镜像、ISO、manifest 和校验清单是否齐全，逐文件验证 SHA256、检查 gzip 完整性，再执行原有关键包/禁用包断言。
+- `publish` 只在 `verify` 成功后运行，下载同一份 artifact 发布 Releases。artifact 表示编译产物，**校验成功以 `verify` job 为准**；不要把构建节点绿色当作已经可以刷机。
+- 检查、构建、校验均显式 `contents: read`；发布显式 `contents: write`；workflow 级写权限保留（§四十四）。校验或发布失败，可在 Actions 重跑失败 job；同一次 run 的构建 artifact 有效期仍是 14 天。
+
+拆分会增加一次镜像 artifact 下载和两个短检查 job 的启动开销。版本号仍使用原 workflow 的 `run_number`，无需搬运 `build_dir` / `staging_dir`，也不新增 workflow 或触发器。实现与验证记录见 `docs/CUSTOM-TRIMMING.md` §四十八。
+
 ## 备注
 
 - seed 基准取自 2026-10-05 路由器实际安装清单（`opkg list-installed` 1122 包）。可核实的数字：seed 自身 `CONFIG_PACKAGE_*` 行 首轮 1078 → 二次裁剪 697 → 清死行后 593 → 2026-10-09 加回 DDNS-Go 后 596 → 2026-10-10 删 Aria2/Transmission 后 587 → 2026-10-12 删在线升级 OTA 后 585 → 2026-10-14 烘焙 Tailscale LuCI 后 587 → 2026-10-16 烘焙 QuickStart 后 590 → 去掉 Bootstrap 后约 589 → 2026-10-16/17 四批清收 **589 → 582 → 556 → 530 → 517**（§二十六～§二十九）→ 删 SMART 三件套、filetransfer **517 → 514 → 512**（§三十/§三十一）→ 加回 smartctl、mdadm、smartd **512 → 514 → 515 → 516**（§三十二/§三十三/§三十五，r33）→ 2026-10-23 加回 GitHub OTA +2 = **518** → 加 `istoreos-ops` +1 = **519** → 健康通知 LuCI +2 = **521**（r43）（`grep -c '^CONFIG_PACKAGE_' config-custom.seed` 可复核）；r4 那次 `make defconfig` 展开选中 **705**（含 defconfig 自行加回的 114 个）。镜像最终包数以成功构建的 `manifest` 为准
