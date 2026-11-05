@@ -460,7 +460,7 @@ LuCI 配置页 `luci-app-tailscale-community` 仍是商店应用、六个默认 
 
 | 动作 | 内容 |
 |---|---|
-| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-tailscale-prebuilt.sh`：把 `package/feeds/packages/tailscale` 换成官方 `tailscale_1.104.1_amd64.tgz`（sha256 `108d1d96ecf410d305571e173516f27038f870919a9b89c914a167c6d33a4528`）；只装两个二进制。init/config 由 asvow LuCI 提供。按 **commit `534eb3f3acba`**（v1.2.6）拉取 asvow/luci-app-tailscale 到 `package/luci-app-tailscale`，并核对 HEAD 与 `PKG_VERSION=1.2.6`；再铺 `.github/scripts/tailscale-durable/`（helper / keep / ensure / START=89 / uci-defaults），见下方「耐久防火墙 / netifd 补丁」 |
+| 构建脚本（feeds install 之后、defconfig 之前） | `.github/scripts/pin-tailscale-prebuilt.sh`：把 `package/feeds/packages/tailscale` 换成官方 `tailscale_1.104.1_amd64.tgz`（sha256 `108d1d96ecf410d305571e173516f27038f870919a9b89c914a167c6d33a4528`）；只装两个二进制。init/config 由 asvow LuCI 提供。按 **commit `534eb3f3acba`**（v1.2.6）拉取 asvow/luci-app-tailscale 到 `package/luci-app-tailscale`，并核对 HEAD 与 `PKG_VERSION=1.2.6`；再铺 `.github/scripts/tailscale-durable/`（helper / keep / ensure / START=89 / uci-defaults），并给 init/hotplug 打「活进程不 `--cleanup`」补丁，见下方「耐久防火墙 / netifd 补丁」和「活进程不再被 `--cleanup` 拆地址」 |
 | seed 新增 `=y` | `luci-app-tailscale`、`luci-i18n-tailscale-zh-cn`（seed `CONFIG_PACKAGE_*` 585 → 587） |
 | seed 原本就有、未删 | `tailscale`（守护进程；二进制由脚本换成 1.104.1） |
 | 不加 | `luci-app-tailscale-community`（商店包，无 kconfig，写了也是死行）；不升 golang |
@@ -476,7 +476,8 @@ LuCI 配置页 `luci-app-tailscale-community` 仍是商店应用、六个默认 
 | 进 git 的文件 | 作用 |
 |---|---|
 | `.github/scripts/tailscale-durable/tailscale_helper` | 覆盖 asvow helper：跳过 netifd；zone 用 `device=tailscale0`；清掉其它 `name=tailscale` 的 zone；NeedsLogin 时不 stop（保 AuthURL） |
-| `.github/scripts/tailscale-durable/ensure-helper-fix.sh` | 开机/手动：若 helper 变回 stock（含 `proto=static` 或 `network='tailscale'`）则从 keep 恢复；删 `network.tailscale`；修 zone |
+| `.github/scripts/tailscale-durable/ensure-helper-fix.sh` | 开机/手动：若 helper 变回 stock（含 `proto=static` 或 `network='tailscale'`）则从 keep 恢复；删 `network.tailscale`；修 zone；init/hotplug 缺地址补丁标记时从 keep 恢复 |
+| `.github/scripts/tailscale-durable/patch-tailscale-addr.sh` | clone 后给 asvow init/hotplug 打补丁：tailscaled 已在跑时不 `--cleanup`、hotplug 不重复 start |
 | `.github/scripts/tailscale-durable/tailscale-fixup` | `/etc/init.d/tailscale-fixup`，`START=89`（早于 luci-app-tailscale 的 90） |
 | `.github/scripts/tailscale-durable/41_tailscale-durable` | uci-defaults：enable 开机守护并跑一次 ensure |
 | `.github/scripts/tailscale-durable/luci-app-tailscale.json` | LuCI menu.d：`admin/vpn` → `admin/services` |
@@ -506,6 +507,23 @@ LuCI 配置页 `luci-app-tailscale-community` 仍是商店应用、六个默认 
 刷机后：服务 → Tailscale → 启用并保存；「已绑定用户」应与 **「授权登录」水平对齐**且可点（新标签打开 AuthURL）。若暂时没有 AuthURL，显示「正在获取授权链接…」而非假链接。浏览器完成 OAuth 后 helper 拿到 IPv4 再写 firewall。不必预置密钥。
 
 **热修（不必整包重编）**：设备上替换 `/www/luci-static/resources/view/tailscale/setting.js`（来自构建树 `package/luci-app-tailscale/htdocs/.../setting.js`），浏览器强刷；中文「正在获取授权链接…」需 po→lmo 进包才本地化，未编进包时 `_()` 回退英文 msgid。`/usr/lib/lua/luci` 无此 JS。
+
+### 活进程不再被 `--cleanup` 拆地址（2026-11-05）
+
+2026-11-04 在 J4125 上确认：asvow `/etc/init.d/tailscale` 每次 `start` 都无条件跑 `tailscaled --cleanup`，`/etc/hotplug.d/iface/40-tailscale` 则在任意网口 `ifup`/`ifupdate` 上再调一次 `start`。daemon 还活着时 `--cleanup` 会删掉 `tailscale0` 上的 `100.x`（日志 `removed N stale Tailscale address(es) from tailscale0 during cleanup`）。procd 看到进程已在就不重新拉起，地址回不来。判断特征：`ip -4 addr show tailscale0` 没有 `inet 100.x`。
+
+机器上的修复（已验证，本仓库按同一处打进构建，不改 asvow 的 stop 路径）：
+
+| 位置 | 改法 |
+|---|---|
+| `start_instance` | 仅当 `pidof tailscaled` 为空才 `--cleanup`。停服务时的 `--cleanup` 不动 |
+| `40-tailscale` | 进程已在就退出，不再 `start` |
+
+线上采样（拨号稳定后）：PID 保持不变；地址停在 `100.116.149.47/32`；table 52 稳定 3 条（两个 peer + MagicDNS `100.100.100.100`）；开机后 stale-address cleanup 为 0。重启后地址自行恢复；WAN 重新拨号后地址仍在；手动 hotplug 加重复 `start` 不掉地址。
+
+`pin-tailscale-prebuilt.sh` 每次跑 `patch-tailscale-addr.sh`（锚点对不上就失败），并把打过补丁的两份脚本放进 `/etc/tailscale/tailscale.init.keep` 与 `40-tailscale.hotplug.keep`。`ensure-helper-fix.sh`（`START=89`）发现标记被 opkg 盖掉就从 keep 恢复。改这个行为只改 `tailscale-durable/`，不要只改构建树副本。
+
+刷机后自检：`grep -F 'strips tailscale0' /etc/init.d/tailscale`；`grep -F 'while tailscaled is up' /etc/hotplug.d/iface/40-tailscale`。复发时先看这两个文件是否还在，再看 `logread` 里有没有 `stale Tailscale address`。
 
 ## 二十三、QuickStart 首页（不要 Samba/易有云/下载器，2026-10-16，用户明确要求）
 

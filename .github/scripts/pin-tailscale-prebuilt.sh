@@ -12,6 +12,7 @@
 # 耐久补丁（与线上路由器一致）：asvow helper 默认会建 netifd network.tailscale（static）
 # 并用 firewall.tszone.network= 绑定，导致地址打架 / fw4 同名 zone 重定义。
 # 本脚本在 clone 后覆盖 helper，并烘焙 ensure-helper-fix.sh + START=89 开机守护。
+# 另外给 asvow 的 init/hotplug 打地址补丁：tailscaled 已在跑时不再 --cleanup、不再重复 start。
 #  overlays 在 .github/scripts/tailscale-durable/（进 git）。
 set -euo pipefail
 
@@ -47,6 +48,10 @@ DURABLE="$root/.github/scripts/tailscale-durable"
 }
 [ -f "$DURABLE/patch-luci-setting.sh" ] || {
   echo "::error::缺少 $DURABLE/patch-luci-setting.sh"
+  exit 1
+}
+[ -f "$DURABLE/patch-tailscale-addr.sh" ] || {
+  echo "::error::缺少 $DURABLE/patch-tailscale-addr.sh"
   exit 1
 }
 
@@ -167,6 +172,11 @@ install -m 0644 "$DURABLE/luci-app-tailscale.json" "$luci/root/usr/share/luci/me
 # LuCI: authkey spelling + 「授权登录」 button (every run, even when clone skipped)
 bash "$DURABLE/patch-luci-setting.sh" "$luci"
 
+# init/hotplug: do not --cleanup or re-start while tailscaled is already up
+bash "$DURABLE/patch-tailscale-addr.sh" "$luci"
+install -m 0755 "$luci/root/etc/init.d/tailscale" "$luci/root/etc/tailscale/tailscale.init.keep"
+install -m 0755 "$luci/root/etc/hotplug.d/iface/40-tailscale" "$luci/root/etc/tailscale/40-tailscale.hotplug.keep"
+
 
 grep -qF 'netifd skip: Tailscale owns addrs' "$luci/root/usr/sbin/tailscale_helper" || {
   echo "::error::durable helper 缺少 netifd skip 标记"
@@ -209,5 +219,21 @@ grep -q 'admin/vpn/tailscale' "$luci/root/usr/share/luci/menu.d/luci-app-tailsca
   echo "::error::menu.d 仍含 admin/vpn/tailscale"
   exit 1
 }
+grep -qF 'running --cleanup against a live instance strips tailscale0.' "$luci/root/etc/init.d/tailscale" || {
+  echo "::error::tailscale init 未加上活进程跳过 --cleanup"
+  exit 1
+}
+grep -qF 'do not re-run start (and its --cleanup) while tailscaled is up.' "$luci/root/etc/hotplug.d/iface/40-tailscale" || {
+  echo "::error::40-tailscale 未禁止对活进程重复 start"
+  exit 1
+}
+grep -qF 'running --cleanup against a live instance strips tailscale0.' "$luci/root/etc/tailscale/tailscale.init.keep" || {
+  echo "::error::未装上 tailscale.init.keep"
+  exit 1
+}
+grep -qF 'do not re-run start (and its --cleanup) while tailscaled is up.' "$luci/root/etc/tailscale/ensure-helper-fix.sh" || {
+  echo "::error::ensure-helper-fix.sh 未守护 init/hotplug 地址补丁"
+  exit 1
+}
 
-echo "tailscale -> official ${TS_VERSION} amd64; luci-app-tailscale ${LUCI_COMMIT:0:12} at $luci (+ durable helper/NeedsLogin + authkey + Services menu)"
+echo "tailscale -> official ${TS_VERSION} amd64; luci-app-tailscale ${LUCI_COMMIT:0:12} at $luci (+ durable helper/NeedsLogin + authkey + Services menu + no live --cleanup)"

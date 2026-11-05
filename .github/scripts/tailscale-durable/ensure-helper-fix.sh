@@ -81,4 +81,34 @@ if [ "$fw_changed" = 1 ]; then
 	/etc/init.d/firewall reload >/dev/null 2>&1 || true
 fi
 
+# start/hotplug must not run `tailscaled --cleanup` while the daemon is up.
+# That cleanup deletes the 100.x address and leaves the old pid running.
+restore_addr_script() {
+	dest=$1
+	keep=$2
+	marker=$3
+	label=$4
+	if [ ! -f "$keep" ]; then
+		log "missing $keep; cannot restore $label"
+		return 0
+	fi
+	if grep -qF "$marker" "$dest" 2>/dev/null; then
+		return 0
+	fi
+	cp -a "$keep" "$dest"
+	chmod 755 "$dest"
+	log "restored $label from $keep"
+}
+
+restore_addr_script \
+	/etc/init.d/tailscale \
+	/etc/tailscale/tailscale.init.keep \
+	"running --cleanup against a live instance strips tailscale0." \
+	"tailscale init"
+restore_addr_script \
+	/etc/hotplug.d/iface/40-tailscale \
+	/etc/tailscale/40-tailscale.hotplug.keep \
+	"do not re-run start (and its --cleanup) while tailscaled is up." \
+	"tailscale hotplug"
+
 exit 0
