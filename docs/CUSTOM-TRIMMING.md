@@ -1426,7 +1426,11 @@ r49（run `41569983777`，提交 `d90544a5ba`）编译成功，6 个发布文件
 | 服务 → DDNS-Go（基本设置 / 日志） | 顶部状态条改为圆点药丸 +「打开 Web 界面」按钮，基本设置表单卡片化、行间距与保存按钮尺寸统一；日志页改为卡片 + 顶部「清除日志 / 5 秒刷新」栏 + 等宽圆角日志框。上游 `renderStatus` 在严格模式里读了不在作用域的 `res.pid`，服务在跑时状态轮询抛错、落到「状态检查错误」。补丁把 `pid` 作为第 4 个参数传入，运行中能显示 PID 和打开 Web 界面。UCI 字段、保存和操作台 iframe 不动 |
 | 状态 → 系统日志 / 内核日志 | 外层卡片化，过滤栏收进淡底圆角条，上下滚动按钮与等宽只读日志框对齐令牌；所有过滤控件 id（`invertLogFacilitySearch`、`logFacilitySelect`、`logSeveritySelect`、`logTextFilter`、`syslog` 等）与 `syslog-wrapper` / `dmesg -r` 调用不变 |
 | 服务 → Tailscale（全局设置表单 / 接口信息 / 日志） | 接在 §四十七 顶部状态药丸后面，把下方「基本设置 / 高级设置 / 额外设置」Tab 栏、「自定义服务器设置」分区、底部保存按钮全部收进圆角卡片；「接口信息」表格与「日志」页同步卡片化 |
-| 深色模式 | 全部挂载各自根容器（`#cbi-ddns-go`、`#cbi-ddns-go-log`、`#cbi-syslog`、`#cbi-dmesg`、`#cbi-tailscale-setting`、`#cbi-tailscale-iface`、`#cbi-tailscale-log`），跟随 Argon `body[theme]` + `prefers-color-scheme` 覆盖变量 |
+| 系统 → 备份与更新（`flash.js`） | 解决原本外层 `data-tab="actions"` 与内层 `CBI.ContainerValue` 子 `.cbi-section` 叠加造成的“卡中卡”双层边框/阴影问题：外层透明化并隐藏重复标题，「备份 / 恢复 / 保存 mtdblock / 刷写新的固件映像」各自独立成卡；顶部「动作 / 配置」切换栏改为圆角胶囊栏，内部操作行左标题右按钮对齐，「配置」Tab 的 `/etc/sysupgrade.conf` 文本框改为等宽柔和底色圆角框；所有上传/校验/刷写/备份恢复逻辑与 `data-name` 不变 |
+| 系统 → 计划任务（`crontab.js`）与 启动项（`startup.js`） | 解决原本无 `.cbi-section` 卡片壳与裸 `<textarea>` 的问题：`crontab.js` 补齐 `#cbi-crontab` 卡片与等宽柔和底色编辑框；`startup.js` 在 `ui.tabs.initTabGroup` 后挂载 `#cbi-startup`，把「启动脚本 / 本地启动脚本」Tab 栏改为胶囊栏、两页各自成卡，启动脚本表头/行距/启用状态徽章与 `rc.local` 文本框全部统一 |
+| 网络 → 网络诊断（`diagnostics.js`） | 挂载 `#cbi-diagnostics`，顶部 Ping / Traceroute / Nslookup 诊断栏改为响应式网格卡片，底部 `#widget.command-output` 输出框改为等宽柔和底色圆角框；严格保持 `<input>` 与 `.diag-action` 的 `previousSibling` DOM 关系不变 |
+| 服务 → OpenList（下半部表单 + 日志）与 GoWebDav（状态条 + 表单） | OpenList 设置页在 §四十七 状态卡基础上补齐 `#cbi-openlist` 下半部配置表单卡片与 `code` 胶囊，日志页 `log.js`（`#cbi-openlist-log`）改为圆角卡片与柔和底色等宽日志框；同时投递 `/usr/share/istoreos-ui/gowebdav_status.htm`（含 `uci-defaults` 与 `ensure-helper-fix.sh` 幂等同步），把商店装回/备份还原的 GoWebDav 状态条与表单同步为 `#cbi-gowebdav` 卡片风格 |
+| 深色模式 | 全部挂载各自根容器（`#cbi-ddns-go`、`#cbi-ddns-go-log`、`#cbi-syslog`、`#cbi-dmesg`、`#cbi-tailscale-setting`、`#cbi-tailscale-iface`、`#cbi-tailscale-log`、`#cbi-flash`、`#cbi-crontab`、`#cbi-startup`、`#cbi-diagnostics`、`#cbi-openlist`、`#cbi-openlist-log`、`#cbi-gowebdav`），跟随 Argon `body[theme]` + `prefers-color-scheme` 覆盖变量 |
 
 ### 文件 / 包明细
 
@@ -1434,7 +1438,7 @@ r49（run `41569983777`，提交 `d90544a5ba`）编译成功，6 个发布文件
 |---|---|
 | 第 ⑪ 条构建例外 | `.github/scripts/patch-ddnsgo-ui.sh` + `.github/scripts/ddnsgo-ui/{apply-config.py,apply-log.py}`（feeds install 后对 `ddnsgo` feed 的 `config.js` / `log.js` / `ddns-go.po` 打补丁） |
 | 第 ⑫ 条构建例外 | `.github/scripts/patch-status-logs-ui.sh` + `.github/scripts/status-logs-ui/{apply-syslog.py,apply-dmesg.py}`（feeds install 后对 `luci-mod-status` 的 `syslog.js` / `dmesg.js` 打补丁） |
-| 扩展第 ② 条例外 | `.github/scripts/tailscale-durable/apply-status-skin.py`（追加 `#cbi-tailscale-setting` 表单/Tab 皮肤）+ 新增 `apply-views-skin.py`（`interface.js` / `log.js` 卡片化），由 `patch-luci-setting.sh` 统一调用 |
+| 扩展第 ② / ⑧ / ⑨ 条例外 | `.github/scripts/tailscale-durable/apply-status-skin.py`（追加 `#cbi-tailscale-setting` 表单/Tab 皮肤）+ 新增 `apply-views-skin.py`（`interface.js` / `log.js` 卡片化）；`.github/scripts/luci-mod-system-ui/`（细化 `apply-flash.py` 去卡中卡，新增 `apply-crontab.py`、`apply-startup.py`、`apply-diagnostics.py`）；`.github/scripts/openlist-status/`（扩展 `apply.py` 表单卡片、新增 `apply-log.py` 与 `gowebdav_status.htm` 皮肤投递） |
 | 构建接入 | `.github/workflows/build-istoreos.yml`、`BUILD-CUSTOM.md` 步骤 3h、`AGENTS.md` 例外清单、[`docs/UI-STYLE.md`](UI-STYLE.md) 指路 |
 | seed | **无变化**（521） |
 

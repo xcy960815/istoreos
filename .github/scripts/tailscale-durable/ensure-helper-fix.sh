@@ -111,4 +111,11 @@ restore_addr_script \
 	"do not re-run start (and its --cleanup) while tailscaled is up." \
 	"tailscale hotplug"
 
+if [ -f /usr/share/istoreos-ui/gowebdav_status.htm ] && [ -f /usr/lib/lua/luci/view/gowebdav/gowebdav_status.htm ]; then
+	if ! grep -q 'data-ui-skin="gowebdav"' /usr/lib/lua/luci/view/gowebdav/gowebdav_status.htm 2>/dev/null; then
+		cp -a /usr/share/istoreos-ui/gowebdav_status.htm /usr/lib/lua/luci/view/gowebdav/gowebdav_status.htm
+		log "applied gowebdav status skin"
+	fi
+fi
+
 exit 0

@@ -1,0 +1,211 @@
+<%#
+  Status strip + page skin for luci-app-gowebdav (skinned per docs/UI-STYLE.md).
+  Keep id=gowebdav_status, XHR.poll(1, .../status), data.running, and openwebui().
+-%>
+<script type="text/javascript">//<![CDATA[
+XHR.poll(1, '<%=url([[admin]], [[nas]], [[gowebdav]], [[status]])%>', null,
+	function(x, data) {
+		var tb = document.getElementById('gowebdav_status');
+		if (data && tb) {
+			if (data.running) {
+				var links = '<span class="gowebdav-pill gowebdav-pill-ok"><span class="gowebdav-dot"></span>GoWebDav <%:RUNNING%></span>' +
+					'<input class="cbi-button gowebdav-linkbtn" type="button" value="<%:Open Web Interface%>" onclick="openwebui();" />';
+				tb.innerHTML = links;
+			} else {
+				tb.innerHTML = '<span class="gowebdav-pill gowebdav-pill-off"><span class="gowebdav-dot"></span>GoWebDav <%:NOT RUNNING%></span>';
+			}
+		}
+	}
+);
+
+function openwebui() {
+	var url = window.location.hostname+":<%=luci.sys.exec("uci -q get gowebdav.config.listen_port"):gsub("^%s*(.-)%s*$", "%1")%>";
+	window.open('http://'+url,'target','');
+};
+//]]>
+</script>
+<div id="cbi-gowebdav-status">
+	<style data-ui-skin="gowebdav">
+	#cbi-gowebdav,
+	#cbi-gowebdav-status {
+		--gwd-accent: #5e72e4;
+		--gwd-ok: #2dce89;
+		--gwd-warn: #fb6340;
+		--gwd-border: #e9ecef;
+		--gwd-muted: #8898aa;
+		--gwd-text: #32325d;
+		--gwd-card: #fff;
+		--gwd-soft: #f7f9fc;
+	}
+	body[theme="dark"] #cbi-gowebdav,
+	body[theme="dark"] #cbi-gowebdav-status {
+		--gwd-border: #3a3a3d;
+		--gwd-muted: #9aa2ad;
+		--gwd-text: #d7dae0;
+		--gwd-card: #232324;
+		--gwd-soft: #2b2b2d;
+	}
+	@media (prefers-color-scheme: dark) {
+		body[theme="normal"] #cbi-gowebdav,
+		body[theme="normal"] #cbi-gowebdav-status {
+			--gwd-border: #3a3a3d;
+			--gwd-muted: #9aa2ad;
+			--gwd-text: #d7dae0;
+			--gwd-card: #232324;
+			--gwd-soft: #2b2b2d;
+		}
+	}
+	#cbi-gowebdav > h2 {
+		margin: 0 0 6px;
+		font-size: 18px;
+		font-weight: 600;
+		line-height: 1.3;
+		color: var(--gwd-text);
+	}
+	#cbi-gowebdav .cbi-map-descr {
+		margin: 0 0 16px;
+		font-size: 13px;
+		line-height: 1.6;
+		color: var(--gwd-muted);
+	}
+	#cbi-gowebdav-status.cbi-section,
+	#cbi-gowebdav-status .cbi-section,
+	#cbi-gowebdav-status fieldset.cbi-section {
+		padding: 0;
+		border: 0;
+		background: none;
+		box-shadow: none;
+		margin: 0;
+	}
+	#cbi-gowebdav-status .gowebdav-card,
+	#cbi-gowebdav fieldset.cbi-section {
+		background: var(--gwd-card);
+		border: 1px solid var(--gwd-border);
+		border-radius: 12px;
+		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
+		padding: 20px 22px;
+		margin: 0 0 16px;
+	}
+	#cbi-gowebdav-status .gowebdav-card {
+		padding: 16px 18px;
+	}
+	#cbi-gowebdav-status .gowebdav-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+	#cbi-gowebdav-status .gowebdav-label {
+		font-size: 13px;
+		color: var(--gwd-muted);
+	}
+	#cbi-gowebdav-status .gowebdav-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 12px;
+		border-radius: 999px;
+		background: var(--gwd-soft);
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--gwd-text);
+		font-style: normal;
+	}
+	#cbi-gowebdav-status .gowebdav-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: var(--gwd-muted);
+		box-shadow: 0 0 0 4px rgba(136, 152, 170, .12);
+	}
+	#cbi-gowebdav-status .gowebdav-pill-ok .gowebdav-dot {
+		background: var(--gwd-ok);
+		box-shadow: 0 0 0 4px rgba(45, 206, 137, .12);
+	}
+	#cbi-gowebdav-status .gowebdav-pill-off .gowebdav-dot {
+		background: var(--gwd-warn);
+		box-shadow: 0 0 0 4px rgba(251, 99, 64, .12);
+	}
+	#cbi-gowebdav-status .gowebdav-linkbtn {
+		display: inline-flex;
+		align-items: center;
+		margin-left: 12px;
+		padding: 8px 14px;
+		border-radius: 8px;
+		border: 1px solid var(--gwd-accent);
+		background: var(--gwd-accent);
+		color: #fff;
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	#cbi-gowebdav-status #gowebdav_status {
+		margin: 0;
+		min-height: 1.5em;
+		display: inline-flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 4px;
+	}
+	#cbi-gowebdav-status #gowebdav_status em {
+		font-style: normal;
+		color: var(--gwd-muted);
+		font-size: 13px;
+	}
+	#cbi-gowebdav fieldset.cbi-section .cbi-value {
+		display: flex;
+		align-items: flex-start;
+		gap: 16px;
+		padding: 12px 0;
+		margin: 0;
+		border-top: 1px solid var(--gwd-border);
+		border-bottom: 0;
+		flex-wrap: wrap;
+	}
+	#cbi-gowebdav fieldset.cbi-section .cbi-value:first-child {
+		border-top: 0;
+		padding-top: 4px;
+	}
+	#cbi-gowebdav fieldset.cbi-section .cbi-value:last-child {
+		padding-bottom: 4px;
+	}
+	#cbi-gowebdav fieldset.cbi-section .cbi-value-title {
+		width: 190px;
+		flex-shrink: 0;
+		padding: 6px 0 0;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--gwd-text);
+		text-align: left;
+	}
+	#cbi-gowebdav fieldset.cbi-section .cbi-value-field {
+		flex: 1;
+		min-width: 220px;
+		text-align: left;
+	}
+	#cbi-gowebdav fieldset.cbi-section .cbi-value-description {
+		margin: 6px 0 0;
+		font-size: 12px;
+		line-height: 1.6;
+		color: var(--gwd-muted);
+	}
+	#cbi-gowebdav .cbi-page-actions .cbi-button {
+		min-width: 132px;
+		padding: 8px 18px;
+		border-radius: 8px;
+		font-size: 14px;
+		font-weight: 600;
+	}
+	</style>
+	<div class="cbi-section">
+		<div class="gowebdav-card">
+			<div class="gowebdav-row">
+				<span class="gowebdav-label"><%:Status%></span>
+				<p id="gowebdav_status">
+					<em><%:Collecting data...%></em>
+				</p>
+			</div>
+		</div>
+	</div>
+</div>
