@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
-"""Skin Tailscale status_bar + login_status_div only (docs/UI-STYLE.md). Keep authkey/AuthURL patches."""
+"""Skin Tailscale status_bar, login_status_div, and setting form cards (docs/UI-STYLE.md). Keep authkey/AuthURL patches."""
 from pathlib import Path
 import re
 import sys
 
 p = Path(sys.argv[1])
 t = p.read_text(encoding="utf-8")
-if "ts-pill" in t and "cbi-tailscale-status" in t:
-    print("setting.js status skin already applied")
-    raise SystemExit(0)
 
-# --- renderStatus ---
-old_status = None
-candidates = [
-    """function renderStatus(isRunning) {
+# --- 1) renderStatus + renderLogin + status_bar ---
+if "ts-pill" not in t or "cbi-tailscale-status" not in t:
+    old_status = None
+    candidates = [
+        """function renderStatus(isRunning) {
 	const spanTemp = '<em><span style="color:%s"><strong>%s %s</strong></span></em>';
 	let renderHTML;
 	if (isRunning) {
@@ -24,7 +22,7 @@ candidates = [
 
 	return renderHTML;
 }""",
-    """function renderStatus(isRunning) {
+        """function renderStatus(isRunning) {
 	var spanTemp = '<em><span style="color:%s"><strong>%s %s</strong></span></em>';
 	var renderHTML;
 	if (isRunning) {
@@ -35,15 +33,15 @@ candidates = [
 
 	return renderHTML;
 }""",
-]
-for c in candidates:
-    if c in t:
-        old_status = c
-        break
-if not old_status:
-    raise SystemExit("setting.js renderStatus anchor not found")
+    ]
+    for c in candidates:
+        if c in t:
+            old_status = c
+            break
+    if not old_status:
+        raise SystemExit("setting.js renderStatus anchor not found")
 
-new_status = """function renderStatus(isRunning) {
+    new_status = """function renderStatus(isRunning) {
 	if (isRunning) {
 		return '<span class="ts-pill ts-pill-ok"><span class="ts-dot"></span>' +
 			'%s %s'.format(_('Tailscale'), _('RUNNING')) + '</span>';
@@ -51,19 +49,17 @@ new_status = """function renderStatus(isRunning) {
 	return '<span class="ts-pill ts-pill-off"><span class="ts-dot"></span>' +
 		'%s %s'.format(_('Tailscale'), _('NOT RUNNING')) + '</span>';
 }"""
-t = t.replace(old_status, new_status, 1)
+    t = t.replace(old_status, new_status, 1)
 
-# --- renderLogin: replace whole function body variants ---
-# After prior patch, NeedsLogin uses authURL branch + Waiting for auth URL.
-login_re = re.compile(
-    r"function renderLogin\(loginStatus, authURL, displayName\) \{.*?\n\treturn renderHTML;\n\}",
-    re.S,
-)
-m = login_re.search(t)
-if not m:
-    raise SystemExit("setting.js renderLogin function not found")
+    login_re = re.compile(
+        r"function renderLogin\(loginStatus, authURL, displayName\) \{.*?\n\treturn renderHTML;\n\}",
+        re.S,
+    )
+    m = login_re.search(t)
+    if not m:
+        raise SystemExit("setting.js renderLogin function not found")
 
-new_login = """function renderLogin(loginStatus, authURL, displayName) {
+    new_login = """function renderLogin(loginStatus, authURL, displayName) {
 	let renderHTML;
 	if (loginStatus === "NeedsLogin") {
 		if (authURL) {
@@ -81,61 +77,107 @@ new_login = """function renderLogin(loginStatus, authURL, displayName) {
 
 	return renderHTML;
 }"""
-t = t[: m.start()] + new_login + t[m.end() :]
+    t = t[: m.start()] + new_login + t[m.end() :]
 
-# --- status_bar wrap + CSS ---
-bar_re = re.compile(
-    r"return E\('div', \{ class: 'cbi-section', id: 'status_bar' \}, \[\s*"
-    r"E\('p', \{ id: 'service_status' \}, _\('Collecting data \.\.\.'\)\)\s*"
-    r"\]\);",
-    re.M,
-)
-bm = bar_re.search(t)
-if not bm:
-    raise SystemExit("setting.js status_bar anchor not found")
+    bar_re = re.compile(
+        r"return E\('div', \{ class: 'cbi-section', id: 'status_bar' \}, \[\s*"
+        r"E\('p', \{ id: 'service_status' \}, _\('Collecting data \.\.\.'\)\)\s*"
+        r"\]\);",
+        re.M,
+    )
+    bm = bar_re.search(t)
+    if not bm:
+        raise SystemExit("setting.js status_bar anchor not found")
 
-css_lines = [
-"#cbi-tailscale-status, #login_status_div {",
-"	--ts-accent: #5e72e4; --ts-ok: #2dce89; --ts-warn: #fb6340; --ts-border: #e9ecef;",
-"	--ts-muted: #8898aa; --ts-text: #32325d; --ts-card: #fff; --ts-soft: #f7f9fc;",
-"}",
-"#cbi-tailscale-status.cbi-section, #cbi-tailscale-status .cbi-section { padding:0; border:0; background:none; box-shadow:none; margin:0; }",
-'body[theme="dark"] #cbi-tailscale-status, body[theme="dark"] #login_status_div { --ts-border:#3a3a3d; --ts-muted:#9aa2ad; --ts-text:#d7dae0; --ts-card:#232324; --ts-soft:#2b2b2d; }',
-'@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-tailscale-status, body[theme="normal"] #login_status_div { --ts-border:#3a3a3d; --ts-muted:#9aa2ad; --ts-text:#d7dae0; --ts-card:#232324; --ts-soft:#2b2b2d; } }',
-"#cbi-tailscale-status .ts-card { background:var(--ts-card); border:1px solid var(--ts-border); border-radius:12px; box-shadow:0 2px 12px rgba(50,50,93,.06); padding:16px 18px; margin:0 0 16px; }",
-"#cbi-tailscale-status .ts-row { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }",
-"#cbi-tailscale-status .ts-label { font-size:13px; color:var(--ts-muted); }",
-"#cbi-tailscale-status .ts-pill, #login_status_div .ts-pill { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background:var(--ts-soft); font-size:13px; font-weight:600; color:var(--ts-text); font-style:normal; }",
-"#cbi-tailscale-status .ts-dot, #login_status_div .ts-dot { width:10px; height:10px; border-radius:50%; background:var(--ts-muted); box-shadow:0 0 0 4px rgba(136,152,170,.12); }",
-"#cbi-tailscale-status .ts-pill-ok .ts-dot, #login_status_div .ts-pill-ok .ts-dot { background:var(--ts-ok); box-shadow:0 0 0 4px rgba(45,206,137,.12); }",
-"#cbi-tailscale-status .ts-pill-off .ts-dot, #login_status_div .ts-pill-off .ts-dot { background:var(--ts-warn); box-shadow:0 0 0 4px rgba(251,99,64,.12); }",
-"#cbi-tailscale-status .ts-pill-wait .ts-dot, #login_status_div .ts-pill-wait .ts-dot { background:var(--ts-warn); box-shadow:0 0 0 4px rgba(251,99,64,.12); }",
-"#login_status_div .ts-linkbtn { color:var(--ts-warn); font-weight:600; text-decoration:underline; vertical-align:middle; cursor:pointer; }",
-"#login_status_div .ts-link { color:var(--ts-accent); font-weight:600; text-decoration:underline; }",
-"#login_status_div .ts-linkbtn-warn { color:var(--ts-warn); }",
-"#cbi-tailscale-status #service_status, #login_status_div { margin:0; min-height:1.5em; }",
-]
-css_js = " +\n".join("\t\t\t\t\t" + repr(line + "\n") for line in css_lines)
-new_bar = (
-    "return E('div', { id: 'cbi-tailscale-status' }, [\n"
-    "\t\t\t\tE('style', { 'data-ui-skin': 'tailscale-status' }, [ '' +\n"
-    + css_js
-    + " ]),\n"
-    "\t\t\t\tE('div', { class: 'cbi-section', id: 'status_bar' }, [\n"
-    "\t\t\t\t\tE('div', { class: 'ts-card' }, [\n"
-    "\t\t\t\t\t\tE('div', { class: 'ts-row' }, [\n"
-    "\t\t\t\t\t\t\tE('span', { class: 'ts-label' }, _('Service status')),\n"
-    "\t\t\t\t\t\t\tE('p', { id: 'service_status' }, _('Collecting data ...'))\n"
-    "\t\t\t\t\t\t])\n"
-    "\t\t\t\t\t])\n"
-    "\t\t\t\t])\n"
-    "\t\t\t]);"
-)
-t = t[: bm.start()] + new_bar + t[bm.end() :]
+    css_lines = [
+        "#cbi-tailscale-status, #login_status_div {",
+        "	--ts-accent: #5e72e4; --ts-ok: #2dce89; --ts-warn: #fb6340; --ts-border: #e9ecef;",
+        "	--ts-muted: #8898aa; --ts-text: #32325d; --ts-card: #fff; --ts-soft: #f7f9fc;",
+        "}",
+        "#cbi-tailscale-status.cbi-section, #cbi-tailscale-status .cbi-section { padding:0; border:0; background:none; box-shadow:none; margin:0; }",
+        'body[theme="dark"] #cbi-tailscale-status, body[theme="dark"] #login_status_div { --ts-border:#3a3a3d; --ts-muted:#9aa2ad; --ts-text:#d7dae0; --ts-card:#232324; --ts-soft:#2b2b2d; }',
+        '@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-tailscale-status, body[theme="normal"] #login_status_div { --ts-border:#3a3a3d; --ts-muted:#9aa2ad; --ts-text:#d7dae0; --ts-card:#232324; --ts-soft:#2b2b2d; } }',
+        "#cbi-tailscale-status .ts-card { background:var(--ts-card); border:1px solid var(--ts-border); border-radius:12px; box-shadow:0 2px 12px rgba(50,50,93,.06); padding:16px 18px; margin:0 0 16px; }",
+        "#cbi-tailscale-status .ts-row { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }",
+        "#cbi-tailscale-status .ts-label { font-size:13px; color:var(--ts-muted); }",
+        "#cbi-tailscale-status .ts-pill, #login_status_div .ts-pill { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background:var(--ts-soft); font-size:13px; font-weight:600; color:var(--ts-text); font-style:normal; }",
+        "#cbi-tailscale-status .ts-dot, #login_status_div .ts-dot { width:10px; height:10px; border-radius:50%; background:var(--ts-muted); box-shadow:0 0 0 4px rgba(136,152,170,.12); }",
+        "#cbi-tailscale-status .ts-pill-ok .ts-dot, #login_status_div .ts-pill-ok .ts-dot { background:var(--ts-ok); box-shadow:0 0 0 4px rgba(45,206,137,.12); }",
+        "#cbi-tailscale-status .ts-pill-off .ts-dot, #login_status_div .ts-pill-off .ts-dot { background:var(--ts-warn); box-shadow:0 0 0 4px rgba(251,99,64,.12); }",
+        "#cbi-tailscale-status .ts-pill-wait .ts-dot, #login_status_div .ts-pill-wait .ts-dot { background:var(--ts-warn); box-shadow:0 0 0 4px rgba(251,99,64,.12); }",
+        "#login_status_div .ts-linkbtn { color:var(--ts-warn); font-weight:600; text-decoration:underline; vertical-align:middle; cursor:pointer; }",
+        "#login_status_div .ts-link { color:var(--ts-accent); font-weight:600; text-decoration:underline; }",
+        "#login_status_div .ts-linkbtn-warn { color:var(--ts-warn); }",
+        "#cbi-tailscale-status #service_status, #login_status_div { margin:0; min-height:1.5em; }",
+    ]
+    css_js = " +\n".join("\t\t\t\t\t" + repr(line + "\n") for line in css_lines)
+    new_bar = (
+        "return E('div', { id: 'cbi-tailscale-status' }, [\n"
+        "\t\t\t\tE('style', { 'data-ui-skin': 'tailscale-status' }, [ '' +\n"
+        + css_js
+        + " ]),\n"
+        "\t\t\t\tE('div', { class: 'cbi-section', id: 'status_bar' }, [\n"
+        "\t\t\t\t\tE('div', { class: 'ts-card' }, [\n"
+        "\t\t\t\t\t\tE('div', { class: 'ts-row' }, [\n"
+        "\t\t\t\t\t\t\tE('span', { class: 'ts-label' }, _('Service status')),\n"
+        "\t\t\t\t\t\t\tE('p', { id: 'service_status' }, _('Collecting data ...'))\n"
+        "\t\t\t\t\t\t])\n"
+        "\t\t\t\t\t])\n"
+        "\t\t\t\t])\n"
+        "\t\t\t]);"
+    )
+    t = t[: bm.start()] + new_bar + t[bm.end() :]
+else:
+    print("setting.js status/login skin already applied")
 
-# zh_Hans Service status
-po = p.parents[4] / "po" / "zh_Hans" / "tailscale.po" if len(p.parents) > 4 else None
-# setting.js is htdocs/luci-static/resources/view/tailscale/setting.js -> parents[5]=pkg?
+# --- 2) Form sections + tabs + page actions skin (#cbi-tailscale-setting) ---
+if 'data-ui-skin="tailscale-form"' not in t or "#cbi-tailscale-setting" not in t:
+    old_ret = "\t\treturn m.render();\n\t}"
+    if old_ret not in t:
+        raise SystemExit("setting.js return m.render() anchor not found")
+    form_css_lines = [
+        "#cbi-tailscale-setting {",
+        "	--ts-accent: #5e72e4; --ts-ok: #2dce89; --ts-warn: #fb6340; --ts-border: #e9ecef;",
+        "	--ts-muted: #8898aa; --ts-text: #32325d; --ts-card: #fff; --ts-soft: #f7f9fc;",
+        "}",
+        'body[theme="dark"] #cbi-tailscale-setting { --ts-border:#3a3a3d; --ts-muted:#9aa2ad; --ts-text:#d7dae0; --ts-card:#232324; --ts-soft:#2b2b2d; }',
+        '@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-tailscale-setting { --ts-border:#3a3a3d; --ts-muted:#9aa2ad; --ts-text:#d7dae0; --ts-card:#232324; --ts-soft:#2b2b2d; } }',
+        "#cbi-tailscale-setting > h2 { margin:0 0 6px; font-size:18px; font-weight:600; line-height:1.3; color:var(--ts-text); }",
+        "#cbi-tailscale-setting .cbi-map-descr { margin:0 0 16px; font-size:13px; line-height:1.6; color:var(--ts-muted); }",
+        "#cbi-tailscale-setting .cbi-section { background:var(--ts-card); border:1px solid var(--ts-border); border-radius:12px; box-shadow:0 2px 12px rgba(50,50,93,.06); padding:20px 22px; margin:0 0 16px; }",
+        "#cbi-tailscale-setting .cbi-section > h3, #cbi-tailscale-setting .cbi-section-title { margin:0 0 6px; font-size:16px; font-weight:600; color:var(--ts-text); }",
+        "#cbi-tailscale-setting .cbi-section-descr { margin:0 0 12px; font-size:13px; line-height:1.6; color:var(--ts-muted); }",
+        "#cbi-tailscale-setting .cbi-tabmenu { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 14px; padding:6px; border:1px solid var(--ts-border); border-radius:10px; background:var(--ts-soft); list-style:none; }",
+        "#cbi-tailscale-setting .cbi-tabmenu > li { margin:0; border:0; background:none; }",
+        "#cbi-tailscale-setting .cbi-tabmenu > li > a { display:inline-block; padding:6px 14px; border-radius:8px; font-size:13px; font-weight:600; color:var(--ts-muted); text-decoration:none; }",
+        "#cbi-tailscale-setting .cbi-tabmenu > li.cbi-tab > a { background:var(--ts-accent); color:#fff; }",
+        "#cbi-tailscale-setting .cbi-value { padding:10px 0; border-bottom:1px solid var(--ts-border); }",
+        "#cbi-tailscale-setting .cbi-value:last-child { border-bottom:0; padding-bottom:2px; }",
+        "#cbi-tailscale-setting .cbi-value:first-child { padding-top:2px; }",
+        "#cbi-tailscale-setting .cbi-value-title { color:var(--ts-text); font-size:13px; font-weight:600; }",
+        "#cbi-tailscale-setting .cbi-value-description { color:var(--ts-muted); font-size:12px; line-height:1.6; }",
+        "#cbi-tailscale-setting .cbi-value-description code, #cbi-tailscale-setting .cbi-section-descr code { padding:2px 6px; border-radius:6px; background:var(--ts-soft); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; }",
+        "#cbi-tailscale-setting .cbi-page-actions { margin-top:16px; padding:0; border:0; background:none; }",
+        "#cbi-tailscale-setting .cbi-page-actions .cbi-button { min-width:132px; padding:8px 18px; border-radius:8px; font-size:14px; }",
+    ]
+    form_css_js = " +\n".join("\t\t\t\t\t" + repr(line + "\n") for line in form_css_lines)
+    new_ret = (
+        "\t\treturn m.render().then(function(node) {\n"
+        "\t\t\tnode.setAttribute('id', 'cbi-tailscale-setting');\n"
+        "\t\t\tif (!node.querySelector('style[data-ui-skin=\"tailscale-form\"]')) {\n"
+        "\t\t\t\tvar css = '' +\n"
+        + form_css_js
+        + ";\n"
+        "\t\t\t\tnode.insertBefore(E('style', { 'data-ui-skin': 'tailscale-form' }, [ css ]), node.firstChild);\n"
+        "\t\t\t}\n"
+        "\t\t\treturn node;\n"
+        "\t\t});\n"
+        "\t}"
+    )
+    t = t.replace(old_ret, new_ret, 1)
+else:
+    print("setting.js form skin already applied")
+
 po_path = None
 for depth in range(3, 8):
     if depth >= len(p.parents):
@@ -158,6 +200,8 @@ else:
 for must in (
     "ts-pill",
     "cbi-tailscale-status",
+    "#cbi-tailscale-setting",
+    'data-ui-skin="tailscale-form"',
     "service_status",
     "login_status_div",
     "Waiting for auth URL",
@@ -166,9 +210,9 @@ for must in (
     "logout_button",
 ):
     if must not in t:
-        raise SystemExit(f"setting.js status skin missing {must}")
+        raise SystemExit(f"setting.js skin missing {must}")
 if "cbi-button-apply" in t:
     raise SystemExit("setting.js regressed to cbi-button-apply")
 
 p.write_text(t, encoding="utf-8")
-print(f"OK    setting.js status/login skinned ({p})")
+print(f"OK    setting.js status + form skinned ({p})")

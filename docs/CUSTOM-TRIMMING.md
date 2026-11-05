@@ -1414,3 +1414,28 @@ r49（run `41569983777`，提交 `d90544a5ba`）编译成功，6 个发布文件
 后续 AI：用户授权的是**这一处重复 UI 入口**，不要据此移除软件包或服务，也不要清空全局 `linkease_status.htm`。本节是 §四十七「概况页不动」之后用户新授权的一处精确例外，不扩展到概况页其他模块。
 
 本地验证：基于 luci feed 的真实 `luaindex.htm`，执行新补丁并用隔离的 Lua 运行时验证模板枚举：只移除 `admin_status/index/linkease`，其他模板（含 `linkeasefull`）照常加载；重复执行不改文件；上游锚点漂移和文件缺失均失败且不改原文件；feed 源目录回退路径通过。`bash -n`、actionlint、`git diff --check` 通过；seed 与 package/target 源码无 diff。尚未刷机验证，本轮镜像由云端重新构建。
+
+## 五十一、DDNS-Go / 系统与内核日志 / Tailscale 设置表单与接口日志「只换皮」（2026-11-05，无 seed 变更）
+
+用户要求把常用但仍是旧表单/旧文本块的三个入口对齐 [`docs/UI-STYLE.md`](UI-STYLE.md) 令牌：**服务 → DDNS-Go**、**状态 → 系统日志（含内核日志）**、**服务 → Tailscale 下半部设置表单及接口/日志页**。不改任何 UCI 字段、RPC、轮询路径或控件 id。DDNS-Go 状态函数多收一个 `pid` 参数，修掉运行中读不到 `res.pid` 的报错。`config-custom.seed` **无变化**（521）。
+
+### 功能视角（变更后设备看到什么）
+
+| 变更 | 效果 |
+|---|---|
+| 服务 → DDNS-Go（基本设置 / 日志） | 顶部状态条改为圆点药丸 +「打开 Web 界面」按钮，基本设置表单卡片化、行间距与保存按钮尺寸统一；日志页改为卡片 + 顶部「清除日志 / 5 秒刷新」栏 + 等宽圆角日志框。上游 `renderStatus` 在严格模式里读了不在作用域的 `res.pid`，服务在跑时状态轮询抛错、落到「状态检查错误」。补丁把 `pid` 作为第 4 个参数传入，运行中能显示 PID 和打开 Web 界面。UCI 字段、保存和操作台 iframe 不动 |
+| 状态 → 系统日志 / 内核日志 | 外层卡片化，过滤栏收进淡底圆角条，上下滚动按钮与等宽只读日志框对齐令牌；所有过滤控件 id（`invertLogFacilitySearch`、`logFacilitySelect`、`logSeveritySelect`、`logTextFilter`、`syslog` 等）与 `syslog-wrapper` / `dmesg -r` 调用不变 |
+| 服务 → Tailscale（全局设置表单 / 接口信息 / 日志） | 接在 §四十七 顶部状态药丸后面，把下方「基本设置 / 高级设置 / 额外设置」Tab 栏、「自定义服务器设置」分区、底部保存按钮全部收进圆角卡片；「接口信息」表格与「日志」页同步卡片化 |
+| 深色模式 | 全部挂载各自根容器（`#cbi-ddns-go`、`#cbi-ddns-go-log`、`#cbi-syslog`、`#cbi-dmesg`、`#cbi-tailscale-setting`、`#cbi-tailscale-iface`、`#cbi-tailscale-log`），跟随 Argon `body[theme]` + `prefers-color-scheme` 覆盖变量 |
+
+### 文件 / 包明细
+
+| 动作 | 内容 |
+|---|---|
+| 第 ⑪ 条构建例外 | `.github/scripts/patch-ddnsgo-ui.sh` + `.github/scripts/ddnsgo-ui/{apply-config.py,apply-log.py}`（feeds install 后对 `ddnsgo` feed 的 `config.js` / `log.js` / `ddns-go.po` 打补丁） |
+| 第 ⑫ 条构建例外 | `.github/scripts/patch-status-logs-ui.sh` + `.github/scripts/status-logs-ui/{apply-syslog.py,apply-dmesg.py}`（feeds install 后对 `luci-mod-status` 的 `syslog.js` / `dmesg.js` 打补丁） |
+| 扩展第 ② 条例外 | `.github/scripts/tailscale-durable/apply-status-skin.py`（追加 `#cbi-tailscale-setting` 表单/Tab 皮肤）+ 新增 `apply-views-skin.py`（`interface.js` / `log.js` 卡片化），由 `patch-luci-setting.sh` 统一调用 |
+| 构建接入 | `.github/workflows/build-istoreos.yml`、`BUILD-CUSTOM.md` 步骤 3h、`AGENTS.md` 例外清单、[`docs/UI-STYLE.md`](UI-STYLE.md) 指路 |
+| seed | **无变化**（521） |
+
+本地验证：用上游真实源文件（`sirpdboy/luci-app-ddns-go@v6.12.2`、`jjm2473/luci@istoreos-24.10`、`asvow/luci-app-tailscale@534eb3f3`）跑全部补丁脚本，首跑与二次幂等均通过；7 个产出 JS 全部通过 `node --check`；抽出真实 CSS 生成浅色/深色预览页并截图核对排版。

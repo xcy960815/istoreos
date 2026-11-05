@@ -4,7 +4,8 @@
 > 首个落地样例是 OTA 页（`package/diy/luci-app-ota/luasrc/view/admin_system/ota.htm`，
 > 变更记录见 `docs/CUSTOM-TRIMMING.md` §四十五）。同规范续作：`ota_flashing.htm`、健康巡检
 > `actions.htm`、上游 vlmcsd 状态条（构建期补丁）见 §四十六；WoL / 重启 / 备份更新外壳 /
-> OpenList 状态 / Tailscale 登录状态局部换皮见 §四十七。改任何页面前先读本文件和该页的原始模板。
+> OpenList 状态 / Tailscale 登录状态局部换皮见 §四十七；DDNS-Go / 系统与内核日志 /
+> Tailscale 设置表单与接口日志见 §五十一。改任何页面前先读本文件和该页的原始模板。
 
 ## 0. 前提与边界
 

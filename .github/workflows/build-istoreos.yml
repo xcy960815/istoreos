@@ -133,11 +133,13 @@ jobs:
       - name: Patch vlmcsd status strip style
         run: bash .github/scripts/patch-vlmcsd-status.sh
 
-      - name: Patch wol / reboot / flash / openlist UI shells
+      - name: Patch wol / reboot / flash / openlist / ddns-go / status logs UI shells
         run: |
           bash .github/scripts/patch-wol-ui.sh
           bash .github/scripts/patch-luci-mod-system-ui.sh
           bash .github/scripts/patch-openlist-status.sh
+          bash .github/scripts/patch-ddnsgo-ui.sh
+          bash .github/scripts/patch-status-logs-ui.sh
 
       - name: Remove duplicate LinkEase overview entry
         run: bash .github/scripts/patch-overview-linkease-entry.sh
