@@ -345,3 +345,42 @@ GitHub 重跑使用原 `GITHUB_SHA` / `GITHUB_REF`，不会载入修复后的 wo
 - EFI img.gz SHA256：`84560f521e24f45cec65e28791f8b6e2845097e79e7feea08278d809b095a2fe`。
 - ota.meta SHA256：`a27a9772948847e09ad6b474fccf50ce1678da1e9670ae50585d845b4e860fae`。
 - 未重新编译、未修改镜像、未更换版本号；临时 `recover-r49.yml` 完成后删除。原 run `41569983777` 保留失败记录，恢复任务链接写入 Release notes。
+
+## 五十二、r51 构建校验全绿、Publish 403（run 41950616687，2026-11-05）
+
+触发：workflow_dispatch，2026-11-05 09:45:06（北京时间，下同），目标提交 `ca585f8d09`（§二十二 tailscale 活进程 `--cleanup` 修复）。当时分支头就是该提交（commit 09:44:47，dispatch 在 19 秒后）。
+
+结果：Shell 脚本检查 / Python 补丁检查 / 构建固件 / 校验固件 四个 job 全绿；13:25:55 `Publish to GitHub Releases` 步骤失败，日志原文：
+
+```
+TAG=r51
+ASSET=istoreos-x86-64-generic-squashfs-combined-efi.img.gz
+SHA256=c73e6b4fb9983ca60df0fbeebae13b8929f0391abbd8d5bee59a3e9688196b39
+HTTP 403: Resource not accessible by integration (https://api.github.com/repos/xcy960815/istoreos/releases)
+##[error]Process completed with exit code 1.
+```
+
+### 根因：§四十九 机制的实锤
+
+§四十九 已验证过：Release 的 `target_commitish` 与当前分支头在 `.github/workflows/` 下存在差异时，`GITHUB_TOKEN` 无法创建 Release（GitHub Release API 对这种目标要求更高权限，`GITHUB_TOKEN` 拿不到）。job 启动日志里 `Contents: write` 是正常授予的——不是 job 没拿到权限，是「非头目标 + workflow 差异」这一组合被 GitHub 拒绝。
+
+r51 的时间线正好踩中：
+
+| 时间（北京时间） | 事件 |
+|---|---|
+| 11-05 09:44:47 | 提交并推送 `ca585f8d09`（分支头） |
+| 11-05 09:45:06 | dispatch r51（target=`ca585f8d09`＝当时头） |
+| 11-05 11:05:29 | 提交并推送 `f0937c4975`（改 workflow 4 行）→ **分支头前进** |
+| 11-05 13:25:55 | r51 构建完成，建 Release：target=`ca585f8d09` ≠ 头 `f0937c4975` 且 workflow 有差异 → **403** |
+
+对照 r52 的 publish（09:21:17Z 成功）：当时分支头仍是 `f0937c4975`（`4ac305682a` 在 46 秒后才推），擦边避开。说明这个 403 与「构建跑多久」无关，只取决于**建 Release 那一刻** target 是否为头、workflow 是否有差异。
+
+### 处置：不补发
+
+`f0937c4975` 是 `ca585f8d09` 的后代提交，r51 的全部内容已包含在 r52，r52 于同日正常发布（target=`f0937c4975`，run `41959387940`）。§四十九 的草稿补发流程只在「旧产物本身必须发布」时才有意义，这里没有。r51 保留 tag 缺口，与 r44（构建失败）、r45（只有 tag）并列记录于 CUSTOM-TRIMMING.md 文首。
+
+后续 r53（target=`4ac305682a`＝当时头）、r54（target=`9ad6098a43`＝当时头）均正常发布。
+
+### 教训
+
+dispatch 触发的长构建结束前，不要推会改 `.github/workflows/` 的新提交；publish 403 时先核对**分支头是否前进**（§四十九 结尾的提示，本轮验证），而不是先怀疑权限声明。

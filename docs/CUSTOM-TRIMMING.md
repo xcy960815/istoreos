@@ -4,13 +4,17 @@
 > 用于为家里的 J4125 四口 2.5G 软路由（LAN IP `192.168.100.1`）构建裁剪版固件。
 > 用户在 2026-10-05 明确要求删除下列功能，**除非用户再次明确要求，不得在 seed 中加回**。
 
-## 当前进度（2026-11-03，后续 AI 先读这里）
+## 当前进度（2026-11-07，后续 AI 先读这里）
 
-**最新镜像是 r49**（2026-11-03，实际构建提交 `d90544a5ba`，[Releases 已发布](https://github.com/xcy960815/istoreos/releases/tag/r49)；`target=d90544a5ba`）。seed `=y` **521**。已含 Argon 搜索修复、OTA「当前版本未知」修复与 §四十五～§四十七 换皮。r49 原 run 编译成功，但新增通用 gzip 检查误判；修复提交 `6b4518c162` 后复用原始 artifact，由[恢复任务](https://github.com/xcy960815/istoreos/actions/runs/41589452967)完成 SHA256/包清单校验及补发（§四十九），没有重编或修改镜像。**发布不代表刷机验收**，设备状态仍见下文。
+**最新镜像是 r54**（2026-11-07，实际构建提交 `9ad6098a43`，[Releases 已发布](https://github.com/xcy960815/istoreos/releases/tag/r54)，run `42321712975`）。seed `=y` **521**——r50～r54 均无 seed 变更（全是换皮/CI/文档）。r49 那轮「通用 gzip 检查误判」已修复（§四十九），现行规则：**不要用普通 `gzip --test` 拦截 combined.img.gz 尾部的 OpenWrt 元数据**。发布仍不等于逐页自检，设备状态见下文。
+
+**r50～r54 系列**：r50=`61b38dbc1d`（§五十，概况页易有云入口移除）；r52=`f0937c4975`（§五十一 首批：DDNS-Go/系统与内核日志/Tailscale 换皮，含 tailscale 活进程 `--cleanup` 修复）；r53=`4ac305682a`（§五十一 第二批：备份与更新/计划任务/启动项/网络诊断/OpenList/GoWebDav 换皮）；r54=`9ad6098a43`（§五十一 DDNS-Go 标题行/保存栏收尾）。**r51 从未出包**——构建与校验全绿、Publish 403（§五十二），其内容已包含在 r52，无需补发。
+
+**N100 已刷 r54 并验证通过（2026-11-07 用户确认）**——r33 之后累积的界面验证欠账（SSE 流量图 ~1Hz + 横轴时间、Tailscale 授权登录、OTA 中文/下载进度、健康巡检、§四十五～§五十一 各页换皮）就此清账。历史现场验证记录保留：r33（`680cb032d5`）是上一代记录在案验证版（首页磁盘信息有系统根目录、侧栏无 RAID/SMART，整盘写入 N100 机内 **16G 傲腾** `MPEK1J016GAL`）。
 
 **J4125 已确认刷上裁剪版 r46**（2026-11-02 SSH 复核：`DISTRIB_DESCRIPTION='iStoreOS 24.10.8 r46'`，`DISTRIB_REVISION='r0-31a76e4'`，`/bin/ota` 为旧逻辑、`/tmp/firmware.img` 已下载）。此前「未确认」的说法作废。**r46 自检时 OTA 页会显示「当前版本: 未知」**——这是 §四十五 的已知缺陷，修复已随 r47 及以后发布，设备上的 r46 仍需升级才能生效。
 
-**J4125 上的 r46 只做了 SSH 级核对，界面未逐页验证**——r46 刷机后 OTA 页「当前版本」显示未知（§四十五），首页/Argon 菜单搜索等 r38～r46 的界面改动仍待按 §四十/§四十一/§四十三 自检。历史现场验证记录：r33（`680cb032d5`）首页磁盘信息有系统根目录、侧栏无 RAID/SMART，已整盘写入 N100 机内 **16G 傲腾**（`MPEK1J016GAL`）。
+**J4125 上的 r46 只做了 SSH 级核对，界面未逐页验证**——r46 刷机后 OTA 页「当前版本」显示未知（§四十五），该修复已随 r47 及以后发布，设备升级后生效；首页/Argon 菜单搜索等 r38～r46 的界面改动仍待按 §四十/§四十一/§四十三 自检。
 
 **J4125 刷裁剪版：已刷（r46）。** 2026-10-19 18:19 SSH 仍是官方 `24.10.8 2026073111`；2026-11-02 复核已是本 fork 的 r46。配置包在维护机 `~/Documents/j4125-backup-20261018/`，**还原用 `j4125-keep-20261019.tar.gz`**（1019 那份；1018 之后 OpenClash/DHCP 又写过盘）。含端口转发、OpenClash 两份 YAML+custom、DDNS-Go yaml、OpenList 库、Tailscale state、PPPoE、DHCP 静态租约。**不要整包还原**（会把 Docker/Samba/UPnP 加回）。`/mnt/sata1-4` 按用户要求没拷；gowebdav 根目录和系统日志仍指着这块盘，刷完路径会空。明细 §三十六。
 
@@ -18,7 +22,7 @@
 
 首页磁盘卡片要 `smartd` 包（含 `/etc/smartd.conf`）+ `smartctl` + `mdadm`；侧栏 RAID/SMART 仍从 controller 删除。r28 有菜单+磁盘信息；r29 拆工具后 loading；r31 空白（Raid.List 空数组提前结束转圈）；r32 等到 Disk.Status 仍转圈（无 smartd 包）。**尚未证明必须跑 smartd 后台进程**，不要为了「无盘」再拆这个包。明细 §二十三、§三十一～§三十五。
 
-**两套状态不要混：** Releases 有 r22 / r28～r33 / r36～r43 / **r46～r49**；**r23～r27、r34、r35 从未出包，r44 构建失败，r45 只有 tag**。N100 双口 Intel I225-V（`kmod-igc`），第一口 WAN、第二口 LAN `192.168.100.1`。r17 是 Argon 概览（没有 QuickStart 首页）；**r49 是最新**，r33 是最后一次记录在案的 N100 界面验证版。
+**两套状态不要混：** Releases 有 r22 / r28～r33 / r36～r43 / **r46～r54**；**r23～r27、r34、r35 从未出包，r44 构建失败，r45 只有 tag，r51 发布失败（构建成功，§五十二）**。N100 双口 Intel I225-V（`kmod-igc`），第一口 WAN、第二口 LAN `192.168.100.1`。r17 是 Argon 概览（没有 QuickStart 首页）；**r54 是最新，N100 最新记录在案验证版是 r54（2026-11-07）**。
 
 > 以下按时间顺序追加，是变更日志；条目里的「未提交 / 未构建 / 构建中」是**当时**的动作状态，当前结论以本节开头三段和下方汇总表为准。
 
@@ -54,16 +58,16 @@
 
 | 事实 | 细节 |
 |---|---|
-| 最新固件 | **r43**（2026-10-30，commit `8940a8b6fd`，seed `=y` 521），[Release](https://github.com/xcy960815/istoreos/releases/tag/r43) / [run 41031394295](https://github.com/xcy960815/istoreos/actions/runs/41031394295)。刷 **EFI img**：解压 `*squashfs-combined-efi.img.gz` 后整盘 dd。r34/r35 未出包 |
-| r43 里面有什么 | QuickStart 首页（WebDAV、家长控制、磁盘信息、SSE ~1Hz 流量图）、Argon、Tailscale **1.104.1** + LuCI（**服务**菜单）、DDNS-Go、OpenList、**系统 → OTA（仅本仓库 Releases）**、**服务 → 健康巡检（Telegram）**、istoreos-bak、iStore、网络唤醒、ttyd、vlmcsd、irqbalance。**没有** Docker/Samba/UPnP/ddnsto/下载器/WireGuard/Bootstrap；侧栏无 RAID/SMART/挂载点/文件传输。默认 `root` / 空密码 |
-| 验证到哪 | **记录在案的现场验证仍是 r33**（N100 闪迪 USB + 机内 16G 傲腾）。r38～r43 的 SSE/授权登录/OTA 中文进度尚未写验证结论；先 N100 试刷 |
+| 最新固件 | **r54**（2026-11-07，commit `9ad6098a43`，seed `=y` 521），[Release](https://github.com/xcy960815/istoreos/releases/tag/r54) / [run 42321712975](https://github.com/xcy960815/istoreos/actions/runs/42321712975)。刷 **EFI img**：解压 `*squashfs-combined-efi.img.gz` 后整盘 dd。r34/r35 未出包 |
+| r54 里面有什么 | QuickStart 首页（WebDAV、家长控制、磁盘信息、SSE ~1Hz 流量图）、Argon（含菜单搜索修复）、Tailscale **1.104.1** + LuCI（**服务**菜单，登录状态/设置表单/接口/日志已换皮）、DDNS-Go（状态条修复 + 标题行换皮）、OpenList（状态/表单/日志已换皮）、GoWebDav 状态条已换皮、**系统 → OTA（仅本仓库 Releases，中文界面 + 下载进度）**、**服务 → 健康巡检（Telegram）**、istoreos-bak、iStore、网络唤醒、ttyd、vlmcsd（状态条已换皮）、irqbalance；重启/备份与更新/计划任务/启动项/系统与内核日志/网络诊断页已换皮。**没有** Docker/Samba/UPnP/ddnsto/下载器/WireGuard/Bootstrap；侧栏无 RAID/SMART/挂载点/文件传输。默认 `root` / 空密码 |
+| 验证到哪 | **N100 已刷 r54，界面验证通过（2026-11-07 用户确认）**；r33（N100 闪迪 USB + 机内 16G 傲腾）为上一代记录在案验证。J4125 的 r46 只做过 SSH 级核对，界面未逐页验证 |
 | 已写到哪 | 64G SanDisk 当 N100 系统盘（整盘 dd）。Finder「无法读取磁盘」正常，**不要初始化**。macOS 要用终端.app 完全磁盘访问后 `sudo dd`，Cursor `osascript` 会被 TCC 拦 |
-| **禁止** | **不要刷正在用的 J4125**（和 N100 都是 `192.168.100.1`）。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100。**不要**用 ISO 当安装盘/整盘 dd 到 Ventoy |
+| **禁止** | **J4125 是生产机**（跑 r46，和 N100 都是 `192.168.100.1`），不要拿它做刷机试验；升级走 OTA 且由用户决定。N100 的 LAN **不要**插家里交换机。**不要**用双公头 USB 线连 Mac↔N100。**不要**用 ISO 当安装盘/整盘 dd 到 Ventoy |
 | N100 | 双网口、无显示器、机内 16G 傲腾。BIOS：U 盘优先、Secure Boot 关。Mac 无内置网口：网线接 N100 **第二口**，`192.168.100.2/24`、**网关留空**。家里关 Wi‑Fi；公司 USB 网卡必须排在 Wi‑Fi 下面，否则 `192.168.100.1` 会被公司网抢走 |
 | 官方截图 | 家里 **J4125** 上的官方整包 QuickStart（Samba/易有云/固件更新卡片），不是本 fork；`custom-24.10` 跟踪的是 `istoreos-24.10` |
-| 构建状态（2026-10-31） | 最新构建提交 `8940a8b6fd`（r43），其后只有文档与 CI 加固提交（未推）；seed 521；CI 手动触发，r43 全绿并自动发 Release。r36 首次 Publish 静默失败，r37 起修复；r36 资产后来手动补传（§三十七补）。审计无新增未生效行，已知丢失项见 §十四 |
+| 构建状态（2026-11-07） | 最新构建提交 `9ad6098a43`（r54）；seed 521 自 §三十九 后未变；CI 手动触发、五阶段（§四十八），r54 全绿并自动发 Release（含 seed 审计）。r36 首次 Publish 静默失败，r37 起修复（§三十七补）；r45 / r51 Publish 403 见 §四十四 / §五十二；已知丢失项见 §十四 |
 | 本机编 | Mac 是 M1 Max，编不了这份 x86 树。9400F 还没装 Ubuntu |
-| 还没做 | N100 刷 r43 验证：SSE 流量图 ~1Hz + 横轴时间、Tailscale「授权登录」可点、OTA 中文/进度条、健康巡检退出 0；D 档剩余项（§十六）等证据；**J4125 仍禁止刷** |
+| 还没做 | D 档剩余项（§十六）：在 N100 上取证（`opkg whatdepends ruby git taskd perl lm-sensors-detect`、`df -T /mnt/sata1-4`）后再动 seed；J4125 界面逐页自检与是否升级 r54 由用户决定 |
 
 后续 AI：**不要**把 QuickStart 写成「r17 已有首页」（r17 没有；r22 起有初版、r28～r43 逐步完善，r38 起流量图走 SSE）；**不要**把 Tailscale 写回 VPN 菜单（r36 起在 **服务**）；**不要**把 OTA 写成「已删除」（§三十七 已恢复，只拉本仓库 Releases）；**不要**只删 seed 里的 bootstrap 就以为主题没了；**不要**再拿 r10/r17 试刷；**不要**把双公头线当刷机方案。
 
@@ -1443,3 +1447,11 @@ r49（run `41569983777`，提交 `d90544a5ba`）编译成功，6 个发布文件
 | seed | **无变化**（521） |
 
 本地验证：用上游真实源文件（`sirpdboy/luci-app-ddns-go@v6.12.2`、`jjm2473/luci@istoreos-24.10`、`asvow/luci-app-tailscale@534eb3f3`）跑全部补丁脚本，首跑与二次幂等均通过；7 个产出 JS 全部通过 `node --check`；抽出真实 CSS 生成浅色/深色预览页并截图核对排版。2026-11-06 标题行合并的改动同样用 v6.12.2 的 `config.js` 复跑：`node --check` 通过、二次运行走 SKIP，预览页量得标题左缘与说明右缘分别贴合卡片内容区左右边，窄屏（420px）折行后说明仍右对齐。动作栏收进卡片这一版用「真机 Argon CSS + 补丁产出的 `then` 主体」搭了个 harness：模拟 LuCI 在 render 之后追加 `.cbi-page-actions`，量得按钮右缘＝卡片内容区右缘；再模拟 `renderContents()` 清空 map，200ms 后样式表、标题行、动作栏全部回位，按钮数量不变。
+
+## 五十二、r51 发布 403：长构建期间分支头前进且 workflow 有差异（2026-11-05，无 seed 变更）
+
+run [`41950616687`](https://github.com/xcy960815/istoreos/actions/runs/41950616687)（提交 `ca585f8d09`，§二十二 tailscale 修复，workflow_dispatch）**构建与校验全绿，Publish 建 Release 时报 `HTTP 403: Resource not accessible by integration`**，r51 从未出包。原始复盘见 [`CI-HISTORY.md`](CI-HISTORY.md) §五十二。
+
+机制与 §四十九 同一条 GitHub 规则：Release 的 `target_commitish` 与当前分支头在 `.github/workflows/` 下有差异时，`GITHUB_TOKEN` 拿不到所需写权限。时间线：09:45:06 dispatch（当时头是 `ca585f8d09`）→ 构建 3.5 小时期间 11:05 推了 `f0937c4975`（改 workflow 4 行）成新头 → 13:25 建 Release 时 target≠头且 workflow 有差异 → 403。§四十九 早已把「长构建期间默认分支的 workflow 是否前进」列为必须核对的变量，本轮是它的实锤。
+
+处置：**不补发**——`ca585f8d09` 的内容已包含在 r52（`f0937c4975` 为其后代提交）并正常发布；§四十九 的草稿补发流程只在旧产物本身必须发布时才有意义。操作纪律：**dispatch 触发的长构建结束前，不要推改 `.github/workflows/` 的新提交**；publish 403 时先核对分支头是否前进，而不是先怀疑权限声明。
