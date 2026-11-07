@@ -1423,7 +1423,7 @@ r49（run `41569983777`，提交 `d90544a5ba`）编译成功，6 个发布文件
 
 | 变更 | 效果 |
 |---|---|
-| 服务 → DDNS-Go（基本设置 / 日志） | 顶部状态条改为圆点药丸 +「打开 Web 界面」按钮，基本设置表单卡片化、行间距与保存按钮尺寸统一；日志页改为卡片 + 顶部「清除日志 / 5 秒刷新」栏 + 等宽圆角日志框。上游 `renderStatus` 在严格模式里读了不在作用域的 `res.pid`，服务在跑时状态轮询抛错、落到「状态检查错误」。补丁把 `pid` 作为第 4 个参数传入，运行中能显示 PID 和打开 Web 界面。UCI 字段、保存和操作台 iframe 不动 |
+| 服务 → DDNS-Go（基本设置 / 日志） | 顶部状态条改为圆点药丸 +「打开 Web 界面」按钮，基本设置表单卡片化、行间距与保存按钮尺寸统一；日志页改为卡片 + 顶部「清除日志 / 5 秒刷新」栏 + 等宽圆角日志框。上游 `renderStatus` 在严格模式里读了不在作用域的 `res.pid`，服务在跑时状态轮询抛错、落到「状态检查错误」。补丁把 `pid` 作为第 4 个参数传入，运行中能显示 PID 和打开 Web 界面。UCI 字段、保存和操作台 iframe 不动。**2026-11-06 追加**：按用户要求把页面说明（`cbi-map-descr`，「DDNS-GO 自动获得你的公网 IPv4/IPv6 地址…」）从标题下方挪到标题右侧同一行最右端——补丁在 `m.render()` 之后把 `h2` 与 `.cbi-map-descr` 包进 `.ddnsgo-head` 弹性行（标题左、说明右对齐基线，窄屏自动折行且折行后仍靠右）；同时把 LuCI 默认挂在 `#view` 下的动作栏（`.cbi-page-actions`，「保存并应用 / 保存 / 重置」）收进最后一张卡片内、`flex-end` 靠右下角。动作栏由 `view.addFooter()` 在 `render()` 之后才追加，补丁用 20ms×100 的短轮询抓它，再挂 `MutationObserver` 盯 map：点「重置」时 LuCI 会 `renderContents()` 清空 map 子节点，靠它把样式表、标题行和动作栏重新挂回（这也顺带修好了以前「重置后皮肤消失」的问题）。只动 DOM 包裹/样式，文案、i18n、保存逻辑与按钮 id 不变 |
 | 状态 → 系统日志 / 内核日志 | 外层卡片化，过滤栏收进淡底圆角条，上下滚动按钮与等宽只读日志框对齐令牌；所有过滤控件 id（`invertLogFacilitySearch`、`logFacilitySelect`、`logSeveritySelect`、`logTextFilter`、`syslog` 等）与 `syslog-wrapper` / `dmesg -r` 调用不变 |
 | 服务 → Tailscale（全局设置表单 / 接口信息 / 日志） | 接在 §四十七 顶部状态药丸后面，把下方「基本设置 / 高级设置 / 额外设置」Tab 栏、「自定义服务器设置」分区、底部保存按钮全部收进圆角卡片；「接口信息」表格与「日志」页同步卡片化 |
 | 系统 → 备份与更新（`flash.js`） | 解决原本外层 `data-tab="actions"` 与内层 `CBI.ContainerValue` 子 `.cbi-section` 叠加造成的“卡中卡”双层边框/阴影问题：外层透明化并隐藏重复标题，「备份 / 恢复 / 保存 mtdblock / 刷写新的固件映像」各自独立成卡；顶部「动作 / 配置」切换栏改为圆角胶囊栏，内部操作行左标题右按钮对齐，「配置」Tab 的 `/etc/sysupgrade.conf` 文本框改为等宽柔和底色圆角框；所有上传/校验/刷写/备份恢复逻辑与 `data-name` 不变 |
@@ -1442,4 +1442,4 @@ r49（run `41569983777`，提交 `d90544a5ba`）编译成功，6 个发布文件
 | 构建接入 | `.github/workflows/build-istoreos.yml`、`BUILD-CUSTOM.md` 步骤 3h、`AGENTS.md` 例外清单、[`docs/UI-STYLE.md`](UI-STYLE.md) 指路 |
 | seed | **无变化**（521） |
 
-本地验证：用上游真实源文件（`sirpdboy/luci-app-ddns-go@v6.12.2`、`jjm2473/luci@istoreos-24.10`、`asvow/luci-app-tailscale@534eb3f3`）跑全部补丁脚本，首跑与二次幂等均通过；7 个产出 JS 全部通过 `node --check`；抽出真实 CSS 生成浅色/深色预览页并截图核对排版。
+本地验证：用上游真实源文件（`sirpdboy/luci-app-ddns-go@v6.12.2`、`jjm2473/luci@istoreos-24.10`、`asvow/luci-app-tailscale@534eb3f3`）跑全部补丁脚本，首跑与二次幂等均通过；7 个产出 JS 全部通过 `node --check`；抽出真实 CSS 生成浅色/深色预览页并截图核对排版。2026-11-06 标题行合并的改动同样用 v6.12.2 的 `config.js` 复跑：`node --check` 通过、二次运行走 SKIP，预览页量得标题左缘与说明右缘分别贴合卡片内容区左右边，窄屏（420px）折行后说明仍右对齐。动作栏收进卡片这一版用「真机 Argon CSS + 补丁产出的 `then` 主体」搭了个 harness：模拟 LuCI 在 render 之后追加 `.cbi-page-actions`，量得按钮右缘＝卡片内容区右缘；再模拟 `renderContents()` 清空 map，200ms 后样式表、标题行、动作栏全部回位，按钮数量不变。

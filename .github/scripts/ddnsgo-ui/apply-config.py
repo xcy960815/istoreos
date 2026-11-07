@@ -111,6 +111,9 @@ css_lines = [
     '@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-ddns-go { --dg-border:#3a3a3d; --dg-muted:#9aa2ad; --dg-text:#d7dae0; --dg-card:#232324; --dg-soft:#2b2b2d; } }',
     "#cbi-ddns-go > h2 { margin:0 0 6px; font-size:18px; font-weight:600; line-height:1.3; color:var(--dg-text); }",
     "#cbi-ddns-go .cbi-map-descr { margin:0 0 16px; font-size:13px; line-height:1.6; color:var(--dg-muted); }",
+    "#cbi-ddns-go .ddnsgo-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px 16px; flex-wrap:wrap; margin:0 0 16px; }",
+    "#cbi-ddns-go .ddnsgo-head > h2 { margin:0; font-size:18px; font-weight:600; line-height:1.3; color:var(--dg-text); }",
+    "#cbi-ddns-go .ddnsgo-head > .cbi-map-descr { margin:0 0 0 auto; font-size:13px; line-height:1.6; color:var(--dg-muted); text-align:right; }",
     "#cbi-ddns-go .ddnsgo-card, #cbi-ddns-go .cbi-section-node { background:var(--dg-card); border:1px solid var(--dg-border); border-radius:12px; box-shadow:0 2px 12px rgba(50,50,93,.06); padding:20px 22px; }",
     "#cbi-ddns-go .ddnsgo-status-card { padding:16px 18px; }",
     "#cbi-ddns-go .ddnsgo-row { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }",
@@ -130,19 +133,90 @@ css_lines = [
     "#cbi-ddns-go .cbi-value:first-child { padding-top:2px; }",
     "#cbi-ddns-go .cbi-value-title { color:var(--dg-text); font-size:13px; font-weight:600; }",
     "#cbi-ddns-go .cbi-value-description { color:var(--dg-muted); font-size:12px; line-height:1.6; }",
-    "#cbi-ddns-go .cbi-page-actions { margin-top:16px; padding:0; border:0; background:none; }",
-    "#cbi-ddns-go .cbi-page-actions .cbi-button { min-width:132px; padding:8px 18px; border-radius:8px; font-size:14px; }",
+    "#cbi-ddns-go .cbi-page-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin:16px 0 0; padding:0; border:0; background:none; }",
+    "#cbi-ddns-go .cbi-page-actions .cbi-button, #cbi-ddns-go .cbi-page-actions .cbi-dropdown.cbi-button { min-width:132px; padding:8px 18px; border-radius:8px; font-size:14px; font-weight:600; }",
+    "#view > .cbi-page-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:16px; }",
 ]
 css_js = " +\n".join("\t\t\t\t\t" + repr(line + "\n") for line in css_lines)
 new_ret = (
     "\t\treturn m.render().then(function(node) {\n"
     "\t\t\tnode.setAttribute('id', 'cbi-ddns-go');\n"
-    "\t\t\tif (!node.querySelector('style[data-ui-skin=\"ddnsgo-config\"]')) {\n"
-    "\t\t\t\tvar css = '' +\n"
+    "\n"
+    "\t\t\tvar css = '' +\n"
     + css_js
     + ";\n"
-    "\t\t\t\tnode.insertBefore(E('style', { 'data-ui-skin': 'ddnsgo-config' }, [ css ]), node.firstChild);\n"
+    "\n"
+    "\t\t\tvar lastCard = function() {\n"
+    "\t\t\t\tvar cards = node.querySelectorAll('.cbi-section-node');\n"
+    "\t\t\t\treturn cards.length ? cards[cards.length - 1] : node;\n"
+    "\t\t\t};\n"
+    "\n"
+    "\t\t\t/* 皮肤：标题与页面说明并排（说明靠右），样式表挂到 map 上（§五十一） */\n"
+    "\t\t\tvar skin = function() {\n"
+    "\t\t\t\tvar h2 = null, descr = null, kids = node.children, i;\n"
+    "\t\t\t\tfor (i = 0; i < kids.length; i++) {\n"
+    "\t\t\t\t\tif (!h2 && kids[i].tagName === 'H2')\n"
+    "\t\t\t\t\t\th2 = kids[i];\n"
+    "\t\t\t\t\telse if (!descr && kids[i].classList && kids[i].classList.contains('cbi-map-descr'))\n"
+    "\t\t\t\t\t\tdescr = kids[i];\n"
+    "\t\t\t\t}\n"
+    "\t\t\t\tif (h2 && descr && !node.querySelector('.ddnsgo-head')) {\n"
+    "\t\t\t\t\tvar head = document.createElement('div');\n"
+    "\t\t\t\t\thead.className = 'ddnsgo-head';\n"
+    "\t\t\t\t\tnode.insertBefore(head, h2);\n"
+    "\t\t\t\t\thead.appendChild(h2);\n"
+    "\t\t\t\t\thead.appendChild(descr);\n"
+    "\t\t\t\t}\n"
+    "\t\t\t\tif (!node.querySelector('style[data-ui-skin=\"ddnsgo-config\"]'))\n"
+    "\t\t\t\t\tnode.insertBefore(E('style', { 'data-ui-skin': 'ddnsgo-config' }, [ css ]), node.firstChild);\n"
+    "\t\t\t};\n"
+    "\n"
+    "\t\t\t/* 「保存并应用」由 LuCI 挂在 #view 下，这里收进最后一张卡片、靠右下 */\n"
+    "\t\t\tvar actions = null;\n"
+    "\t\t\tvar adopt = function() {\n"
+    "\t\t\t\tif (!node.parentNode) return false;\n"
+    "\t\t\t\tvar vp = document.getElementById('view'), sibs, j;\n"
+    "\t\t\t\tif (!vp) return false;\n"
+    "\t\t\t\tif (!actions) {\n"
+    "\t\t\t\t\tsibs = vp.children;\n"
+    "\t\t\t\t\tfor (j = 0; j < sibs.length; j++) {\n"
+    "\t\t\t\t\t\tif (sibs[j] !== node && sibs[j].classList && sibs[j].classList.contains('cbi-page-actions')) {\n"
+    "\t\t\t\t\t\t\tactions = sibs[j];\n"
+    "\t\t\t\t\t\t\tactions.classList.add('ddnsgo-actions');\n"
+    "\t\t\t\t\t\t\tbreak;\n"
+    "\t\t\t\t\t\t}\n"
+    "\t\t\t\t\t}\n"
+    "\t\t\t\t}\n"
+    "\t\t\t\tif (!actions) return false;\n"
+    "\t\t\t\tvar target = lastCard();\n"
+    "\t\t\t\tif (actions.parentNode !== target) target.appendChild(actions);\n"
+    "\t\t\t\treturn true;\n"
+    "\t\t\t};\n"
+    "\n"
+    "\t\t\tvar sync = function() { skin(); adopt(); };\n"
+    "\t\t\tsync();\n"
+    "\n"
+    "\t\t\t/* 动作栏由 LuCI 在 render() 之后追加，晚一两帧才有 */\n"
+    "\t\t\tvar iv = null, n = 0;\n"
+    "\t\t\tvar waitFooter = function() {\n"
+    "\t\t\t\tif (iv || actions) return;\n"
+    "\t\t\t\tn = 0;\n"
+    "\t\t\t\tiv = window.setInterval(function() {\n"
+    "\t\t\t\t\tif (adopt() || ++n > 100) { window.clearInterval(iv); iv = null; }\n"
+    "\t\t\t\t}, 20);\n"
+    "\t\t\t};\n"
+    "\t\t\twaitFooter();\n"
+    "\n"
+    "\t\t\t/* 「重置」会让 LuCI 清空 map 子节点（renderContents），重挂皮肤与动作栏 */\n"
+    "\t\t\tif (window.MutationObserver) {\n"
+    "\t\t\t\tvar mo = new MutationObserver(function() {\n"
+    "\t\t\t\t\tif (!node.isConnected) { mo.disconnect(); return; }\n"
+    "\t\t\t\t\tsync();\n"
+    "\t\t\t\t\twaitFooter();\n"
+    "\t\t\t\t});\n"
+    "\t\t\t\tmo.observe(node, { childList: true });\n"
     "\t\t\t}\n"
+    "\n"
     "\t\t\treturn node;\n"
     "\t\t});\n"
     "\t}"
@@ -172,6 +246,8 @@ for must in (
     "#cbi-ddns-go",
     'data-ui-skin="ddnsgo-config"',
     "ddnsgo-pill",
+    "ddnsgo-head",
+    "ddnsgo-actions",
     "control_status",
     "status_bar",
     "checkProcess",
