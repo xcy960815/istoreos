@@ -36,6 +36,9 @@ else:
         '@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-tailscale-iface { --tsi-border:#3a3a3d; --tsi-muted:#9aa2ad; --tsi-text:#d7dae0; --tsi-card:#232324; --tsi-soft:#2b2b2d; } }',
         "#cbi-tailscale-iface > h2 { margin:0 0 6px; font-size:18px; font-weight:600; line-height:1.3; color:var(--tsi-text); }",
         "#cbi-tailscale-iface .cbi-map-descr { margin:0 0 16px; font-size:13px; line-height:1.6; color:var(--tsi-muted); }",
+        "#cbi-tailscale-iface .ts-iface-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px 16px; flex-wrap:wrap; margin:0 0 16px; padding:16px 22px; background:var(--tsi-card); border:1px solid var(--tsi-border); border-radius:12px; box-shadow:0 2px 12px rgba(50,50,93,.06); }",
+        "#cbi-tailscale-iface .ts-iface-head > h2 { margin:0; font-size:18px; font-weight:600; line-height:1.3; color:var(--tsi-text); }",
+        "#cbi-tailscale-iface .ts-iface-head > .cbi-map-descr { margin:0 0 0 auto; font-size:13px; line-height:1.6; color:var(--tsi-muted); text-align:right; }",
         "#cbi-tailscale-iface .ts-iface-card { background:var(--tsi-card); border:1px solid var(--tsi-border); border-radius:12px; box-shadow:0 2px 12px rgba(50,50,93,.06); padding:20px 22px; margin:0 0 16px; font-size:13px; color:var(--tsi-muted); }",
         "#cbi-tailscale-iface .table { width:100%; border-collapse:collapse; }",
         "#cbi-tailscale-iface .th { padding:0 0 12px; border-bottom:1px solid var(--tsi-border); font-size:16px; font-weight:600; color:var(--tsi-text); text-align:left; }",
@@ -53,8 +56,10 @@ else:
         "\t\tconst container = E('div', { class: 'ts-iface-card' });\n"
         "\t\tconst content = E('div', { id: 'cbi-tailscale-iface', class: 'cbi-map' }, [\n"
         "\t\t\tE('style', { 'data-ui-skin': 'tailscale-iface' }, [ css ]),\n"
-        "\t\t\tE('h2', { class: 'content' }, _('Tailscale')),\n"
-        "\t\t\tE('div', { class: 'cbi-map-descr' }, _('Tailscale is a cross-platform and easy to use virtual LAN.')),\n"
+        "\t\t\tE('div', { class: 'ts-iface-head' }, [\n"
+        "\t\t\t\tE('h2', { class: 'content' }, _('Tailscale')),\n"
+        "\t\t\t\tE('div', { class: 'cbi-map-descr' }, _('Tailscale is a cross-platform and easy to use virtual LAN.'))\n"
+        "\t\t\t]),\n"
         "\t\t\tcontainer\n"
         "\t\t]);\n\n"
         "\t\tdom.content(container, this.renderContent(data));\n"
@@ -63,7 +68,7 @@ else:
         "\t},"
     )
     t = t.replace(old_iface, new_iface, 1)
-    for must in ("#cbi-tailscale-iface", "'data-ui-skin': 'tailscale-iface'", "renderContent", "pollData", "Network Interface Information"):
+    for must in ("#cbi-tailscale-iface", "'data-ui-skin': 'tailscale-iface'", "ts-iface-head", "renderContent", "pollData", "Network Interface Information"):
         if must not in t:
             raise SystemExit(f"tailscale interface.js missing {must}")
     iface_path.write_text(t, encoding="utf-8")

@@ -1448,6 +1448,20 @@ r49（run `41569983777`，提交 `d90544a5ba`）编译成功，6 个发布文件
 
 本地验证：用上游真实源文件（`sirpdboy/luci-app-ddns-go@v6.12.2`、`jjm2473/luci@istoreos-24.10`、`asvow/luci-app-tailscale@534eb3f3`）跑全部补丁脚本，首跑与二次幂等均通过；7 个产出 JS 全部通过 `node --check`；抽出真实 CSS 生成浅色/深色预览页并截图核对排版。2026-11-06 标题行合并的改动同样用 v6.12.2 的 `config.js` 复跑：`node --check` 通过、二次运行走 SKIP，预览页量得标题左缘与说明右缘分别贴合卡片内容区左右边，窄屏（420px）折行后说明仍右对齐。动作栏收进卡片这一版用「真机 Argon CSS + 补丁产出的 `then` 主体」搭了个 harness：模拟 LuCI 在 render 之后追加 `.cbi-page-actions`，量得按钮右缘＝卡片内容区右缘；再模拟 `renderContents()` 清空 map，200ms 后样式表、标题行、动作栏全部回位，按钮数量不变。
 
+**2026-11-08 追加（标题/说明灰条收白，无 seed 变更）**：用户截图指出 DDNS-Go 标题行右侧说明仍落在 Argon 页灰底上，要求与下方白卡同色；并确认先收齐已换皮服务页，不动易有云/ttyd/vlmcsd 整页表单。做法对齐既有 `.ddnsgo-head`：给标题行本身刷上 `--*-card` 白底 + 边框/圆角/阴影（`padding:16px 22px`），其余页缺 head 包裹的补上同款并排结构（标题左、说明右）。
+
+| 页 | 改动 |
+|---|---|
+| DDNS-Go 基本设置 | `.ddnsgo-head` 增加 `background:var(--dg-card)` 与卡片边框/圆角/阴影（DOM 包裹逻辑不变） |
+| Tailscale 全局设置 | 新增 `.ts-head` 白底标题行；`m.render().then` 里把 `h2`+`.cbi-map-descr` 包进 head（与 DDNS-Go 同套路） |
+| Tailscale 接口信息 | 新增 `.ts-iface-head`；`apply-views-skin.py` 的 `E()` 树直接产出 head 包裹 |
+| OpenList 设置 | 新增 `.openlist-head` 白底标题行 + 同款 wrap |
+| 网络唤醒 | 新增 `.wol-head` 白底标题行 + 同款 wrap |
+| GoWebDav | `gowebdav_status.htm` 增加 `.gowebdav-head` 样式，并在页尾用短脚本把 map 上的 `h2`+说明包进 head（商店装回/uci-defaults 投递路径不变） |
+
+只动构建期补丁与 GoWebDav 投递模板；UCI / RPC / 控件 id / seed 全不动。本地无 feeds 树时用补丁脚本 `ast.parse` + 抽出 CSS/`skin` 片段 `node --check` 自检；真机效果等下一轮出包或本机 feeds 复跑补丁后再看。
+
+
 ## 五十二、r51 发布 403：长构建期间分支头前进且 workflow 有差异（2026-11-05，无 seed 变更）
 
 run [`41950616687`](https://github.com/xcy960815/istoreos/actions/runs/41950616687)（提交 `ca585f8d09`，§二十二 tailscale 修复，workflow_dispatch）**构建与校验全绿，Publish 建 Release 时报 `HTTP 403: Resource not accessible by integration`**，r51 从未出包。原始复盘见 [`CI-HISTORY.md`](CI-HISTORY.md) §五十二。

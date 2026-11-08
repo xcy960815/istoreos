@@ -40,6 +40,17 @@ css_lines = [
 "#cbi-wol .cbi-map-descr {",
 "	margin: 0 0 16px; font-size: 13px; line-height: 1.6; color: var(--wol-muted);",
 "}",
+"#cbi-wol .wol-head {",
+"	display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap;",
+"	margin: 0 0 16px; padding: 16px 22px; background: var(--wol-card); border: 1px solid var(--wol-border);",
+"	border-radius: 12px; box-shadow: 0 2px 12px rgba(50, 50, 93, .06);",
+"}",
+"#cbi-wol .wol-head > h2 {",
+"	margin: 0; font-size: 18px; font-weight: 600; line-height: 1.3; color: var(--wol-text);",
+"}",
+"#cbi-wol .wol-head > .cbi-map-descr {",
+"	margin: 0 0 0 auto; font-size: 13px; line-height: 1.6; color: var(--wol-muted); text-align: right;",
+"}",
 "#cbi-wol .cbi-section-node {",
 "	background: var(--wol-card); border: 1px solid var(--wol-border); border-radius: 12px;",
 "	box-shadow: 0 2px 12px rgba(50, 50, 93, .06); padding: 16px 18px;",
@@ -55,11 +66,27 @@ css_js = " +\n".join("\t\t\t\t\t" + repr(line + "\n") for line in css_lines)
 new = (
     "\t\treturn m.render().then(function(node) {\n"
     "\t\t\tnode.setAttribute('id', 'cbi-wol');\n"
-    "\t\t\tif (!node.querySelector('style[data-ui-skin=\"wol\"]')) {\n"
-    "\t\t\t\tvar css = '' +\n"
+    "\t\t\tvar css = '' +\n"
     + css_js + ";\n"
-    "\t\t\t\tnode.insertBefore(E('style', { 'data-ui-skin': 'wol' }, [ css ]), node.firstChild);\n"
-    "\t\t\t}\n"
+    "\t\t\tvar skin = function() {\n"
+    "\t\t\t\tvar h2 = null, descr = null, kids = node.children, i;\n"
+    "\t\t\t\tfor (i = 0; i < kids.length; i++) {\n"
+    "\t\t\t\t\tif (!h2 && kids[i].tagName === 'H2')\n"
+    "\t\t\t\t\t\th2 = kids[i];\n"
+    "\t\t\t\t\telse if (!descr && kids[i].classList && kids[i].classList.contains('cbi-map-descr'))\n"
+    "\t\t\t\t\t\tdescr = kids[i];\n"
+    "\t\t\t\t}\n"
+    "\t\t\t\tif (h2 && descr && !node.querySelector('.wol-head')) {\n"
+    "\t\t\t\t\tvar head = document.createElement('div');\n"
+    "\t\t\t\t\thead.className = 'wol-head';\n"
+    "\t\t\t\t\tnode.insertBefore(head, h2);\n"
+    "\t\t\t\t\thead.appendChild(h2);\n"
+    "\t\t\t\t\thead.appendChild(descr);\n"
+    "\t\t\t\t}\n"
+    "\t\t\t\tif (!node.querySelector('style[data-ui-skin=\"wol\"]'))\n"
+    "\t\t\t\t\tnode.insertBefore(E('style', { 'data-ui-skin': 'wol' }, [ css ]), node.firstChild);\n"
+    "\t\t\t};\n"
+    "\t\t\tskin();\n"
     "\t\t\treturn node;\n"
     "\t\t});\n"
     "\t},"
@@ -67,7 +94,7 @@ new = (
 t2 = t.replace(old, new, 1)
 if t2 == t:
     raise SystemExit("wol.js: replace failed")
-for must in ("#cbi-wol", 'data-ui-skin="wol"', "handleWakeup", "#maincontent .cbi-map", "Wake up host", "callHostHints"):
+for must in ("#cbi-wol", 'data-ui-skin="wol"', "wol-head", "handleWakeup", "#maincontent .cbi-map", "Wake up host", "callHostHints"):
     if must not in t2:
         raise SystemExit(f"wol.js missing {must}")
 p.write_text(t2, encoding="utf-8")

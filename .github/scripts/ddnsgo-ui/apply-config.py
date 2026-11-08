@@ -111,7 +111,7 @@ css_lines = [
     '@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-ddns-go { --dg-border:#3a3a3d; --dg-muted:#9aa2ad; --dg-text:#d7dae0; --dg-card:#232324; --dg-soft:#2b2b2d; } }',
     "#cbi-ddns-go > h2 { margin:0 0 6px; font-size:18px; font-weight:600; line-height:1.3; color:var(--dg-text); }",
     "#cbi-ddns-go .cbi-map-descr { margin:0 0 16px; font-size:13px; line-height:1.6; color:var(--dg-muted); }",
-    "#cbi-ddns-go .ddnsgo-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px 16px; flex-wrap:wrap; margin:0 0 16px; }",
+    "#cbi-ddns-go .ddnsgo-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px 16px; flex-wrap:wrap; margin:0 0 16px; padding:16px 22px; background:var(--dg-card); border:1px solid var(--dg-border); border-radius:12px; box-shadow:0 2px 12px rgba(50,50,93,.06); }",
     "#cbi-ddns-go .ddnsgo-head > h2 { margin:0; font-size:18px; font-weight:600; line-height:1.3; color:var(--dg-text); }",
     "#cbi-ddns-go .ddnsgo-head > .cbi-map-descr { margin:0 0 0 auto; font-size:13px; line-height:1.6; color:var(--dg-muted); text-align:right; }",
     "#cbi-ddns-go .ddnsgo-card, #cbi-ddns-go .cbi-section-node { background:var(--dg-card); border:1px solid var(--dg-border); border-radius:12px; box-shadow:0 2px 12px rgba(50,50,93,.06); padding:20px 22px; }",

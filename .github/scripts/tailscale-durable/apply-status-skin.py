@@ -144,6 +144,9 @@ if 'data-ui-skin="tailscale-form"' not in t or "#cbi-tailscale-setting" not in t
         '@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-tailscale-setting { --ts-border:#3a3a3d; --ts-muted:#9aa2ad; --ts-text:#d7dae0; --ts-card:#232324; --ts-soft:#2b2b2d; } }',
         "#cbi-tailscale-setting > h2 { margin:0 0 6px; font-size:18px; font-weight:600; line-height:1.3; color:var(--ts-text); }",
         "#cbi-tailscale-setting .cbi-map-descr { margin:0 0 16px; font-size:13px; line-height:1.6; color:var(--ts-muted); }",
+        "#cbi-tailscale-setting .ts-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px 16px; flex-wrap:wrap; margin:0 0 16px; padding:16px 22px; background:var(--ts-card); border:1px solid var(--ts-border); border-radius:12px; box-shadow:0 2px 12px rgba(50,50,93,.06); }",
+        "#cbi-tailscale-setting .ts-head > h2 { margin:0; font-size:18px; font-weight:600; line-height:1.3; color:var(--ts-text); }",
+        "#cbi-tailscale-setting .ts-head > .cbi-map-descr { margin:0 0 0 auto; font-size:13px; line-height:1.6; color:var(--ts-muted); text-align:right; }",
         "#cbi-tailscale-setting .cbi-section { background:var(--ts-card); border:1px solid var(--ts-border); border-radius:12px; box-shadow:0 2px 12px rgba(50,50,93,.06); padding:20px 22px; margin:0 0 16px; }",
         "#cbi-tailscale-setting .cbi-section > h3, #cbi-tailscale-setting .cbi-section-title { margin:0 0 6px; font-size:16px; font-weight:600; color:var(--ts-text); }",
         "#cbi-tailscale-setting .cbi-section-descr { margin:0 0 12px; font-size:13px; line-height:1.6; color:var(--ts-muted); }",
@@ -164,12 +167,28 @@ if 'data-ui-skin="tailscale-form"' not in t or "#cbi-tailscale-setting" not in t
     new_ret = (
         "\t\treturn m.render().then(function(node) {\n"
         "\t\t\tnode.setAttribute('id', 'cbi-tailscale-setting');\n"
-        "\t\t\tif (!node.querySelector('style[data-ui-skin=\"tailscale-form\"]')) {\n"
-        "\t\t\t\tvar css = '' +\n"
+        "\t\t\tvar css = '' +\n"
         + form_css_js
         + ";\n"
-        "\t\t\t\tnode.insertBefore(E('style', { 'data-ui-skin': 'tailscale-form' }, [ css ]), node.firstChild);\n"
-        "\t\t\t}\n"
+        "\t\t\tvar skin = function() {\n"
+        "\t\t\t\tvar h2 = null, descr = null, kids = node.children, i;\n"
+        "\t\t\t\tfor (i = 0; i < kids.length; i++) {\n"
+        "\t\t\t\t\tif (!h2 && kids[i].tagName === 'H2')\n"
+        "\t\t\t\t\t\th2 = kids[i];\n"
+        "\t\t\t\t\telse if (!descr && kids[i].classList && kids[i].classList.contains('cbi-map-descr'))\n"
+        "\t\t\t\t\t\tdescr = kids[i];\n"
+        "\t\t\t\t}\n"
+        "\t\t\t\tif (h2 && descr && !node.querySelector('.ts-head')) {\n"
+        "\t\t\t\t\tvar head = document.createElement('div');\n"
+        "\t\t\t\t\thead.className = 'ts-head';\n"
+        "\t\t\t\t\tnode.insertBefore(head, h2);\n"
+        "\t\t\t\t\thead.appendChild(h2);\n"
+        "\t\t\t\t\thead.appendChild(descr);\n"
+        "\t\t\t\t}\n"
+        "\t\t\t\tif (!node.querySelector('style[data-ui-skin=\"tailscale-form\"]'))\n"
+        "\t\t\t\t\tnode.insertBefore(E('style', { 'data-ui-skin': 'tailscale-form' }, [ css ]), node.firstChild);\n"
+        "\t\t\t};\n"
+        "\t\t\tskin();\n"
         "\t\t\treturn node;\n"
         "\t\t});\n"
         "\t}"
@@ -201,6 +220,7 @@ for must in (
     "ts-pill",
     "cbi-tailscale-status",
     "#cbi-tailscale-setting",
+    "ts-head",
     'data-ui-skin="tailscale-form"',
     "service_status",
     "login_status_div",

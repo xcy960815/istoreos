@@ -100,7 +100,10 @@ if old_tail in t:
         '@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-openlist { --ol-border:#3a3a3d; --ol-muted:#9aa2ad; --ol-text:#d7dae0; --ol-card:#232324; --ol-soft:#2b2b2d; } }',
         "#cbi-openlist > h2 { margin:0 0 6px; font-size:18px; font-weight:600; line-height:1.3; color:var(--ol-text); }",
         "#cbi-openlist .cbi-map-descr { margin:0 0 16px; font-size:13px; line-height:1.6; color:var(--ol-muted); }",
-        "#cbi-openlist .cbi-map-descr code { padding:2px 6px; border-radius:6px; background:var(--ol-soft); color:var(--ol-text); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; }",
+        "#cbi-openlist .cbi-map-descr code, #cbi-openlist .openlist-head > .cbi-map-descr code { padding:2px 6px; border-radius:6px; background:var(--ol-soft); color:var(--ol-text); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; }",
+        "#cbi-openlist .openlist-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px 16px; flex-wrap:wrap; margin:0 0 16px; padding:16px 22px; background:var(--ol-card); border:1px solid var(--ol-border); border-radius:12px; box-shadow:0 2px 12px rgba(50,50,93,.06); }",
+        "#cbi-openlist .openlist-head > h2 { margin:0; font-size:18px; font-weight:600; line-height:1.3; color:var(--ol-text); }",
+        "#cbi-openlist .openlist-head > .cbi-map-descr { margin:0 0 0 auto; font-size:13px; line-height:1.6; color:var(--ol-muted); text-align:right; }",
         "#cbi-openlist .cbi-section:not(#status_bar) { background:var(--ol-card); border:1px solid var(--ol-border); border-radius:12px; box-shadow:0 2px 12px rgba(50,50,93,.06); padding:20px 22px; margin:0 0 16px; }",
         "#cbi-openlist .cbi-section:not(#status_bar) > h3, #cbi-openlist .cbi-section-title { margin:0 0 12px; font-size:16px; font-weight:600; line-height:1.3; color:var(--ol-text); }",
         "#cbi-openlist .cbi-value { display:flex; align-items:flex-start; gap:16px; padding:12px 0; margin:0; border-top:1px solid var(--ol-border); border-bottom:0; flex-wrap:wrap; }",
@@ -116,12 +119,28 @@ if old_tail in t:
     new_tail = (
         "\t\treturn m.render().then(function(node) {\n"
         "\t\t\tnode.setAttribute('id', 'cbi-openlist');\n"
-        "\t\t\tif (!node.querySelector('style[data-ui-skin=\"openlist-form\"]')) {\n"
-        "\t\t\t\tvar css = '' +\n"
+        "\t\t\tvar css = '' +\n"
         + form_css_js
         + ";\n"
-        "\t\t\t\tnode.insertBefore(E('style', { 'data-ui-skin': 'openlist-form' }, [ css ]), node.firstChild);\n"
-        "\t\t\t}\n"
+        "\t\t\tvar skin = function() {\n"
+        "\t\t\t\tvar h2 = null, descr = null, kids = node.children, i;\n"
+        "\t\t\t\tfor (i = 0; i < kids.length; i++) {\n"
+        "\t\t\t\t\tif (!h2 && kids[i].tagName === 'H2')\n"
+        "\t\t\t\t\t\th2 = kids[i];\n"
+        "\t\t\t\t\telse if (!descr && kids[i].classList && kids[i].classList.contains('cbi-map-descr'))\n"
+        "\t\t\t\t\t\tdescr = kids[i];\n"
+        "\t\t\t\t}\n"
+        "\t\t\t\tif (h2 && descr && !node.querySelector('.openlist-head')) {\n"
+        "\t\t\t\t\tvar head = document.createElement('div');\n"
+        "\t\t\t\t\thead.className = 'openlist-head';\n"
+        "\t\t\t\t\tnode.insertBefore(head, h2);\n"
+        "\t\t\t\t\thead.appendChild(h2);\n"
+        "\t\t\t\t\thead.appendChild(descr);\n"
+        "\t\t\t\t}\n"
+        "\t\t\t\tif (!node.querySelector('style[data-ui-skin=\"openlist-form\"]'))\n"
+        "\t\t\t\t\tnode.insertBefore(E('style', { 'data-ui-skin': 'openlist-form' }, [ css ]), node.firstChild);\n"
+        "\t\t\t};\n"
+        "\t\t\tskin();\n"
         "\t\t\treturn node;\n"
         "\t\t});\n\t}"
     )
@@ -157,6 +176,7 @@ for must in (
     "openlist-pill",
     "#cbi-openlist-status",
     "#cbi-openlist",
+    "openlist-head",
     "data-ui-skin",
 ):
     if must not in t:
