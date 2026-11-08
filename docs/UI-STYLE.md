@@ -92,7 +92,7 @@
 | `.ota-step` | 「步骤 N/3：…」小字，放在按钮下方或旁边 |
 | `.ota-row` + `.ota-row-main` | 横向信息行：左侧状态点+文字，右侧动作按钮 |
 | `.ota-dot` + `.ota-dot-new` / `.ota-dot-ok` | 状态点：橙=有新版，绿=完成 |
-| `.ota-spinner` | 纯 CSS 转圈（`@keyframes ota-spin`），不要引图标库 |
+| `.ota-spinner` | 纯 CSS 转圈（`@keyframes ota-spin`），不要引图标库；**等待行只留这一个**，不要再并排 `<img src="…/loading.svg">`（`loading.svg` 仅可给 JS `Image()` 探测设备是否回来） |
 | `.ota-linkbtn` | 次要动作（取消下载）：无边框文字按钮，hover 才给淡底 |
 | `.ota-progress` + `progress` | 进度条；未知进度时 `removeAttribute('value')` 显示不确定态 |
 | `.ota-ok` | 成功提示块：淡绿底 + 绿边框 + 圆点 |

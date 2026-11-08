@@ -109,11 +109,7 @@
 			font-weight: 600;
 			color: var(--ota-text);
 		}
-		#cbi-ota-flashing .ota-wait img {
-			width: 22px;
-			height: 22px;
-			vertical-align: middle;
-		}
+		/* loading.svg 只给下方 JS Image 探测用，等待行只留 .ota-spinner，避免双转圈 */
 		#cbi-ota-flashing .ota-spinner {
 			flex: 0 0 auto;
 			width: 16px;
@@ -172,7 +168,6 @@
 						</div>
 						<div class="ota-wait">
 							<span class="ota-spinner" aria-hidden="true"></span>
-							<img src="<%=resource%>/icons/loading.svg" alt="<%:Loading%>" />
 							<span><%:Waiting for device...%></span>
 						</div>
 						<p class="ota-warn"><%:Do not power off the device during the upgrade.%></p>

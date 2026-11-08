@@ -15,6 +15,7 @@
 # 必须跑 smartd 后台（§三十五；r33 N100 已验证首页卡片正常）。首页磁盘信息等到
 # Disk.Status；官方 !disks&&!raidList 会把空 RAID 列表当加载完（r31 空白），
 # 补丁改成 disks==null 才转圈（§三十四）。侧栏 RAID/SMART 菜单仍删。
+# 首页/网络向导/网口配置始终注册，打掉 pgrep×indexcache 竞态（§五十四）。
 # auto_setup 允许 gowebdav，拦住 samba/linkease/下载器/Docker/ddnsto。
 #
 # 必须在 feeds install 之后、make defconfig 之前跑（LuCI 符号这时才进 kconfig）。
@@ -146,6 +147,95 @@ if changed:
     print("quickstart.lua: 侧栏标题改为中文直写（首页/网络向导/网口配置/无线）")
 if '"网络向导"' not in p.read_text(encoding="utf-8"):
     raise SystemExit("::error::侧栏「网络向导」中文标题未写入 controller")
+PY
+
+# 首页/网口入口竞态修复：打掉 pgrep 竞态。官方 controller 在 quickstart 未起来时
+# 只注册 redirect_fallback→admin/status，且不注册 network_guide / interfaceconfig；
+# 开机 LuCI 先于 START=92 建 indexcache 时，「首页」会永久跳到「状态→概况」，
+# 「网络向导 / 网口配置」整项消失。始终注册这三项；redirect_fallback 保底改渲染首页。
+python3 - "$ctrl" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+s = p.read_text(encoding="utf-8")
+if "istoreos: always register home/network entries" in s:
+    print("quickstart.lua: 首页/网口入口竞态修复已在，跳过")
+    raise SystemExit(0)
+
+old_head = (
+    "function index()\n"
+    "    if luci.sys.call(\"pgrep quickstart >/dev/null\") == 0 then\n"
+    "        local uci = require \"luci.model.uci\".cursor()\n"
+    "        entry({\"admin\", \"quickstart\"}, template(\"quickstart/home\"), \"首页\", 1).leaf = true\n"
+    "        entry({\"admin\", \"network_guide\"}, call(\"networkguide_index\"), \"网络向导\", 2)\n"
+    "        entry({\"admin\", \"network_guide\", \"pages\"}, call(\"quickstart_index\", {index={\"admin\", \"network_guide\", \"pages\"}})).leaf = true\n"
+)
+new_head = (
+    "function index()\n"
+    "    -- istoreos: always register home/network entries (avoid pgrep race → 首页跳概况、网口配置消失)\n"
+    "    local uci = require \"luci.model.uci\".cursor()\n"
+    "    entry({\"admin\", \"quickstart\"}, template(\"quickstart/home\"), \"首页\", 1).leaf = true\n"
+    "    entry({\"admin\", \"network_guide\"}, call(\"networkguide_index\"), \"网络向导\", 2)\n"
+    "    entry({\"admin\", \"network_guide\", \"pages\"}, call(\"quickstart_index\", {index={\"admin\", \"network_guide\", \"pages\"}})).leaf = true\n"
+    "    entry({\"admin\", \"network\", \"interfaceconfig\"}, call(\"quickstart_index\", {index={\"admin\", \"network\"}}), \"网口配置\", 11).leaf = true\n"
+    "    if luci.sys.call(\"pgrep quickstart >/dev/null\") == 0 then\n"
+)
+if old_head not in s:
+    raise SystemExit("::error::quickstart.lua index() 头锚点对不上（需在中文标题补丁之后），拒绝继续")
+s = s.replace(old_head, new_head, 1)
+
+dup_iface = (
+    "        entry({\"admin\", \"network\", \"interfaceconfig\"}, call(\"quickstart_index\", {index={\"admin\", \"network\"}}), \"网口配置\", 11).leaf = true\n"
+)
+if s.count(dup_iface) != 1:
+    raise SystemExit("::error::quickstart.lua 网口配置重复行定位失败")
+s = s.replace(dup_iface, "", 1)
+
+old_else = (
+    "    else\n"
+    "        entry({\"admin\", \"quickstart\"}, call(\"redirect_fallback\")).leaf = true\n"
+    "    end\n"
+)
+new_else = "    end\n"
+if old_else not in s:
+    raise SystemExit("::error::quickstart.lua else redirect_fallback 锚点对不上")
+s = s.replace(old_else, new_else, 1)
+
+old_fb = (
+    "function redirect_fallback()\n"
+    "    luci.http.redirect(luci.dispatcher.build_url(\"admin\", \"status\"))\n"
+    "end\n"
+)
+new_fb = (
+    "function redirect_fallback()\n"
+    "    -- istoreos: never send 首页 to 状态→概况; try start daemon then render home\n"
+    "    if luci.sys.call(\"pgrep quickstart >/dev/null\") ~= 0 then\n"
+    "        luci.sys.call(\"/etc/init.d/quickstart start >/dev/null 2>&1\")\n"
+    "    end\n"
+    "    luci.template.render(\"quickstart/home\", {})\n"
+    "end\n"
+)
+if old_fb not in s:
+    raise SystemExit("::error::quickstart.lua redirect_fallback 锚点对不上")
+s = s.replace(old_fb, new_fb, 1)
+
+for must in (
+    "istoreos: always register home/network entries",
+    'entry({"admin", "quickstart"}, template("quickstart/home"), "首页", 1)',
+    'entry({"admin", "network_guide"}, call("networkguide_index"), "网络向导", 2)',
+    'entry({"admin", "network", "interfaceconfig"}, call("quickstart_index", {index={"admin", "network"}}), "网口配置", 11)',
+    'luci.template.render("quickstart/home", {})',
+):
+    if must not in s:
+        raise SystemExit(f"::error::补丁后缺 {must}")
+if 'build_url("admin", "status")' in s:
+    raise SystemExit("::error::redirect_fallback 仍跳 admin/status")
+if s.count('entry({"admin", "quickstart"}') != 1:
+    raise SystemExit("::error::admin/quickstart entry 数量异常")
+if s.count("interfaceconfig") != 1:
+    raise SystemExit("::error::interfaceconfig entry 数量异常")
+
+p.write_text(s, encoding="utf-8")
+print("quickstart.lua: 首页/网口入口竞态修复已写入")
 PY
 # luci-mod-system 不能删（备份与更新在里面）。无数据盘，侧栏「挂载点」用 menu.d 关掉。
 menu_dir=$luci/root/usr/share/luci/menu.d

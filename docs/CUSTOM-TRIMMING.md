@@ -1500,3 +1500,40 @@ run [`41950616687`](https://github.com/xcy960815/istoreos/actions/runs/419506166
 | 不动 | ttyd、OpenClash、vlmcsd 整页表单、概况页其他模块、易有云功能包本身 |
 
 后续 AI：易有云皮肤只走 `/usr/share/istoreos-ui/` 投递，**不要**为换皮把 `luci-app-linkease` 写进 seed 或 feeds；上游若改了 `linkease_status.htm` 的 id/XHR/字段名，按报错复核后再更新投递模板。健康巡检 Map 顶栏皮肤挂在 diy `actions.htm`（页内必渲染），不要另起构建例外。
+
+## 五十四、OTA 等待页双 loading + 首页/网口配置 pgrep 竞态回归（2026-11-09，无 seed 变更）
+
+### 背景
+
+用户反馈两处：
+
+1. **刷机等待页「正在等待设备…」旁两个 loading**（蓝环 + 旧 spinner）——确认**不是回归**，§四十六换皮时在 `ota_flashing.htm` 等待行同时留下了 `.ota-spinner` 与 `<img loading.svg>`，一直如此；本次一并修掉。
+2. **「首页」点进去跳到「状态 → 概况」**，且 **「网络配置」没了**——这是回归。上个可用版本（r54）首页/网络向导/网口配置正常。
+
+### 根因
+
+| 问题 | 根因 |
+|---|---|
+| 双 loading | `package/diy/luci-app-ota/.../ota_flashing.htm` 等待行同时渲染 CSS 转圈与 `icons/loading.svg`；JS 用 `new Image()` 探测 `loading.svg` 判断设备回来（不进 DOM），可见行不应再挂 `<img>` |
+| 首页 → 概况；网口/向导消失 | 上游 `luci-app-quickstart` controller：`pgrep quickstart` 失败时只注册 `redirect_fallback` → `admin/status`（概况），且**不注册** `network_guide` / `interfaceconfig`。`quickstart` init `START=92`，开机后 LuCI 若先建 `/tmp/luci-indexcache*`，会把错误入口冻进缓存；OTA/换皮后的首次进页更容易踩中。侧栏「首页」仍在（menu.d），点进去却跳概况；「网络向导 / 网口配置」整项从 dispatcher 消失——用户体感「没有网络配置了」 |
+
+近期标题白底 / 易有云概况 §五十 / 服务页换皮**未改** `pin-quickstart.sh` 与 `ota_flashing.htm` 逻辑；双 loading 属旧债，首页/网口属竞态在升级后更容易暴露。修复放在既有第 ③ 条 `pin-quickstart.sh` 与 diy OTA 模板，不新开构建例外，**不改 workflow**（避免 §五十二 Publish 403）。
+
+### 修复
+
+| 改动 | 效果 |
+|---|---|
+| `ota_flashing.htm` 等待行只留 `.ota-spinner`；`loading.svg` 仅保留给重连探测 | 等待页只看到一个转圈；自动跳转逻辑不变 |
+| `luci-app-ota` `PKG_RELEASE` 7→8 | 确保包更新覆盖旧模板 |
+| `pin-quickstart.sh`：中文标题补丁之后，**始终注册** `admin/quickstart`（首页模板）、`network_guide`、`interfaceconfig`（网口配置）；去掉 else 里冻成 `redirect_fallback` 的分支；`redirect_fallback` 保底改为尝试 `/etc/init.d/quickstart start` 后渲染首页，**不再** `redirect(admin/status)` | 即便 indexcache 在 daemon 未起来时生成，首页仍开首页；网络向导/网口配置菜单仍在 |
+
+### 文件明细
+
+| 动作 | 内容 |
+|---|---|
+| 改 | `package/diy/luci-app-ota/luasrc/view/admin_system/ota_flashing.htm`、`Makefile`；`.github/scripts/pin-quickstart.sh`；本文件 / `UI-STYLE.md` |
+| seed | **无变化**（521） |
+| workflow | **未改** |
+
+后续 AI：**不要**把 `loading.svg` 加回等待行可见 DOM；**不要**恢复 `redirect_fallback` → `admin/status`；首页/网口/向导入口必须在 `pgrep` 判断之外注册。本地已对上游 `quickstart.lua`（经 RAID/SMART 删除 + 中文标题）复跑补丁，二次幂等 SKIP。
+
