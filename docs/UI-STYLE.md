@@ -5,7 +5,7 @@
 > 变更记录见 `docs/CUSTOM-TRIMMING.md` §四十五）。同规范续作：`ota_flashing.htm`、健康巡检
 > `actions.htm`、上游 vlmcsd 状态条（构建期补丁）见 §四十六；WoL / 重启 / 备份更新外壳 /
 > OpenList 状态 / Tailscale 登录状态局部换皮见 §四十七；DDNS-Go / 系统与内核日志 /
-> Tailscale 设置表单与接口日志见 §五十一。改任何页面前先读本文件和该页的原始模板。
+> Tailscale 设置表单与接口日志见 §五十一；健康巡检 Map 顶栏 / 易有云状态卡 / vlmcsd 标题行见 §五十三。改任何页面前先读本文件和该页的原始模板。
 
 ## 0. 前提与边界
 
@@ -83,7 +83,7 @@
 | 类名 | 用途 |
 |---|---|
 | `.ota-card` | 白/深色卡片容器，所有内容都放在卡片里 |
-| `.<功能>-head`（如 `.ddnsgo-head` / `.ts-head` / `.openlist-head` / `.wol-head` / `.gowebdav-head`） | **页标题行白卡**：把 map 级 `h2` + `.cbi-map-descr` 包进弹性行（标题左、说明右对齐基线），背景用 `--*-card`（不是 `--*-soft`），边框/圆角/阴影与普通卡片一致；窄屏 `flex-wrap` 折行后说明仍靠右。CBI/`m.render()` 页在 `then` 里 wrap；纯 `E()` 树直接产出；Lua 模板页可页尾短脚本 wrap。**不要**让标题/说明裸落在 Argon 页灰底上 |
+| `.<功能>-head`（如 `.ddnsgo-head` / `.ts-head` / `.openlist-head` / `.wol-head` / `.gowebdav-head` / `.health-head` / `.linkease-head` / `.vlmcsd-head`） | **页标题行白卡**：把 map 级 `h2` + `.cbi-map-descr` 包进弹性行（标题左、说明右对齐基线），背景用 `--*-card`（不是 `--*-soft`），边框/圆角/阴影与普通卡片一致；窄屏 `flex-wrap` 折行后说明仍靠右。CBI/`m.render()` 页在 `then` 里 wrap；纯 `E()` 树直接产出；Lua 模板页可页尾短脚本 wrap。**不要**让标题/说明裸落在 Argon 页灰底上 |
 | `.ota-title` / `.ota-sub` / `.ota-cur` | 页标题 / 一句话说明 / 当前状态行（`当前系统: iStoreOS 24.10.8 r46`） |
 | `.ota-state` | 状态块的上间距 |
 | `.ota-empty` + `.ota-empty-mark` | 空态：居中、圆形淡底图标、主按钮、步骤说明 |

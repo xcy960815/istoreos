@@ -118,4 +118,11 @@ if [ -f /usr/share/istoreos-ui/gowebdav_status.htm ] && [ -f /usr/lib/lua/luci/v
 	fi
 fi
 
+if [ -f /usr/share/istoreos-ui/linkease_status.htm ] && [ -f /usr/lib/lua/luci/view/linkease_status.htm ]; then
+	if ! grep -q 'data-ui-skin="linkease"' /usr/lib/lua/luci/view/linkease_status.htm 2>/dev/null; then
+		cp -a /usr/share/istoreos-ui/linkease_status.htm /usr/lib/lua/luci/view/linkease_status.htm
+		log "applied linkease status skin"
+	fi
+fi
+
 exit 0

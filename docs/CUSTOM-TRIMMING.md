@@ -1469,3 +1469,34 @@ run [`41950616687`](https://github.com/xcy960815/istoreos/actions/runs/419506166
 机制与 §四十九 同一条 GitHub 规则：Release 的 `target_commitish` 与当前分支头在 `.github/workflows/` 下有差异时，`GITHUB_TOKEN` 拿不到所需写权限。时间线：09:45:06 dispatch（当时头是 `ca585f8d09`）→ 构建 3.5 小时期间 11:05 推了 `f0937c4975`（改 workflow 4 行）成新头 → 13:25 建 Release 时 target≠头且 workflow 有差异 → 403。§四十九 早已把「长构建期间默认分支的 workflow 是否前进」列为必须核对的变量，本轮是它的实锤。
 
 处置：**不补发**——`ca585f8d09` 的内容已包含在 r52（`f0937c4975` 为其后代提交）并正常发布；§四十九 的草稿补发流程只在旧产物本身必须发布时才有意义。操作纪律：**dispatch 触发的长构建结束前，不要推改 `.github/workflows/` 的新提交**；publish 403 时先核对分支头是否前进，而不是先怀疑权限声明。
+
+## 五十三、服务页剩余灰区收齐：健康巡检 Map 顶栏 / 易有云状态卡 / vlmcsd 标题行（2026-11-08，无 seed 变更）
+
+用户在 §五十一 标题/说明收白之后要求「把其他的也做了」：把讨论里剩下可调、当时未做的服务页灰区一并收齐。**不改** ttyd 终端嵌入、OpenClash 纯商店无脚本、故意 soft 灰控件；vlmcsd **只补安全的标题行白底**，整页表单不大改。`config-custom.seed` **无变化**（521）。
+
+| 页 | 改动 |
+|---|---|
+| 服务 → 健康巡检 | diy 包内 `actions.htm` 扩展：给 Map `#cbi-istoreos-health` 的 `h2`+长说明包进 `.health-head` 白卡；「通知」fieldset 收成同款卡片行；操作区原有白卡保留。按钮 id / POST 路径 / UCI 字段不变；`PKG_RELEASE` 4→5 |
+| 服务 → 易有云（商店装） | 新增投递模板 `.github/scripts/openlist-status/linkease_status.htm`：状态条改圆点药丸 +「打开易有云 / 本地文件管理」按钮；Map 标题说明包进 `.linkease-head`；「全局设置」fieldset 卡片化。保留 `id=linkease_status`、`XHR.poll(5, admin/services/linkease_status)`、`st.running/port/conflict` 与两个打开目标。**不把易有云烘焙进固件** |
+| 服务 → KMS（vlmcsd） | 扩展既有状态条皮肤：补 `.vlmcsd-head` 白底标题行（页尾短脚本 wrap）；状态药丸逻辑与 id/XHR 不变；**不做**整页表单换皮 |
+
+### 易有云如何投递（对标 GoWebDav）
+
+易有云不在 seed，用户从 iStore 商店装回。投递路径沿用第 ⑨ 条例外（OpenList 包 rootfs 常驻）：
+
+1. 构建期 `patch-openlist-status.sh` 把皮肤装到固件 `/usr/share/istoreos-ui/linkease_status.htm`
+2. `uci-defaults/99-istoreos-linkease-skin`：若目标 `/usr/lib/lua/luci/view/linkease_status.htm` 已存在且尚未带 `data-ui-skin="linkease"`，则覆盖并清 LuCI 缓存
+3. `ensure-helper-fix.sh` 开机幂等同步（商店后装 / 备份还原后也能刷上）
+
+概况页重复入口仍由第 ⑩ 条 `patch-overview-linkease-entry.sh` 过滤（§五十），本轮不改。
+
+### 影响与包名明细
+
+| 动作 | 内容 |
+|---|---|
+| 改 | `package/diy/luci-app-istoreos-health/.../actions.htm` + `Makefile`（RELEASE 5）；`.github/scripts/openlist-status/linkease_status.htm`（新增）；`patch-openlist-status.sh`；`tailscale-durable/ensure-helper-fix.sh`；`.github/scripts/vlmcsd-status/vlmcsd_status.htm`；`docs/UI-STYLE.md` / `AGENTS.md` |
+| seed | **无变化**（521） |
+| workflow | **未改**（上一轮构建仍在跑时不推 workflow，避免 §五十二 Publish 403） |
+| 不动 | ttyd、OpenClash、vlmcsd 整页表单、概况页其他模块、易有云功能包本身 |
+
+后续 AI：易有云皮肤只走 `/usr/share/istoreos-ui/` 投递，**不要**为换皮把 `luci-app-linkease` 写进 seed 或 feeds；上游若改了 `linkease_status.htm` 的 id/XHR/字段名，按报错复核后再更新投递模板。健康巡检 Map 顶栏皮肤挂在 diy `actions.htm`（页内必渲染），不要另起构建例外。

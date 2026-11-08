@@ -1,0 +1,278 @@
+<%#
+  Status strip + page skin for luci-app-linkease (skinned per docs/UI-STYLE.md).
+  Keep id=linkease_status, XHR.poll(5, admin/services/linkease_status),
+  st.running / st.port / st.conflict, and the two open buttons' targets.
+-%>
+<script type="text/javascript">//<![CDATA[
+XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
+	function(x, st)
+	{
+		var tb = document.getElementById('linkease_status');
+		if (st && tb)
+		{
+			if (st.conflict)
+			{
+				tb.innerHTML = '<span class="linkease-pill linkease-pill-off"><span class="linkease-dot"></span><%:LinkEase Full is enabled. Please disable LinkEase Full before starting LinkEase.%></span>';
+			}
+			else if (st.running)
+			{
+				tb.innerHTML = '<span class="linkease-pill linkease-pill-ok"><span class="linkease-dot"></span><%:The LinkEase service is running.%></span>'
+					+ '<input class="cbi-button linkease-linkbtn" type="button" value="<%:Click to open LinkEase%>" onclick="window.open(\'http://' + window.location.hostname + ':' + st.port + '/\')"/>'
+					+ '<input class="cbi-button linkease-linkbtn" type="button" value="<%:Click to open Files%>" onclick="window.open(\'/cgi-bin/luci/admin/services/linkease/file/\')"/>';
+			}
+			else
+			{
+				tb.innerHTML = '<span class="linkease-pill linkease-pill-off"><span class="linkease-dot"></span><%:The LinkEase service is not running.%></span>';
+			}
+		}
+	}
+);
+//]]>
+</script>
+<div id="cbi-linkease-status">
+	<style data-ui-skin="linkease">
+	#cbi-linkease,
+	#cbi-linkease-status {
+		--le-accent: #5e72e4;
+		--le-ok: #2dce89;
+		--le-warn: #fb6340;
+		--le-border: #e9ecef;
+		--le-muted: #8898aa;
+		--le-text: #32325d;
+		--le-card: #fff;
+		--le-soft: #f7f9fc;
+	}
+	body[theme="dark"] #cbi-linkease,
+	body[theme="dark"] #cbi-linkease-status {
+		--le-border: #3a3a3d;
+		--le-muted: #9aa2ad;
+		--le-text: #d7dae0;
+		--le-card: #232324;
+		--le-soft: #2b2b2d;
+	}
+	@media (prefers-color-scheme: dark) {
+		body[theme="normal"] #cbi-linkease,
+		body[theme="normal"] #cbi-linkease-status {
+			--le-border: #3a3a3d;
+			--le-muted: #9aa2ad;
+			--le-text: #d7dae0;
+			--le-card: #232324;
+			--le-soft: #2b2b2d;
+		}
+	}
+	#cbi-linkease > h2 {
+		margin: 0 0 6px;
+		font-size: 18px;
+		font-weight: 600;
+		line-height: 1.3;
+		color: var(--le-text);
+	}
+	#cbi-linkease .cbi-map-descr {
+		margin: 0 0 16px;
+		font-size: 13px;
+		line-height: 1.6;
+		color: var(--le-muted);
+	}
+	#cbi-linkease .linkease-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 8px 16px;
+		flex-wrap: wrap;
+		margin: 0 0 16px;
+		padding: 16px 22px;
+		background: var(--le-card);
+		border: 1px solid var(--le-border);
+		border-radius: 12px;
+		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
+	}
+	#cbi-linkease .linkease-head > h2 {
+		margin: 0;
+		font-size: 18px;
+		font-weight: 600;
+		line-height: 1.3;
+		color: var(--le-text);
+	}
+	#cbi-linkease .linkease-head > .cbi-map-descr {
+		margin: 0 0 0 auto;
+		font-size: 13px;
+		line-height: 1.6;
+		color: var(--le-muted);
+		text-align: right;
+	}
+	#cbi-linkease-status.cbi-section,
+	#cbi-linkease-status .cbi-section,
+	#cbi-linkease-status fieldset.cbi-section {
+		padding: 0;
+		border: 0;
+		background: none;
+		box-shadow: none;
+		margin: 0;
+	}
+	#cbi-linkease-status .linkease-card,
+	#cbi-linkease fieldset.cbi-section {
+		background: var(--le-card);
+		border: 1px solid var(--le-border);
+		border-radius: 12px;
+		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
+		padding: 20px 22px;
+		margin: 0 0 16px;
+	}
+	#cbi-linkease-status .linkease-card {
+		padding: 16px 18px;
+	}
+	#cbi-linkease-status .linkease-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+	#cbi-linkease-status .linkease-label {
+		font-size: 13px;
+		color: var(--le-muted);
+	}
+	#cbi-linkease-status .linkease-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 12px;
+		border-radius: 999px;
+		background: var(--le-soft);
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--le-text);
+		font-style: normal;
+	}
+	#cbi-linkease-status .linkease-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: var(--le-muted);
+		box-shadow: 0 0 0 4px rgba(136, 152, 170, .12);
+		flex-shrink: 0;
+	}
+	#cbi-linkease-status .linkease-pill-ok .linkease-dot {
+		background: var(--le-ok);
+		box-shadow: 0 0 0 4px rgba(45, 206, 137, .12);
+	}
+	#cbi-linkease-status .linkease-pill-off .linkease-dot {
+		background: var(--le-warn);
+		box-shadow: 0 0 0 4px rgba(251, 99, 64, .12);
+	}
+	#cbi-linkease-status .linkease-linkbtn {
+		min-width: 132px;
+		padding: 8px 18px;
+		border-radius: 8px;
+		font-size: 14px;
+		font-weight: 600;
+		margin: 0;
+	}
+	#cbi-linkease-status #linkease_status {
+		margin: 0;
+		min-height: 1.5em;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+	}
+	#cbi-linkease-status #linkease_status em {
+		font-style: normal;
+		color: var(--le-muted);
+		font-size: 13px;
+	}
+	#cbi-linkease fieldset.cbi-section > legend {
+		padding: 0;
+		margin: 0 0 12px;
+		font-size: 15px;
+		font-weight: 600;
+		color: var(--le-text);
+		background: none;
+		border: 0;
+	}
+	#cbi-linkease fieldset.cbi-section .cbi-value {
+		display: flex;
+		align-items: flex-start;
+		gap: 12px 18px;
+		padding: 12px 0;
+		margin: 0;
+		border-top: 1px solid var(--le-border);
+		border-bottom: 0;
+		flex-wrap: wrap;
+	}
+	#cbi-linkease fieldset.cbi-section .cbi-value:first-of-type {
+		border-top: 0;
+		padding-top: 4px;
+	}
+	#cbi-linkease fieldset.cbi-section .cbi-value:last-child {
+		padding-bottom: 4px;
+	}
+	#cbi-linkease fieldset.cbi-section .cbi-value-title {
+		width: 190px;
+		flex-shrink: 0;
+		padding: 6px 0 0;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--le-text);
+		text-align: left;
+	}
+	#cbi-linkease fieldset.cbi-section .cbi-value-field {
+		flex: 1;
+		min-width: 220px;
+		text-align: left;
+	}
+	#cbi-linkease fieldset.cbi-section .cbi-value-description {
+		margin: 6px 0 0;
+		font-size: 12px;
+		line-height: 1.6;
+		color: var(--le-muted);
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button {
+		min-width: 132px;
+		padding: 8px 18px;
+		border-radius: 8px;
+		font-size: 14px;
+		font-weight: 600;
+	}
+	</style>
+	<div class="cbi-section">
+		<div class="linkease-card">
+			<div class="linkease-row">
+				<span class="linkease-label"><%:LinkEase Status%></span>
+				<p id="linkease_status">
+					<em><%:Collecting data...%></em>
+				</p>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">//<![CDATA[
+(function() {
+	var wrap = function() {
+		var root = document.getElementById('cbi-linkease');
+		if (!root || root.querySelector('.linkease-head'))
+			return;
+		var h2 = null, descr = null, kids = root.children, i;
+		for (i = 0; i < kids.length; i++) {
+			if (!h2 && kids[i].tagName === 'H2')
+				h2 = kids[i];
+			else if (!descr && kids[i].classList && kids[i].classList.contains('cbi-map-descr'))
+				descr = kids[i];
+		}
+		if (h2 && descr) {
+			var head = document.createElement('div');
+			head.className = 'linkease-head';
+			root.insertBefore(head, h2);
+			head.appendChild(h2);
+			head.appendChild(descr);
+		}
+	};
+	if (document.readyState === 'loading')
+		document.addEventListener('DOMContentLoaded', wrap);
+	else
+		wrap();
+})();
+//]]>
+</script>
