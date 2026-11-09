@@ -226,7 +226,7 @@ grep -q 'noopener noreferrer' "$SETTING_JS" || { echo "::error::setting.js 缺�
 grep -q 'parseStatus' "$SETTING_JS" || { echo "::error::setting.js 缺少 AuthURL await"; exit 1; }
 grep -q 'cbi-button-apply' "$SETTING_JS" && { echo "::error::setting.js 仍含 cbi-button-apply"; exit 1; }
 grep -q 'ts-pill' "$SETTING_JS" || { echo "::error::setting.js 缺少 ts-pill 状态皮"; exit 1; }
-grep -q 'ts-login-bound' "$SETTING_JS" || { echo "::error::setting.js 缺少 ts-login-bound 对齐"; exit 1; }
+grep -q 'ts-btn-wrap' "$SETTING_JS" || { echo "::error::setting.js 缺少 ts-btn-wrap（授权/注销 button 包裹）"; exit 1; }
 grep -q 'cbi-tailscale-status' "$SETTING_JS" || { echo "::error::setting.js 缺少 cbi-tailscale-status"; exit 1; }
 grep -q 'cbi-tailscale-setting' "$SETTING_JS" || { echo "::error::setting.js 缺少 cbi-tailscale-setting 表单皮"; exit 1; }
 grep -q 'cbi-tailscale-iface' "$IFACE_JS" || { echo "::error::interface.js 缺少 cbi-tailscale-iface"; exit 1; }

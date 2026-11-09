@@ -1537,29 +1537,40 @@ run [`41950616687`](https://github.com/xcy960815/istoreos/actions/runs/419506166
 
 后续 AI：**不要**把 `loading.svg` 加回等待行可见 DOM；**不要**恢复 `redirect_fallback` → `admin/status`；首页/网口/向导入口必须在 `pgrep` 判断之外注册。本地已对上游 `quickstart.lua`（经 RAID/SMART 删除 + 中文标题）复跑补丁，二次幂等 SKIP。
 
-## 五十五、Tailscale「已绑定用户」与端口/工作目录左缘对齐（2026-11-09，无 seed 变更）
+## 五十五、Tailscale「已绑定用户」误做成纵向左缘对齐（2026-11-09，已被 §五十六纠正）
 
-用户反馈：服务 → Tailscale → 基础设置里，「已绑定用户」行的「用户名链接 + 注销登录并解除绑定」整体偏左，没和下面「端口」「工作目录」输入框左缘对齐。
+曾把用户「上下不居中」误读成「与端口/工作目录左缘对齐」，引入 `.ts-login-bound` 纵向堆叠。用户更正后以 §五十六为准；**不要**再恢复 `.ts-login-bound`。
 
-### 根因
+## 五十六、Tailscale 已绑定用户上下居中 + 授权/注销 button 包裹（2026-11-09，无 seed 变更）
 
-`#login_status_div` 为了和标题垂直居中被设成 **row-flex**（`display:flex;align-items:center`）。Running 态原先用 `<br>` 把用户名和「注销」分成两行；在 flex 容器里 `<br>` 会变成普通 flex item，**不再换行**，两个链接横排挤宽。Argon 的 `.cbi-value` 带 `flex-wrap`，过宽的 `.cbi-value-field` 被折到标题下方，整块从标题列起排，看起来就比「端口 / 工作目录」输入框更靠左。
+用户更正：`#login_status_div` 已是 row-flex + `align-items:center`。要的是：
 
-### 修复
+1. 用户名链接与左侧「已绑定用户」**上下居中**（用户名做 `#login_status_div` 的直接 flex 子节点）。
+2. 「注销登录并解除绑定」用 **`<button class="ts-btn-wrap">` 包裹**内层 `<a>`，**去掉 `<br>`**。
+3. 未登录「授权登录」同样 button 包裹。
 
-| 改动 | 效果 |
-|---|---|
-| Running 态包进 `.ts-login-bound` 纵向 flex（去 `<br>`） | 用户名在上、注销在下，字段宽度不再撑破 wrap |
-| 状态皮 CSS 增加 `.ts-login-bound` | `align-items:flex-start`，左缘与同列输入框对齐 |
-| `_upgrade_login_bound` 幂等升级 | 旧皮肤二次跑补丁也能补上，不依赖整段重打 |
+### 最终 DOM（Running）
+
+```html
+<div id="login_status_div" style="display:flex;align-items:center;min-height:2.2em;line-height:normal">
+  <a class="ts-link" href="https://login.tailscale.com/admin/machines" target="_blank" rel="noopener noreferrer">Xcy960815</a>
+  <button type="button" class="ts-btn-wrap"><a class="ts-linkbtn ts-linkbtn-warn" id="logout_button">注销登录并解除绑定</a></button>
+</div>
+```
+
+### 最终 DOM（NeedsLogin + authURL）
+
+```html
+<button type="button" class="ts-btn-wrap"><a class="ts-linkbtn" href="…" target="_blank" rel="noopener noreferrer">授权登录</a></button>
+```
 
 ### 文件明细
 
 | 动作 | 内容 |
 |---|---|
-| 改 | `.github/scripts/tailscale-durable/apply-status-skin.py`、`patch-luci-setting.sh`（sanity）；本文件 / `UI-STYLE.md` |
-| seed | **无变化**（521） |
-| workflow | **未改**（避免 §五十二 Publish 403） |
+| 改 | `.github/scripts/tailscale-durable/apply-status-skin.py`、`patch-luci-setting.sh`（sanity → `ts-btn-wrap`）；本文件 / `UI-STYLE.md` |
+| seed | **无变化** |
+| workflow | **未改** |
 
-后续 AI：**不要**再在 `#login_status_div` 的 row-flex 里用裸 `<br>` 叠登录态；已绑定用户的多行内容放进 `.ts-login-bound`。
+后续 AI：**不要**在 `#login_status_div` 里用裸 `<br>`；**不要**再引入 `.ts-login-bound` 纵向堆叠；授权/注销都走 `.ts-btn-wrap`。
 

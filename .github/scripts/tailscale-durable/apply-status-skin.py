@@ -5,37 +5,192 @@ import re
 import sys
 
 def _upgrade_login_bound(text: str) -> str:
-    """Fix Running-state left-shift when an older status skin is already present."""
-    if ".ts-login-bound" in text:
-        return text
-    pattern = re.compile(
-        r"(\t\} else if \(loginStatus === \"Running\"\) \{\n)"
-        r"\t\trenderHTML = String\.format\('<a class=\"ts-link\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>', "
-        r"'https://login\.tailscale\.com/admin/machines', displayName\);\n"
-        r"\t\trenderHTML \+= String\.format\('<br><a class=\"ts-linkbtn ts-linkbtn-warn\" id=\"logout_button\">%s</a>', "
-        r"_\('Log out and Unbind'\)\);\n"
-        r"(\t\} else \{)",
-        re.M,
-    )
-    repl = (
+    """Running: username + button-wrapped logout (no <br>); NeedsLogin auth also button-wrapped.
+    Username stays a direct flex child of #login_status_div so it vertically centers with the title.
+    """
+    changed = False
+
+    # --- Running branch: any prior form → username + <button><a logout></a></button> ---
+    running_patterns = [
+        # previous column stack (.ts-login-bound)
+        re.compile(
+            r"(\t\} else if \(loginStatus === \"Running\"\) \{\n)"
+            r".*?"
+            r"(\t\} else \{)",
+            re.S,
+        ),
+    ]
+    running_repl = (
         r"\1"
+        r"\t\t/* username is a direct flex child of #login_status_div (row + align-items:center)\n"
+        r"\t\t   so it vertically centers with cbi-value-title; logout is button-wrapped, no <br>. */\n"
         r"\t\trenderHTML = String.format(\n"
-        r"\t\t\t'<span class=\"ts-login-bound\"><a class=\"ts-link\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>' +\n"
-        r"\t\t\t'<a class=\"ts-linkbtn ts-linkbtn-warn\" id=\"logout_button\">%s</a></span>',\n"
+        r"\t\t\t'<a class=\"ts-link\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>' +\n"
+        r"\t\t\t'<button type=\"button\" class=\"ts-btn-wrap\"><a class=\"ts-linkbtn ts-linkbtn-warn\" id=\"logout_button\">%s</a></button>',\n"
         r"\t\t\t'https://login.tailscale.com/admin/machines', displayName, _('Log out and Unbind'));\n"
         r"\2"
     )
-    text2, n = pattern.subn(repl, text, count=1)
-    if n != 1:
-        raise SystemExit("setting.js Running login branch not found for ts-login-bound upgrade")
-    text = text2
-    frag = "#login_status_div .ts-linkbtn-warn { color:var(--ts-warn); }\\n"
-    add = "#login_status_div .ts-login-bound { display:flex; flex-direction:column; align-items:flex-start; gap:6px; max-width:100%; }\\n"
-    if frag not in text:
-        raise SystemExit("setting.js missing ts-linkbtn-warn CSS for ts-login-bound upgrade")
-    if add not in text:
-        text = text.replace(frag, frag + add, 1)
-    print("setting.js Running login bound-align upgraded")
+
+    # Only rewrite Running block if not already in the desired shape
+    want_logout = (
+        "'<button type=\"button\" class=\"ts-btn-wrap\"><a class=\"ts-linkbtn ts-linkbtn-warn\" id=\"logout_button\">%s</a></button>'"
+    )
+    if want_logout not in text:
+        # Try specific known prior shapes first
+        priors = [
+            # .ts-login-bound column (aeedca40)
+            (
+                re.compile(
+                    r"(\t\} else if \(loginStatus === \"Running\"\) \{\n)"
+                    r"(?:\t\t/\*[^*]*\*/\n)?"
+                    r"\t\trenderHTML = String\.format\(\n"
+                    r"\t\t\t'<span class=\"ts-login-bound\"><a class=\"ts-link\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>' \+\n"
+                    r"\t\t\t'<a class=\"ts-linkbtn ts-linkbtn-warn\" id=\"logout_button\">%s</a></span>',\n"
+                    r"\t\t\t'https://login\.tailscale\.com/admin/machines', displayName, _\('Log out and Unbind'\)\);\n"
+                    r"(\t\} else \{)",
+                    re.M,
+                ),
+                running_repl,
+            ),
+            # skinned with <br>
+            (
+                re.compile(
+                    r"(\t\} else if \(loginStatus === \"Running\"\) \{\n)"
+                    r"\t\trenderHTML = String\.format\('<a class=\"ts-link\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>', "
+                    r"'https://login\.tailscale\.com/admin/machines', displayName\);\n"
+                    r"\t\trenderHTML \+= String\.format\('<br><a class=\"ts-linkbtn ts-linkbtn-warn\" id=\"logout_button\">%s</a>', "
+                    r"_\('Log out and Unbind'\)\);\n"
+                    r"(\t\} else \{)",
+                    re.M,
+                ),
+                running_repl,
+            ),
+            # stock / pre-skin Running (displayName then br logout)
+            (
+                re.compile(
+                    r"(\t\} else if \(loginStatus === \"Running\"\) \{\n)"
+                    r"\t\trenderHTML = String\.format\('<[^']+%s[^']*',\s*'https://login\.tailscale\.com/admin/machines', displayName\);\n"
+                    r"\t\trenderHTML \+= String\.format\('<br><a[^>]*id=\"logout_button\"[^>]*>%s</a>', _\('Log out and Unbind'\)\);\n"
+                    r"(\t\} else \{)",
+                    re.M,
+                ),
+                running_repl,
+            ),
+        ]
+        applied = False
+        for pat, repl in priors:
+            text2, n = pat.subn(repl, text, count=1)
+            if n == 1:
+                text = text2
+                changed = True
+                applied = True
+                print("setting.js Running login → button-wrap upgraded")
+                break
+        if not applied and ('id="logout_button"' in text.replace('\\"', '"') or 'id=\"logout_button\"' in text):
+            # last-resort: replace from Running else-if through next else {
+            loose = re.compile(
+                r"(\t\} else if \(loginStatus === \"Running\"\) \{\n).*?(\t\} else \{)",
+                re.S,
+            )
+            text2, n = loose.subn(running_repl, text, count=1)
+            if n != 1:
+                raise SystemExit("setting.js Running login branch not found for button-wrap upgrade")
+            text = text2
+            changed = True
+            print("setting.js Running login → button-wrap upgraded (loose)")
+
+    # --- NeedsLogin authURL link → button wrap (keep pills for wait state) ---
+    want_auth = (
+        "'<button type=\"button\" class=\"ts-btn-wrap\"><a class=\"ts-linkbtn\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a></button>'"
+    )
+    if want_auth not in text:
+        auth_priors = [
+            # skinned plain ts-linkbtn
+            (
+                re.compile(
+                    r"renderHTML = String\.format\("
+                    r"'<a class=\"ts-linkbtn\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>', "
+                    r"authURL, _\('Need to log in'\)\);",
+                ),
+                "renderHTML = String.format("
+                "'<button type=\"button\" class=\"ts-btn-wrap\"><a class=\"ts-linkbtn\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a></button>', "
+                "authURL, _('Need to log in'));",
+            ),
+            # early patch orange inline style
+            (
+                re.compile(
+                    r"renderHTML = String\.format\("
+                    r"'<a href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\" "
+                    r"style=\"color:#ff8c00;font-weight:600;text-decoration:underline;vertical-align:middle\">%s</a>', "
+                    r"authURL, _\('Need to log in'\)\);",
+                ),
+                "renderHTML = String.format("
+                "'<button type=\"button\" class=\"ts-btn-wrap\"><a class=\"ts-linkbtn\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a></button>', "
+                "authURL, _('Need to log in'));",
+            ),
+        ]
+        auth_ok = False
+        for pat, repl in auth_priors:
+            text2, n = pat.subn(repl, text, count=1)
+            if n == 1:
+                text = text2
+                changed = True
+                auth_ok = True
+                print("setting.js NeedsLogin auth → button-wrap upgraded")
+                break
+        if not auth_ok and "Need to log in" in text:
+            # If already button-wrapped, fine; else fail loudly when ts-linkbtn auth exists without wrap
+            if 'ts-btn-wrap"><a class="ts-linkbtn" href="%s"' not in text.replace('\\"', '"') and \
+               'ts-btn-wrap\\"><a class=\\"ts-linkbtn\\" href=\\"%s\\"' not in text:
+                # check escaped
+                if want_auth not in text:
+                    raise SystemExit("setting.js NeedsLogin authURL link not found for button-wrap upgrade")
+
+    # --- CSS: replace .ts-login-bound with .ts-btn-wrap; ensure gap on #login_status_div ---
+    bound_css = "#login_status_div .ts-login-bound { display:flex; flex-direction:column; align-items:flex-start; gap:6px; max-width:100%; }\\n"
+    btn_css = (
+        "#login_status_div .ts-btn-wrap { display:inline-flex; align-items:center; margin:0; padding:0; border:0; "
+        "background:transparent; font:inherit; line-height:inherit; cursor:pointer; vertical-align:middle; }\\n"
+    )
+    if bound_css in text:
+        text = text.replace(bound_css, btn_css, 1)
+        changed = True
+        print("setting.js CSS .ts-login-bound → .ts-btn-wrap")
+    elif btn_css not in text:
+        frag = "#login_status_div .ts-linkbtn-warn { color:var(--ts-warn); }\\n"
+        if frag not in text:
+            raise SystemExit("setting.js missing ts-linkbtn-warn CSS for ts-btn-wrap insert")
+        text = text.replace(frag, frag + btn_css, 1)
+        changed = True
+        print("setting.js CSS .ts-btn-wrap inserted")
+
+    # drop stale .ts-login-bound CSS if somehow still present with different spacing
+    if ".ts-login-bound" in text and "ts-btn-wrap" in text:
+        text2, n = re.subn(
+            r"#login_status_div \.ts-login-bound \{[^}]*\}\\n",
+            "",
+            text,
+            count=1,
+        )
+        if n:
+            text = text2
+            changed = True
+            print("setting.js removed leftover .ts-login-bound CSS")
+
+    gap_old = "#cbi-tailscale-status #service_status, #login_status_div { margin:0; min-height:1.5em; }\\n"
+    gap_new = "#cbi-tailscale-status #service_status, #login_status_div { margin:0; min-height:1.5em; gap:12px; }\\n"
+    if gap_old in text:
+        text = text.replace(gap_old, gap_new, 1)
+        changed = True
+        print("setting.js #login_status_div gap added")
+    elif gap_new not in text and "#login_status_div { margin:0; min-height:1.5em; }" in text:
+        pass  # unusual form
+
+    if not changed and want_logout in text and want_auth in text and btn_css in text:
+        print("setting.js login button-wrap already applied")
+    return text
+
+
     return text
 
 
@@ -98,19 +253,17 @@ if "ts-pill" not in t or "cbi-tailscale-status" not in t:
 	let renderHTML;
 	if (loginStatus === "NeedsLogin") {
 		if (authURL) {
-			/* plain <a> keeps horizontal alignment with cbi-value-title; cbi-button floats in Argon */
-			renderHTML = String.format('<a class="ts-linkbtn" href="%s" target="_blank" rel="noopener noreferrer">%s</a>', authURL, _('Need to log in'));
+			/* button-wrap matches logout; keep inner <a> for target=_blank auth URL */
+			renderHTML = String.format('<button type="button" class="ts-btn-wrap"><a class="ts-linkbtn" href="%s" target="_blank" rel="noopener noreferrer">%s</a></button>', authURL, _('Need to log in'));
 		} else {
 			renderHTML = String.format('<span class="ts-pill ts-pill-wait"><span class="ts-dot"></span>%s</span>', _('Waiting for auth URL'));
 		}
 	} else if (loginStatus === "Running") {
-		/* .ts-login-bound keeps username+logout in a column. #login_status_div is
-		   row-flex for title centering; a raw <br> inside that flex becomes a flex
-		   item so the two links stay one wide row and Argon .cbi-value flex-wrap can
-		   drop the whole field under the title (left of Port/Workdir inputs). */
+		/* username is a direct flex child of #login_status_div (row + align-items:center)
+		   so it vertically centers with cbi-value-title; logout is button-wrapped, no <br>. */
 		renderHTML = String.format(
-			'<span class="ts-login-bound"><a class="ts-link" href="%s" target="_blank" rel="noopener noreferrer">%s</a>' +
-			'<a class="ts-linkbtn ts-linkbtn-warn" id="logout_button">%s</a></span>',
+			'<a class="ts-link" href="%s" target="_blank" rel="noopener noreferrer">%s</a>' +
+			'<button type="button" class="ts-btn-wrap"><a class="ts-linkbtn ts-linkbtn-warn" id="logout_button">%s</a></button>',
 			'https://login.tailscale.com/admin/machines', displayName, _('Log out and Unbind'));
 	} else {
 		renderHTML = String.format('<span class="ts-pill ts-pill-off"><span class="ts-dot"></span>%s</span>', _('NOT RUNNING'));
@@ -149,8 +302,8 @@ if "ts-pill" not in t or "cbi-tailscale-status" not in t:
         "#login_status_div .ts-linkbtn { color:var(--ts-warn); font-weight:600; text-decoration:underline; vertical-align:middle; cursor:pointer; }",
         "#login_status_div .ts-link { color:var(--ts-accent); font-weight:600; text-decoration:underline; }",
         "#login_status_div .ts-linkbtn-warn { color:var(--ts-warn); }",
-        "#login_status_div .ts-login-bound { display:flex; flex-direction:column; align-items:flex-start; gap:6px; max-width:100%; }",
-        "#cbi-tailscale-status #service_status, #login_status_div { margin:0; min-height:1.5em; }",
+        "#login_status_div .ts-btn-wrap { display:inline-flex; align-items:center; margin:0; padding:0; border:0; background:transparent; font:inherit; line-height:inherit; cursor:pointer; vertical-align:middle; }",
+        "#cbi-tailscale-status #service_status, #login_status_div { margin:0; min-height:1.5em; gap:12px; }",
     ]
     css_js = " +\n".join("\t\t\t\t\t" + repr(line + "\n") for line in css_lines)
     new_bar = (
@@ -268,7 +421,7 @@ for must in (
     'data-ui-skin="tailscale-form"',
     "service_status",
     "login_status_div",
-    "ts-login-bound",
+    "ts-btn-wrap",
     "Waiting for auth URL",
     "noopener noreferrer",
     "parseStatus",
