@@ -4,6 +4,41 @@ from pathlib import Path
 import re
 import sys
 
+def _upgrade_login_bound(text: str) -> str:
+    """Fix Running-state left-shift when an older status skin is already present."""
+    if ".ts-login-bound" in text:
+        return text
+    pattern = re.compile(
+        r"(\t\} else if \(loginStatus === \"Running\"\) \{\n)"
+        r"\t\trenderHTML = String\.format\('<a class=\"ts-link\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>', "
+        r"'https://login\.tailscale\.com/admin/machines', displayName\);\n"
+        r"\t\trenderHTML \+= String\.format\('<br><a class=\"ts-linkbtn ts-linkbtn-warn\" id=\"logout_button\">%s</a>', "
+        r"_\('Log out and Unbind'\)\);\n"
+        r"(\t\} else \{)",
+        re.M,
+    )
+    repl = (
+        r"\1"
+        r"\t\trenderHTML = String.format(\n"
+        r"\t\t\t'<span class=\"ts-login-bound\"><a class=\"ts-link\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>' +\n"
+        r"\t\t\t'<a class=\"ts-linkbtn ts-linkbtn-warn\" id=\"logout_button\">%s</a></span>',\n"
+        r"\t\t\t'https://login.tailscale.com/admin/machines', displayName, _('Log out and Unbind'));\n"
+        r"\2"
+    )
+    text2, n = pattern.subn(repl, text, count=1)
+    if n != 1:
+        raise SystemExit("setting.js Running login branch not found for ts-login-bound upgrade")
+    text = text2
+    frag = "#login_status_div .ts-linkbtn-warn { color:var(--ts-warn); }\\n"
+    add = "#login_status_div .ts-login-bound { display:flex; flex-direction:column; align-items:flex-start; gap:6px; max-width:100%; }\\n"
+    if frag not in text:
+        raise SystemExit("setting.js missing ts-linkbtn-warn CSS for ts-login-bound upgrade")
+    if add not in text:
+        text = text.replace(frag, frag + add, 1)
+    print("setting.js Running login bound-align upgraded")
+    return text
+
+
 p = Path(sys.argv[1])
 t = p.read_text(encoding="utf-8")
 
@@ -69,8 +104,14 @@ if "ts-pill" not in t or "cbi-tailscale-status" not in t:
 			renderHTML = String.format('<span class="ts-pill ts-pill-wait"><span class="ts-dot"></span>%s</span>', _('Waiting for auth URL'));
 		}
 	} else if (loginStatus === "Running") {
-		renderHTML = String.format('<a class="ts-link" href="%s" target="_blank" rel="noopener noreferrer">%s</a>', 'https://login.tailscale.com/admin/machines', displayName);
-		renderHTML += String.format('<br><a class="ts-linkbtn ts-linkbtn-warn" id="logout_button">%s</a>', _('Log out and Unbind'));
+		/* .ts-login-bound keeps username+logout in a column. #login_status_div is
+		   row-flex for title centering; a raw <br> inside that flex becomes a flex
+		   item so the two links stay one wide row and Argon .cbi-value flex-wrap can
+		   drop the whole field under the title (left of Port/Workdir inputs). */
+		renderHTML = String.format(
+			'<span class="ts-login-bound"><a class="ts-link" href="%s" target="_blank" rel="noopener noreferrer">%s</a>' +
+			'<a class="ts-linkbtn ts-linkbtn-warn" id="logout_button">%s</a></span>',
+			'https://login.tailscale.com/admin/machines', displayName, _('Log out and Unbind'));
 	} else {
 		renderHTML = String.format('<span class="ts-pill ts-pill-off"><span class="ts-dot"></span>%s</span>', _('NOT RUNNING'));
 	}
@@ -108,6 +149,7 @@ if "ts-pill" not in t or "cbi-tailscale-status" not in t:
         "#login_status_div .ts-linkbtn { color:var(--ts-warn); font-weight:600; text-decoration:underline; vertical-align:middle; cursor:pointer; }",
         "#login_status_div .ts-link { color:var(--ts-accent); font-weight:600; text-decoration:underline; }",
         "#login_status_div .ts-linkbtn-warn { color:var(--ts-warn); }",
+        "#login_status_div .ts-login-bound { display:flex; flex-direction:column; align-items:flex-start; gap:6px; max-width:100%; }",
         "#cbi-tailscale-status #service_status, #login_status_div { margin:0; min-height:1.5em; }",
     ]
     css_js = " +\n".join("\t\t\t\t\t" + repr(line + "\n") for line in css_lines)
@@ -129,6 +171,8 @@ if "ts-pill" not in t or "cbi-tailscale-status" not in t:
     t = t[: bm.start()] + new_bar + t[bm.end() :]
 else:
     print("setting.js status/login skin already applied")
+
+t = _upgrade_login_bound(t)
 
 # --- 2) Form sections + tabs + page actions skin (#cbi-tailscale-setting) ---
 if 'data-ui-skin="tailscale-form"' not in t or "#cbi-tailscale-setting" not in t:
@@ -224,6 +268,7 @@ for must in (
     'data-ui-skin="tailscale-form"',
     "service_status",
     "login_status_div",
+    "ts-login-bound",
     "Waiting for auth URL",
     "noopener noreferrer",
     "parseStatus",

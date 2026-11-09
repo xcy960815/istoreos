@@ -18,7 +18,7 @@
 
 构建与刷机步骤见 [`BUILD-CUSTOM.md`](BUILD-CUSTOM.md)；云端构建走 Actions（手动触发）。CI 历次失败的原始复盘（run 编号、日志原文）在 [`docs/CI-HISTORY.md`](docs/CI-HISTORY.md)，节号与 CUSTOM-TRIMMING.md 对应；CUSTOM-TRIMMING.md 只留当前有效的结论。
 
-**要改 LuCI 页面样式（「太丑了，优化下」这类需求）：先读 [`docs/UI-STYLE.md`](docs/UI-STYLE.md)**——设计令牌、卡片/状态机组件、深色模式、i18n、安全转义、本地预览方法和提交前自检清单都在里面。首个样例是 OTA 页（§四十五）；刷写等待页 / 健康巡检操作区 / vlmcsd 状态条见 §四十六；WoL / 重启 / 备份更新外壳 / OpenList 状态 / Tailscale 登录状态见 §四十七；DDNS-Go / 系统与内核日志 / Tailscale 表单与接口日志见 §五十一；健康巡检 Map 顶栏 / 易有云状态卡 / vlmcsd 标题行见 §五十三。改界面不要动 seed，也不要动后端行为。
+**要改 LuCI 页面样式（「太丑了，优化下」这类需求）：先读 [`docs/UI-STYLE.md`](docs/UI-STYLE.md)**——设计令牌、卡片/状态机组件、深色模式、i18n、安全转义、本地预览方法和提交前自检清单都在里面。首个样例是 OTA 页（§四十五）；刷写等待页 / 健康巡检操作区 / vlmcsd 状态条见 §四十六；WoL / 重启 / 备份更新外壳 / OpenList 状态 / Tailscale 登录状态见 §四十七；DDNS-Go / 系统与内核日志 / Tailscale 表单与接口日志见 §五十一；健康巡检 Map 顶栏 / 易有云状态卡 / vlmcsd 标题行见 §五十三。已绑定用户与端口/工作目录左缘对齐见 §五十五。改界面不要动 seed，也不要动后端行为。
 
 **OTA（2026-10-23）**：`luci-app-ota` 已改打本仓库 GitHub Releases（§三十七），禁止再指 koolcenter。**运维（同日）**：`istoreos-ops` 提供 OTA 前 curated 备份（盘满不拦刷）与 `istoreos-health` 巡检（§三十八）；Telegram 通知 + LuCI「服务 → 健康巡检」见 §三十九（无邮件）。
 
