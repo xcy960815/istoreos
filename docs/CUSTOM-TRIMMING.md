@@ -1574,3 +1574,5 @@ run [`41950616687`](https://github.com/xcy960815/istoreos/actions/runs/419506166
 
 后续 AI：**不要**在 `#login_status_div` 里用裸 `<br>`；**不要**再引入 `.ts-login-bound` 纵向堆叠；授权/注销都走 `.ts-btn-wrap`。
 
+`.ts-btn-wrap` 视觉对齐 UI-STYLE `.ota-linkbtn`：重置原生 button（`appearance:none` / 无边框 / 透明底），警告色文字、`padding:4px 6px`、hover 淡橙底；内层 `.ts-linkbtn` 去下划线、继承颜色。**不要**再做成描边橙框或 `cbi-button`（Argon 会对齐错位）。
+

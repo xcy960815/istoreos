@@ -149,13 +149,25 @@ def _upgrade_login_bound(text: str) -> str:
     # --- CSS: replace .ts-login-bound with .ts-btn-wrap; ensure gap on #login_status_div ---
     bound_css = "#login_status_div .ts-login-bound { display:flex; flex-direction:column; align-items:flex-start; gap:6px; max-width:100%; }\\n"
     btn_css = (
-        "#login_status_div .ts-btn-wrap { display:inline-flex; align-items:center; margin:0; padding:0; border:0; "
-        "background:transparent; font:inherit; line-height:inherit; cursor:pointer; vertical-align:middle; }\\n"
+        "#login_status_div .ts-btn-wrap { display:inline-flex; align-items:center; margin:0; padding:4px 6px; border:0; "
+        "border-radius:6px; background:none; -webkit-appearance:none; appearance:none; box-shadow:none; "
+        "font:inherit; line-height:inherit; color:var(--ts-warn); cursor:pointer; vertical-align:middle; }\n"
+        "#login_status_div .ts-btn-wrap:hover { background:rgba(251,99,64,.08); }\n"
+        "#login_status_div .ts-btn-wrap .ts-linkbtn { color:inherit; font-weight:600; font-size:13px; "
+        "text-decoration:none; vertical-align:middle; cursor:pointer; }\n"
     )
     if bound_css in text:
         text = text.replace(bound_css, btn_css, 1)
         changed = True
         print("setting.js CSS .ts-login-bound → .ts-btn-wrap")
+    old_btn_css = (
+        "#login_status_div .ts-btn-wrap { display:inline-flex; align-items:center; margin:0; padding:0; border:0; "
+        "background:transparent; font:inherit; line-height:inherit; cursor:pointer; vertical-align:middle; }\n"
+    )
+    if old_btn_css in text:
+        text = text.replace(old_btn_css, btn_css, 1)
+        changed = True
+        print("setting.js CSS .ts-btn-wrap → ota-linkbtn style")
     elif btn_css not in text:
         frag = "#login_status_div .ts-linkbtn-warn { color:var(--ts-warn); }\\n"
         if frag not in text:
@@ -163,6 +175,19 @@ def _upgrade_login_bound(text: str) -> str:
         text = text.replace(frag, frag + btn_css, 1)
         changed = True
         print("setting.js CSS .ts-btn-wrap inserted")
+
+    old_linkbtn_css = (
+        "#login_status_div .ts-linkbtn { color:var(--ts-warn); font-weight:600; text-decoration:underline; "
+        "vertical-align:middle; cursor:pointer; }\n"
+    )
+    new_linkbtn_css = (
+        "#login_status_div .ts-linkbtn { color:var(--ts-warn); font-weight:600; font-size:13px; text-decoration:none; "
+        "vertical-align:middle; cursor:pointer; }\n"
+    )
+    if old_linkbtn_css in text:
+        text = text.replace(old_linkbtn_css, new_linkbtn_css, 1)
+        changed = True
+        print("setting.js CSS .ts-linkbtn → no-underline (ota-linkbtn)")
 
     # drop stale .ts-login-bound CSS if somehow still present with different spacing
     if ".ts-login-bound" in text and "ts-btn-wrap" in text:
@@ -299,10 +324,12 @@ if "ts-pill" not in t or "cbi-tailscale-status" not in t:
         "#cbi-tailscale-status .ts-pill-ok .ts-dot, #login_status_div .ts-pill-ok .ts-dot { background:var(--ts-ok); box-shadow:0 0 0 4px rgba(45,206,137,.12); }",
         "#cbi-tailscale-status .ts-pill-off .ts-dot, #login_status_div .ts-pill-off .ts-dot { background:var(--ts-warn); box-shadow:0 0 0 4px rgba(251,99,64,.12); }",
         "#cbi-tailscale-status .ts-pill-wait .ts-dot, #login_status_div .ts-pill-wait .ts-dot { background:var(--ts-warn); box-shadow:0 0 0 4px rgba(251,99,64,.12); }",
-        "#login_status_div .ts-linkbtn { color:var(--ts-warn); font-weight:600; text-decoration:underline; vertical-align:middle; cursor:pointer; }",
+        "#login_status_div .ts-linkbtn { color:var(--ts-warn); font-weight:600; font-size:13px; text-decoration:none; vertical-align:middle; cursor:pointer; }",
         "#login_status_div .ts-link { color:var(--ts-accent); font-weight:600; text-decoration:underline; }",
         "#login_status_div .ts-linkbtn-warn { color:var(--ts-warn); }",
-        "#login_status_div .ts-btn-wrap { display:inline-flex; align-items:center; margin:0; padding:0; border:0; background:transparent; font:inherit; line-height:inherit; cursor:pointer; vertical-align:middle; }",
+        "#login_status_div .ts-btn-wrap { display:inline-flex; align-items:center; margin:0; padding:4px 6px; border:0; border-radius:6px; background:none; -webkit-appearance:none; appearance:none; box-shadow:none; font:inherit; line-height:inherit; color:var(--ts-warn); cursor:pointer; vertical-align:middle; }",
+        "#login_status_div .ts-btn-wrap:hover { background:rgba(251,99,64,.08); }",
+        "#login_status_div .ts-btn-wrap .ts-linkbtn { color:inherit; font-weight:600; font-size:13px; text-decoration:none; vertical-align:middle; cursor:pointer; }",
         "#cbi-tailscale-status #service_status, #login_status_div { margin:0; min-height:1.5em; gap:12px; }",
     ]
     css_js = " +\n".join("\t\t\t\t\t" + repr(line + "\n") for line in css_lines)
