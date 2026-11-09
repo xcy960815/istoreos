@@ -151,10 +151,10 @@ def _upgrade_login_bound(text: str) -> str:
     btn_css = (
         "#login_status_div .ts-btn-wrap { display:inline-flex; align-items:center; margin:0; padding:4px 6px; border:0; "
         "border-radius:6px; background:none; -webkit-appearance:none; appearance:none; box-shadow:none; "
-        "font:inherit; line-height:inherit; color:var(--ts-warn); cursor:pointer; vertical-align:middle; }\n"
-        "#login_status_div .ts-btn-wrap:hover { background:rgba(251,99,64,.08); }\n"
+        "font:inherit; line-height:inherit; color:var(--ts-warn); cursor:pointer; vertical-align:middle; }\\n"
+        "#login_status_div .ts-btn-wrap:hover { background:rgba(251,99,64,.08); }\\n"
         "#login_status_div .ts-btn-wrap .ts-linkbtn { color:inherit; font-weight:600; font-size:13px; "
-        "text-decoration:none; vertical-align:middle; cursor:pointer; }\n"
+        "text-decoration:none; vertical-align:middle; cursor:pointer; }\\n"
     )
     if bound_css in text:
         text = text.replace(bound_css, btn_css, 1)
@@ -162,7 +162,7 @@ def _upgrade_login_bound(text: str) -> str:
         print("setting.js CSS .ts-login-bound → .ts-btn-wrap")
     old_btn_css = (
         "#login_status_div .ts-btn-wrap { display:inline-flex; align-items:center; margin:0; padding:0; border:0; "
-        "background:transparent; font:inherit; line-height:inherit; cursor:pointer; vertical-align:middle; }\n"
+        "background:transparent; font:inherit; line-height:inherit; cursor:pointer; vertical-align:middle; }\\n"
     )
     if old_btn_css in text:
         text = text.replace(old_btn_css, btn_css, 1)
@@ -178,11 +178,11 @@ def _upgrade_login_bound(text: str) -> str:
 
     old_linkbtn_css = (
         "#login_status_div .ts-linkbtn { color:var(--ts-warn); font-weight:600; text-decoration:underline; "
-        "vertical-align:middle; cursor:pointer; }\n"
+        "vertical-align:middle; cursor:pointer; }\\n"
     )
     new_linkbtn_css = (
         "#login_status_div .ts-linkbtn { color:var(--ts-warn); font-weight:600; font-size:13px; text-decoration:none; "
-        "vertical-align:middle; cursor:pointer; }\n"
+        "vertical-align:middle; cursor:pointer; }\\n"
     )
     if old_linkbtn_css in text:
         text = text.replace(old_linkbtn_css, new_linkbtn_css, 1)

@@ -1576,3 +1576,5 @@ run [`41950616687`](https://github.com/xcy960815/istoreos/actions/runs/419506166
 
 `.ts-btn-wrap` 视觉对齐 UI-STYLE `.ota-linkbtn`：重置原生 button（`appearance:none` / 无边框 / 透明底），警告色文字、`padding:4px 6px`、hover 淡橙底；内层 `.ts-linkbtn` 去下划线、继承颜色。**不要**再做成描边橙框或 `cbi-button`（Argon 会对齐错位）。
 
+**热修（r60）**：`6f0af9edf6` 在 `_upgrade_login_bound` 的 `btn_css` / `old_btn_css` / `old_linkbtn_css` / `new_linkbtn_css` 误用 Python 真实换行，upgrade 路径把裸 CSS 插进 `setting.js` 字符串 → `SyntaxError: Invalid or unexpected token`（侧栏 Tailscale 红框、页空）。必须与 `bound_css` / `frag` 一样写成字面 `\\n`；本地用旧 CSS fixture 跑 upgrade 后 `node --check` 拦截。
+
