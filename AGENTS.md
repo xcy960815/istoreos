@@ -18,7 +18,9 @@
 
 构建与刷机步骤见 [`BUILD-CUSTOM.md`](BUILD-CUSTOM.md)；云端构建走 Actions（手动触发）。CI 历次失败的原始复盘（run 编号、日志原文）在 [`docs/CI-HISTORY.md`](docs/CI-HISTORY.md)，节号与 CUSTOM-TRIMMING.md 对应；CUSTOM-TRIMMING.md 只留当前有效的结论。
 
-**要改 LuCI 页面样式（「太丑了，优化下」这类需求）：先读 [`docs/UI-STYLE.md`](docs/UI-STYLE.md)**——设计令牌、卡片/状态机组件、深色模式、i18n、安全转义、本地预览方法和提交前自检清单都在里面。首个样例是 OTA 页（§四十五）；刷写等待页 / 健康巡检操作区 / vlmcsd 状态条见 §四十六；WoL / 重启 / 备份更新外壳 / OpenList 状态 / Tailscale 登录状态见 §四十七；DDNS-Go / 系统与内核日志 / Tailscale 表单与接口日志见 §五十一；健康巡检 Map 顶栏 / 易有云状态卡 / vlmcsd 标题行见 §五十三。已绑定用户与端口/工作目录左缘对齐见 §五十五。改界面不要动 seed，也不要动后端行为。
+**要改 LuCI 页面样式（「太丑了，优化下」这类需求）：先读 [`docs/UI-STYLE.md`](docs/UI-STYLE.md)**——设计令牌、卡片/状态机组件、深色模式、i18n、安全转义、本地预览方法和提交前自检清单都在里面。首个样例是 OTA 页（§四十五）；刷写等待页 / 健康巡检操作区 / vlmcsd 状态条见 §四十六；WoL / 重启 / 备份更新外壳 / OpenList 状态 / Tailscale 登录状态见 §四十七；DDNS-Go / 系统与内核日志 / Tailscale 表单与接口日志见 §五十一；健康巡检 Map 顶栏 / 易有云状态卡 / vlmcsd 标题行见 §五十三。Tailscale 已绑定用户整行上下居中见 §五十七（用户名与注销动作左右排列；必须同时处理外层标签，不能只居中 `#login_status_div`）；注销原生按钮的淡橙底/细边框见 §五十八，用户新要求覆盖 §五十六旧的纯文字按钮样式。改界面不要动 seed，也不要动后端行为。
+
+**Tailscale 登录态（2026-11-10）**：授权登录也必须有按钮样式——蓝底白字 `.ts-login-btn`（仍用链接打开 AuthURL），与注销按钮同为 34px 高；左侧统一「登录状态」，见 §五十九。覆盖 §五十六 / §五十八「授权入口保留原样」的旧记录，不要只给注销加按钮。
 
 **OTA（2026-10-23）**：`luci-app-ota` 已改打本仓库 GitHub Releases（§三十七），禁止再指 koolcenter。**运维（同日）**：`istoreos-ops` 提供 OTA 前 curated 备份（盘满不拦刷）与 `istoreos-health` 巡检（§三十八）；Telegram 通知 + LuCI「服务 → 健康巡检」见 §三十九（无邮件）。
 

@@ -5,12 +5,12 @@ import re
 import sys
 
 def _upgrade_login_bound(text: str) -> str:
-    """Running: username + button-wrapped logout (no <br>); NeedsLogin auth also button-wrapped.
-    Username stays a direct flex child of #login_status_div so it vertically centers with the title.
+    """Running: username + native logout button (no <br>); keep the AuthURL link.
+    Both remain direct flex children of #login_status_div for vertical centering.
     """
     changed = False
 
-    # --- Running branch: any prior form → username + <button><a logout></a></button> ---
+    # --- Running branch: any prior form → username + native logout button ---
     running_patterns = [
         # previous column stack (.ts-login-bound)
         re.compile(
@@ -23,18 +23,28 @@ def _upgrade_login_bound(text: str) -> str:
     running_repl = (
         r"\1"
         r"\t\t/* username is a direct flex child of #login_status_div (row + align-items:center)\n"
-        r"\t\t   so it vertically centers with cbi-value-title; logout is button-wrapped, no <br>. */\n"
+        r"\t\t   so username and logout stay vertically centered, with no <br>. */\n"
         r"\t\trenderHTML = String.format(\n"
         r"\t\t\t'<a class=\"ts-link\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>' +\n"
-        r"\t\t\t'<button type=\"button\" class=\"ts-btn-wrap\"><a class=\"ts-linkbtn ts-linkbtn-warn\" id=\"logout_button\">%s</a></button>',\n"
+        r"\t\t\t'<button type=\"button\" class=\"ts-btn-wrap ts-logout-btn\" id=\"logout_button\">%s</button>',\n"
         r"\t\t\t'https://login.tailscale.com/admin/machines', displayName, _('Log out and Unbind'));\n"
         r"\2"
     )
 
     # Only rewrite Running block if not already in the desired shape
     want_logout = (
-        "'<button type=\"button\" class=\"ts-btn-wrap\"><a class=\"ts-linkbtn ts-linkbtn-warn\" id=\"logout_button\">%s</a></button>'"
+        "'<button type=\"button\" class=\"ts-btn-wrap ts-logout-btn\" id=\"logout_button\">%s</button>'"
     )
+    old_logout = "'<button type=\"button\" class=\"ts-btn-wrap\"><a class=\"ts-linkbtn ts-linkbtn-warn\" id=\"logout_button\">%s</a></button>'"
+    if old_logout in text:
+        text = text.replace(old_logout, want_logout, 1)
+        text = text.replace(
+            "so it vertically centers with cbi-value-title; logout is button-wrapped, no <br>. */",
+            "so username and logout stay vertically centered, with no <br>. */",
+            1,
+        )
+        changed = True
+        print("setting.js logout link wrapper → native button")
     if want_logout not in text:
         # Try specific known prior shapes first
         priors = [
@@ -99,10 +109,20 @@ def _upgrade_login_bound(text: str) -> str:
             changed = True
             print("setting.js Running login → button-wrap upgraded (loose)")
 
-    # --- NeedsLogin authURL link → button wrap (keep pills for wait state) ---
+    # --- NeedsLogin: style the AuthURL link as a button, without nested controls. ---
     want_auth = (
-        "'<button type=\"button\" class=\"ts-btn-wrap\"><a class=\"ts-linkbtn\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a></button>'"
+        "'<a class=\"ts-btn-wrap ts-login-btn\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>'"
     )
+    old_auth = "'<button type=\"button\" class=\"ts-btn-wrap\"><a class=\"ts-linkbtn\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a></button>'"
+    if old_auth in text:
+        text = text.replace(old_auth, want_auth, 1)
+        text = text.replace(
+            "/* button-wrap matches logout; keep inner <a> for target=_blank auth URL */",
+            "/* AuthURL stays a link; its full button-shaped area opens the authorization page. */",
+            1,
+        )
+        changed = True
+        print("setting.js AuthURL wrapper → button-styled link")
     if want_auth not in text:
         auth_priors = [
             # skinned plain ts-linkbtn
@@ -113,7 +133,7 @@ def _upgrade_login_bound(text: str) -> str:
                     r"authURL, _\('Need to log in'\)\);",
                 ),
                 "renderHTML = String.format("
-                "'<button type=\"button\" class=\"ts-btn-wrap\"><a class=\"ts-linkbtn\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a></button>', "
+                "'<a class=\"ts-btn-wrap ts-login-btn\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>', "
                 "authURL, _('Need to log in'));",
             ),
             # early patch orange inline style
@@ -125,7 +145,7 @@ def _upgrade_login_bound(text: str) -> str:
                     r"authURL, _\('Need to log in'\)\);",
                 ),
                 "renderHTML = String.format("
-                "'<button type=\"button\" class=\"ts-btn-wrap\"><a class=\"ts-linkbtn\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a></button>', "
+                "'<a class=\"ts-btn-wrap ts-login-btn\" href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>', "
                 "authURL, _('Need to log in'));",
             ),
         ]
@@ -138,13 +158,8 @@ def _upgrade_login_bound(text: str) -> str:
                 auth_ok = True
                 print("setting.js NeedsLogin auth → button-wrap upgraded")
                 break
-        if not auth_ok and "Need to log in" in text:
-            # If already button-wrapped, fine; else fail loudly when ts-linkbtn auth exists without wrap
-            if 'ts-btn-wrap"><a class="ts-linkbtn" href="%s"' not in text.replace('\\"', '"') and \
-               'ts-btn-wrap\\"><a class=\\"ts-linkbtn\\" href=\\"%s\\"' not in text:
-                # check escaped
-                if want_auth not in text:
-                    raise SystemExit("setting.js NeedsLogin authURL link not found for button-wrap upgrade")
+        if not auth_ok and want_auth not in text:
+            raise SystemExit("setting.js NeedsLogin authURL link not found for login button upgrade")
 
     # --- CSS: replace .ts-login-bound with .ts-btn-wrap; ensure gap on #login_status_div ---
     bound_css = "#login_status_div .ts-login-bound { display:flex; flex-direction:column; align-items:flex-start; gap:6px; max-width:100%; }\\n"
@@ -278,17 +293,17 @@ if "ts-pill" not in t or "cbi-tailscale-status" not in t:
 	let renderHTML;
 	if (loginStatus === "NeedsLogin") {
 		if (authURL) {
-			/* button-wrap matches logout; keep inner <a> for target=_blank auth URL */
-			renderHTML = String.format('<button type="button" class="ts-btn-wrap"><a class="ts-linkbtn" href="%s" target="_blank" rel="noopener noreferrer">%s</a></button>', authURL, _('Need to log in'));
+			/* AuthURL stays a link; its full button-shaped area opens the authorization page. */
+			renderHTML = String.format('<a class="ts-btn-wrap ts-login-btn" href="%s" target="_blank" rel="noopener noreferrer">%s</a>', authURL, _('Need to log in'));
 		} else {
 			renderHTML = String.format('<span class="ts-pill ts-pill-wait"><span class="ts-dot"></span>%s</span>', _('Waiting for auth URL'));
 		}
 	} else if (loginStatus === "Running") {
 		/* username is a direct flex child of #login_status_div (row + align-items:center)
-		   so it vertically centers with cbi-value-title; logout is button-wrapped, no <br>. */
+		   so username and logout stay vertically centered, with no <br>. */
 		renderHTML = String.format(
 			'<a class="ts-link" href="%s" target="_blank" rel="noopener noreferrer">%s</a>' +
-			'<button type="button" class="ts-btn-wrap"><a class="ts-linkbtn ts-linkbtn-warn" id="logout_button">%s</a></button>',
+			'<button type="button" class="ts-btn-wrap ts-logout-btn" id="logout_button">%s</button>',
 			'https://login.tailscale.com/admin/machines', displayName, _('Log out and Unbind'));
 	} else {
 		renderHTML = String.format('<span class="ts-pill ts-pill-off"><span class="ts-dot"></span>%s</span>', _('NOT RUNNING'));
@@ -420,6 +435,62 @@ if 'data-ui-skin="tailscale-form"' not in t or "#cbi-tailscale-setting" not in t
     t = t.replace(old_ret, new_ret, 1)
 else:
     print("setting.js form skin already applied")
+
+# --- 3) Center the whole login row, including Argon's floated/padded label. ---
+# Centering #login_status_div alone only aligns the username with logout;
+# the label is outside that flex container and otherwise sits lower.
+login_row_css_lines = [
+    '#cbi-tailscale-setting .cbi-value[data-name="login_status"] { display:flex; align-items:center; }',
+    '#cbi-tailscale-setting .cbi-value[data-name="login_status"] > .cbi-value-title { float:none; flex:0 0 auto; padding-top:0; }',
+    '#cbi-tailscale-setting .cbi-value[data-name="login_status"] > .cbi-value-field { display:block; flex:1 1 auto; min-width:0; }',
+    '#cbi-tailscale-setting #login_status_div { flex-wrap:wrap; }',
+    '#cbi-tailscale-setting #login_status_div .ts-link { min-width:0; max-width:100%; overflow-wrap:anywhere; }',
+    '#cbi-tailscale-setting #login_status_div .ts-btn-wrap { flex:0 0 auto; }',
+    '@media (max-width:600px) { #cbi-tailscale-setting .cbi-value[data-name="login_status"] { flex-direction:column; align-items:stretch; gap:8px; } #cbi-tailscale-setting .cbi-value[data-name="login_status"] > .cbi-value-title { width:auto; padding-right:0; line-height:1.5rem; text-align:left; } }',
+]
+title_css = repr("#cbi-tailscale-setting .cbi-value-title { color:var(--ts-text); font-size:13px; font-weight:600; }\n")
+if login_row_css_lines[0] not in t:
+    if t.count(title_css) != 1:
+        raise SystemExit("setting.js form title CSS anchor not found for login row alignment")
+    row_css_js = " +\n".join("\t\t\t\t\t" + repr(line + "\n") for line in login_row_css_lines)
+    t = t.replace(title_css, title_css + " +\n" + row_css_js, 1)
+    print("setting.js login row label + value vertically centered")
+else:
+    print("setting.js login row alignment already applied")
+
+# Logout is an action: give the native button a visible boundary and full hit area.
+# Keep AuthURL styling separate; both controls still share the centered row.
+logout_css_lines = [
+    '#cbi-tailscale-setting #login_status_div { --ts-logout-text:#c2410c; --ts-logout-border:rgba(251,99,64,.32); --ts-logout-bg:rgba(251,99,64,.06); --ts-logout-hover:rgba(251,99,64,.12); }',
+    'body[theme="dark"] #cbi-tailscale-setting #login_status_div { --ts-logout-text:#ff9a7a; --ts-logout-border:rgba(251,99,64,.45); --ts-logout-bg:rgba(251,99,64,.12); --ts-logout-hover:rgba(251,99,64,.20); }',
+    '@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-tailscale-setting #login_status_div { --ts-logout-text:#ff9a7a; --ts-logout-border:rgba(251,99,64,.45); --ts-logout-bg:rgba(251,99,64,.12); --ts-logout-hover:rgba(251,99,64,.20); } }',
+    '#cbi-tailscale-setting #login_status_div .ts-logout-btn { justify-content:center; padding:6px 12px; border:1px solid var(--ts-logout-border); border-radius:8px; background:var(--ts-logout-bg); color:var(--ts-logout-text); font-size:13px; font-weight:600; line-height:20px; white-space:nowrap; transition:background-color .15s, border-color .15s; }',
+    '#cbi-tailscale-setting #login_status_div .ts-logout-btn:hover { background:var(--ts-logout-hover); border-color:var(--ts-logout-text); }',
+    '#cbi-tailscale-setting #login_status_div .ts-logout-btn:focus-visible { outline:2px solid var(--ts-logout-text); outline-offset:2px; }',
+]
+if logout_css_lines[0] not in t:
+    if t.count(title_css) != 1:
+        raise SystemExit("setting.js form title CSS anchor not found for logout button")
+    logout_css_js = " +\n".join("\t\t\t\t\t" + repr(line + "\n") for line in logout_css_lines)
+    t = t.replace(title_css, title_css + " +\n" + logout_css_js, 1)
+    print("setting.js logout button appearance applied")
+else:
+    print("setting.js logout button appearance already applied")
+
+login_css_lines = [
+    '#cbi-tailscale-setting #login_status_div { --ts-login-text:#fff; --ts-login-hover:#4b5fd1; }',
+    '#cbi-tailscale-setting #login_status_div .ts-login-btn { justify-content:center; padding:6px 12px; border:1px solid var(--ts-accent); border-radius:8px; background:var(--ts-accent); color:var(--ts-login-text); font-size:13px; font-weight:600; line-height:20px; text-decoration:none; white-space:nowrap; transition:background-color .15s, border-color .15s; }',
+    '#cbi-tailscale-setting #login_status_div .ts-login-btn:hover { background:var(--ts-login-hover); border-color:var(--ts-login-hover); color:var(--ts-login-text); text-decoration:none; }',
+    '#cbi-tailscale-setting #login_status_div .ts-login-btn:focus-visible { outline:2px solid var(--ts-accent); outline-offset:2px; }',
+]
+if login_css_lines[0] not in t:
+    if t.count(title_css) != 1:
+        raise SystemExit("setting.js form title CSS anchor not found for login button")
+    login_css_js = " +\n".join("\t\t\t\t\t" + repr(line + "\n") for line in login_css_lines)
+    t = t.replace(title_css, title_css + " +\n" + login_css_js, 1)
+    print("setting.js login button appearance applied")
+else:
+    print("setting.js login button appearance already applied")
 
 po_path = None
 for depth in range(3, 8):

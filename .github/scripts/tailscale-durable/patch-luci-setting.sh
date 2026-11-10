@@ -176,6 +176,12 @@ i = 0
 changed_login = False
 while i < len(lines):
     out.append(lines[i])
+    if lines[i].rstrip("\n") == 'msgid "Login Status"':
+        i += 1
+        if i < len(lines) and lines[i].startswith("msgstr "):
+            out.append('msgstr "登录状态"\n')
+            i += 1
+            continue
     if lines[i].rstrip("\n") == 'msgid "Need to log in"':
         i += 1
         if i < len(lines) and lines[i].startswith("msgstr "):
@@ -208,6 +214,9 @@ p.write_text(text)
 if not changed_login and 'msgstr "授权登录"' not in p.read_text():
     raise SystemExit("zh_Hans 授权登录 patch failed")
 print("zh_Hans Need to log in → 授权登录")
+if 'msgid "Login Status"\nmsgstr "登录状态"' not in text:
+    raise SystemExit("zh_Hans Login Status → 登录状态 patch failed")
+print("zh_Hans Login Status → 登录状态")
 PY
 fi
 
@@ -226,9 +235,12 @@ grep -q 'noopener noreferrer' "$SETTING_JS" || { echo "::error::setting.js 缺�
 grep -q 'parseStatus' "$SETTING_JS" || { echo "::error::setting.js 缺少 AuthURL await"; exit 1; }
 grep -q 'cbi-button-apply' "$SETTING_JS" && { echo "::error::setting.js 仍含 cbi-button-apply"; exit 1; }
 grep -q 'ts-pill' "$SETTING_JS" || { echo "::error::setting.js 缺少 ts-pill 状态皮"; exit 1; }
-grep -q 'ts-btn-wrap' "$SETTING_JS" || { echo "::error::setting.js 缺少 ts-btn-wrap（授权/注销 button 包裹）"; exit 1; }
+grep -q 'ts-btn-wrap' "$SETTING_JS" || { echo "::error::setting.js 缺少 ts-btn-wrap（授权入口/注销按钮）"; exit 1; }
+grep -qF '<button type="button" class="ts-btn-wrap ts-logout-btn" id="logout_button">' "$SETTING_JS" || { echo "::error::setting.js 缺少原生注销按钮"; exit 1; }
+grep -qF '<a class="ts-btn-wrap ts-login-btn" href="%s" target="_blank" rel="noopener noreferrer">' "$SETTING_JS" || { echo "::error::setting.js 缺少授权登录按钮样式链接"; exit 1; }
 grep -q 'cbi-tailscale-status' "$SETTING_JS" || { echo "::error::setting.js 缺少 cbi-tailscale-status"; exit 1; }
 grep -q 'cbi-tailscale-setting' "$SETTING_JS" || { echo "::error::setting.js 缺少 cbi-tailscale-setting 表单皮"; exit 1; }
+grep -qF '.cbi-value[data-name="login_status"] { display:flex; align-items:center; }' "$SETTING_JS" || { echo "::error::setting.js 缺少已绑定用户整行居中样式"; exit 1; }
 grep -q 'cbi-tailscale-iface' "$IFACE_JS" || { echo "::error::interface.js 缺少 cbi-tailscale-iface"; exit 1; }
 grep -q 'cbi-tailscale-log' "$LOG_JS" || { echo "::error::log.js 缺少 cbi-tailscale-log"; exit 1; }
 echo "patch-luci-setting.sh OK"

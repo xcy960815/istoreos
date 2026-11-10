@@ -5,7 +5,7 @@
 > 变更记录见 `docs/CUSTOM-TRIMMING.md` §四十五）。同规范续作：`ota_flashing.htm`、健康巡检
 > `actions.htm`、上游 vlmcsd 状态条（构建期补丁）见 §四十六；WoL / 重启 / 备份更新外壳 /
 > OpenList 状态 / Tailscale 登录状态局部换皮见 §四十七；DDNS-Go / 系统与内核日志 /
-> Tailscale 设置表单与接口日志见 §五十一；已绑定用户上下居中 + 授权/注销 `.ts-btn-wrap`（对齐 `.ota-linkbtn`：无边框警告色 + hover 淡底；勿裸 `<br>`、勿 `.ts-login-bound`、勿描边橙框/`cbi-button`）见 CUSTOM-TRIMMING §五十六；健康巡检 Map 顶栏 / 易有云状态卡 / vlmcsd 标题行见 §五十三。改任何页面前先读本文件和该页的原始模板。
+> Tailscale 设置表单与接口日志见 §五十一；**授权登录用 `.ts-login-btn` 蓝色按钮样式链接，保留 AuthURL / 新标签打开；左侧统一为「登录状态」，以 CUSTOM-TRIMMING §五十九为准**。**注销用原生 `.ts-logout-btn` 按钮（淡橙底、细边框），见 §五十八**；两者均为 34px 高、8px 圆角，不要恢复 button 套 a 或套用 `cbi-button`。**整行上下居中见 §五十七：外层 `.cbi-value[data-name="login_status"]` 与内层登录区都要居中，并取消该行标签的 float / padding-top；只改 `#login_status_div` 无法对齐左侧标签**。用户名与注销保持左右排列，勿裸 `<br>`、勿 `.ts-login-bound`。健康巡检 Map 顶栏 / 易有云状态卡 / vlmcsd 标题行见 §五十三。改任何页面前先读本文件和该页的原始模板。
 
 ## 0. 前提与边界
 

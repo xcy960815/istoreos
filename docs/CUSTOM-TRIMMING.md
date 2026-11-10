@@ -1578,3 +1578,78 @@ run [`41950616687`](https://github.com/xcy960815/istoreos/actions/runs/419506166
 
 **热修（r60）**：`6f0af9edf6` 在 `_upgrade_login_bound` 的 `btn_css` / `old_btn_css` / `old_linkbtn_css` / `new_linkbtn_css` 误用 Python 真实换行，upgrade 路径把裸 CSS 插进 `setting.js` 字符串 → `SyntaxError: Invalid or unexpected token`（侧栏 Tailscale 红框、页空）。必须与 `bound_css` / `frag` 一样写成字面 `\\n`；本地用旧 CSS fixture 跑 upgrade 后 `node --check` 拦截。
 
+## 五十七、Tailscale 已绑定用户整行垂直居中（2026-11-10，无 seed 变更）
+
+用户再次截图指出：用户名与注销动作虽然已经左右排列，但仍比左侧「已绑定用户」标签偏上。§五十六只处理了 `#login_status_div` 内部的对齐，**不能由此推断它与容器外的标签也居中**。
+
+### 根因与功能视角
+
+Argon 的 `.cbi-value-title` 使用 `float:left`、`padding-top:.25rem`，并继承表单行 `line-height:2.4rem`；右侧登录区则使用 `line-height:normal` 和较小的最小高度。二者顶端相同、内容高度不同，导致标签文字偏低。单独调整用户名或按钮的 `vertical-align`、重复添加内层 `align-items:center` 都不能修正外层布局。
+
+| 变更 | 用户看到的效果 |
+|---|---|
+| 仅登录状态行改成外层 flex + `align-items:center`，该行标签取消 float 与顶部内边距 | 「已绑定用户」、用户名、注销动作在同一水平线上垂直居中；标签列宽仍跟随主题 |
+| 右侧允许折行，长用户名可断行；600px 以下标签单独占行 | 桌面仍是用户名在左、注销动作在右；窄屏不会被主题的固定标签列挤出容器 |
+| 保留 `.ts-btn-wrap` 文字按钮与全部控件 id | 警告色、hover 淡底、授权入口、注销确认及轮询行为不变 |
+
+### 文件 / 包明细
+
+| 动作 | 内容 |
+|---|---|
+| 改 | `.github/scripts/tailscale-durable/apply-status-skin.py`：在真实表单皮肤内插入仅作用于登录状态行的 CSS；全新源码与已打旧皮肤的构建树均可应用，重复运行跳过 |
+| 构建断言 | `patch-luci-setting.sh` 检查整行居中选择器，防止只打内层样式又被误认为完成 |
+| 文档 | 本节、`UI-STYLE.md` 与 `AGENTS.md` 纠正此前指路和布局判断 |
+| seed / workflow / 后端 | **无变化**；seed 仍为 521 个 `CONFIG_PACKAGE_*=y` |
+
+后续 AI：用户名与注销动作保持左右排列。对齐问题必须检查标签、字段容器、内层登录区三个层级；不要重新引入纵向用户名/注销堆叠，也不要用定位偏移或 `!important` 抵消主题。预览须加载真实 Argon CSS，并区分本地预览与真机验证。
+
+本地验证：使用钉死的 `asvow/luci-app-tailscale@534eb3f3` 源码和真实 Argon `luci-24` CSS 复现，三处文字中心的最大偏差由约 **7.6px** 降到 **0.7px**；浅/深色、1920/1024/601/420/320px、已登录/待授权/获取授权链接中/未运行共 40 组布局通过，长用户名无溢出，依赖隐藏仍有效。全新源码与现有皮肤升级产出一致，二次运行文件不变，三个生成 JS 的 `node --check`、Shell/Python 语法与 `git diff --check` 通过；移除新增 CSS 后产出与修复前逐字一致，确认业务 JS / id 未改。**本轮仅本地代码与预览验证，尚未构建或部署到设备。**
+
+## 五十八、Tailscale 注销改为可见的原生按钮（2026-11-10，无 seed 变更）
+
+用户确认 §五十七 的居中效果后，明确补充「后面期望是个按钮的形式」。**本节覆盖 §五十六 的注销纯文字样式要求**；用户名继续显示为蓝色链接，授权入口保留原样。
+
+### 功能视角
+
+| 变更 | 用户看到的效果 |
+|---|---|
+| 注销使用 `.ts-logout-btn`：淡橙底、细边框、8px 圆角、`6px 12px` 内边距 | 操作边界清楚，与用户名链接容易区分；仍与用户名、左侧标签垂直居中 |
+| 旧 `<button><a id="logout_button">…</a></button>` 改成 `<button type="button" class="ts-btn-wrap ts-logout-btn" id="logout_button">…</button>` | 整个按钮含内边距都能点击，也能通过 Enter / Space 触发；继续使用同一个 id、同一段注销确认和执行代码 |
+| 浅/深色使用各自颜色令牌，hover 加深，键盘聚焦有轮廓 | 深色下按钮仍清楚，键盘可见焦点；不引入主题 `cbi-button` 的浮动样式 |
+
+### 文件 / 包明细
+
+| 动作 | 内容 |
+|---|---|
+| 改 | `.github/scripts/tailscale-durable/apply-status-skin.py`：全新输出与旧皮肤升级均生成原生注销按钮，追加仅登录区生效的按钮 CSS |
+| 构建断言 | `patch-luci-setting.sh` 检查原生 `logout_button` 结构 |
+| 文档 | 本节、`UI-STYLE.md`、`AGENTS.md` 指向最新按钮样式，避免按旧记录改回文字链接 |
+| seed / workflow / 后端 | **无变化**；seed 521。注销确认、RPC/命令、轮询以及 UCI 字段均不改 |
+
+后续 AI：保留 §五十七 整行居中。注销是独立原生按钮，`logout_button` 必须挂在 button 本身；不要把 id 挪回内部链接或去掉边框/底色。本轮尚未部署到设备。
+
+本地验证：真实 Argon CSS 的浅/深色、五档屏宽、四种状态共 40 组布局及长用户名检查通过，三处文字中心偏差仍小于 1px；原始源码与已居中旧皮肤升级产出一致、二次运行不变，生成 JS 语法检查通过。用原有 `onclick` 代码配模拟执行器验证按钮内边距点击、Enter、Space 都触发同一确认，取消确认不执行注销，键盘聚焦轮廓可见；未向真实设备发送注销命令。去掉本次按钮 DOM / CSS 后与 §五十七 产出逐字一致，确认注销执行代码与其他页面内容未改。
+
+## 五十九、Tailscale 授权登录补齐按钮样式（2026-11-10，无 seed 变更）
+
+§五十八只把注销改成可见按钮，未登录时「授权登录」仍是橙色文字。用户指出遗漏，要求登录态也有 button 样式；本节覆盖此前「授权入口保留原样」的记录。
+
+### 功能视角
+
+| 变更 | 用户看到的效果 |
+|---|---|
+| 授权链接使用 `.ts-login-btn`：蓝底白字、1px 边框、8px 圆角、`6px 12px` 内边距 | 登录和注销都清楚地呈现为按钮，统一 34px 高并保持整行垂直居中 |
+| `Login Status` 中文统一为「登录状态」 | 未登录时不再错误显示「已绑定用户」；已登录仍显示用户名与注销按钮 |
+| 移除授权入口外层 button，直接把样式加在 a 上 | 整块内边距可点击；保留原 AuthURL、`target="_blank"` 与 `rel="noopener noreferrer"`；Enter 可打开授权页，聚焦轮廓可见 |
+| 无 AuthURL / 服务未运行 | 继续显示「正在获取授权链接…」/「未运行」，不生成无目标的登录按钮 |
+
+### 文件 / 包明细
+
+| 动作 | 内容 |
+|---|---|
+| 改 | `tailscale-durable/apply-status-skin.py`：全新及旧皮肤升级均生成蓝色登录按钮样式链接，追加局部 CSS；`patch-luci-setting.sh` 更新既有 msgid 的中文翻译并检查登录按钮结构 |
+| 文档 | 本节、`UI-STYLE.md`、`AGENTS.md` 指向登录与注销两种按钮形态 |
+| seed / workflow / 后端 | **无变化**；seed 521。AuthURL 获取、轮询、注销确认/执行、UCI 字段与控件 id 均不改 |
+
+本地验证：真实 Argon 浅/深色、五档屏宽、四种状态共 40 组布局通过，登录/注销按钮均为 34px 高；原始源码与 §五十八 旧皮肤升级产出一致、二次运行不变，Shell/Python 语法和三个生成 JS 的 `node --check` 通过。拦截授权 URL 后验证按钮内边距点击与 Enter 均在新标签打开原链接，`window.opener` 为空；未访问真实授权服务。移除本次登录 DOM / CSS 后与 §五十八 产出逐字一致，中文翻译已核对。**尚未构建或部署到设备。**
+
