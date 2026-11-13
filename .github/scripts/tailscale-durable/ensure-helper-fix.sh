@@ -125,4 +125,8 @@ if [ -f /usr/share/istoreos-ui/linkease_status.htm ] && [ -f /usr/lib/lua/luci/v
 	fi
 fi
 
+if [ -x /usr/share/istoreos-ui/apply-fastnet-skin.sh ]; then
+	/usr/share/istoreos-ui/apply-fastnet-skin.sh || log "FastNet status skin could not be applied"
+fi
+
 exit 0

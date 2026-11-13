@@ -124,6 +124,15 @@ jobs:
       - name: Pin Tailscale official amd64 + LuCI
         run: bash .github/scripts/pin-tailscale-prebuilt.sh
 
+      - name: Pin FastNet runtime + LuCI without automatic WAN access
+        run: bash .github/scripts/pin-fastnet.sh
+
+      - name: Pin standalone GoWebDav + LuCI with fw4 integration
+        run: bash .github/scripts/pin-gowebdav.sh
+
+      - name: Pin classic LinkEase file manager without automatic WAN access
+        run: bash .github/scripts/pin-linkease.sh
+
       - name: Pin QuickStart homepage without NAS cards
         run: bash .github/scripts/pin-quickstart.sh
 
@@ -364,21 +373,26 @@ jobs:
             for p in tailscale luci-app-tailscale ddns-go luci-app-ddns-go \
                      luci-app-ota luci-i18n-ota-zh-cn istoreos-ops \
                      luci-app-istoreos-health luci-app-quickstart \
-                     luci-theme-argon luci-app-openlist; do
+                     luci-theme-argon luci-app-openlist \
+                     fastnet luci-app-fastnet luci-i18n-fastnet-zh-cn \
+                     linkease-app-entry luci-lib-linkeaseauth \
+                     gowebdav luci-app-gowebdav luci-i18n-gowebdav-zh-cn \
+                     linkease luci-app-linkease luci-i18n-linkease-zh-cn \
+                     linkease-common-bin luci-lib-linkeasefile; do
               if ! grep -qE "^${p} " "$m"; then
-                echo "::error::manifest 缺少 $p（defconfig 丢行或 pin 脚本失效）"
+                echo "::error::manifest 缺少 ${p}（defconfig 丢行或 pin 脚本失效）"
                 missing=1
               fi
             done
             # 明确删掉的东西不许回来（§二/§二十四）
             for p in luci-theme-bootstrap dockerd samba4-server luci-app-samba4 \
-                     ddnsto luci-app-ddns; do
+                     ddnsto luci-app-ddns linkeasefull luci-app-linkeasefull luci-app-linkeasefull-embed; do
               if grep -qE "^${p} " "$m"; then
-                echo "::error::manifest 出现已删除的 $p（seed 或依赖被改回）"
+                echo "::error::manifest 出现已删除的 ${p}（seed 或依赖被改回）"
                 missing=1
               fi
             done
-            grep -E '^(tailscale|ddns-go|luci-app-ota|istoreos-ops|luci-app-quickstart) ' "$m" || true
+            grep -E '^(tailscale|ddns-go|fastnet|linkease-app-entry|luci-app-ota|istoreos-ops|luci-app-quickstart) ' "$m" || true
           done
           exit "$missing"
 

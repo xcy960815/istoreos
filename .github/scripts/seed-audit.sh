@@ -57,6 +57,21 @@ for pkg in smartmontools smartmontools-drivedb smartd mdadm; do
   fi
 done
 
+for pkg in fastnet luci-app-fastnet luci-i18n-fastnet-zh-cn linkease-app-entry luci-lib-linkeaseauth \
+           gowebdav luci-app-gowebdav luci-i18n-gowebdav-zh-cn \
+           linkease luci-app-linkease luci-i18n-linkease-zh-cn linkease-common-bin luci-lib-linkeasefile; do
+  if ! grep -qx "CONFIG_PACKAGE_${pkg}=y" .config; then
+    echo "::error::$pkg 缺失，FastNet / GoWebDav / 易有云默认内置承诺不成立。见 §六十一/§六十二"
+    fail=1
+  fi
+done
+for pkg in linkeasefull luci-app-linkeasefull luci-app-linkeasefull-embed; do
+  if grep -qx "CONFIG_PACKAGE_${pkg}=y" .config; then
+    echo "::error::$pkg 被加回；用户仅要求经典易有云文件管理器，未要求 LinkEaseFull NAS"
+    fail=1
+  fi
+done
+
 new=$(grep -vxF "$known" lost.txt || true)
 if [ -n "$new" ]; then
   { echo; echo "== 新增未生效（不在已知清单里）=="; echo "$new"; } | tee -a seed-audit.txt

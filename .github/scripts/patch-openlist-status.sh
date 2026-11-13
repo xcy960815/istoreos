@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# luci feed luci-app-openlist 设置页/日志页换皮 + GoWebDav/易有云状态页皮肤投递（§四十七/§五十一/§五十三）。
+# luci feed luci-app-openlist 换皮 + GoWebDav/易有云/FastNet 商店页面皮肤投递。
 set -euo pipefail
 script_dir=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$script_dir/../.." && pwd)
@@ -16,6 +16,13 @@ python3 "$script_dir/openlist-status/apply-log.py" "$d/htdocs/luci-static/resour
 install -d "$d/root/usr/share/istoreos-ui" "$d/root/etc/uci-defaults"
 install -m 0644 "$script_dir/openlist-status/gowebdav_status.htm" "$d/root/usr/share/istoreos-ui/gowebdav_status.htm"
 install -m 0644 "$script_dir/openlist-status/linkease_status.htm" "$d/root/usr/share/istoreos-ui/linkease_status.htm"
+install -m 0644 "$script_dir/openlist-status/fastnet_status.htm" "$d/root/usr/share/istoreos-ui/fastnet_status.htm"
+install -m 0755 "$script_dir/openlist-status/apply-fastnet-skin.sh" "$d/root/usr/share/istoreos-ui/apply-fastnet-skin.sh"
+cat > "$d/root/etc/uci-defaults/99-istoreos-fastnet-skin" <<'EOFUCI'
+#!/bin/sh
+exec /usr/share/istoreos-ui/apply-fastnet-skin.sh
+EOFUCI
+chmod 0755 "$d/root/etc/uci-defaults/99-istoreos-fastnet-skin"
 cat > "$d/root/etc/uci-defaults/99-istoreos-gowebdav-skin" <<'EOFUCI'
 #!/bin/sh
 SRC="/usr/share/istoreos-ui/gowebdav_status.htm"
@@ -38,4 +45,4 @@ fi
 exit 0
 EOFUCI
 chmod 0755 "$d/root/etc/uci-defaults/99-istoreos-linkease-skin"
-echo "openlist & gowebdav & linkease UI patch done ($d)"
+echo "openlist & gowebdav & linkease & fastnet UI patch done ($d)"

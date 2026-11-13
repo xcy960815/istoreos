@@ -4,7 +4,13 @@
 > 用于为家里的 J4125 四口 2.5G 软路由（LAN IP `192.168.100.1`）构建裁剪版固件。
 > 用户在 2026-10-05 明确要求删除下列功能，**除非用户再次明确要求，不得在 seed 中加回**。
 
-## 当前进度（2026-11-07，后续 AI 先读这里）
+## 当前工作区（2026-11-13，待推送 / 构建）
+
+用户要求 **FastNet、独立 GoWebDav、经典易有云文件管理器默认内置**（§六十一/§六十二），seed 521→**534**。三者由 seed 独立默认选中，不与 DDNS-Go 互挂依赖。固定必要源码及预编译，不升级 Go、不引入 LinkEaseFull NAS 或整个 app-hub。FastNet 不自动开放 WAN 3200；GoWebDav 新配置默认关闭，账号/共享目录设置后启用，公网开关适配 fw4；经典易有云默认启动、allowPublic=0，不自动开放 WAN 8897。页面保留既有皮肤。GoWebDav 移到「服务」，首页和状态查询路径同步更新，首页不再先走商店安装。
+
+**上一轮 r62（提交 `c1f669caf5`，run `42971161518`）已核对构建成功**，含 Tailscale 居中与登录/注销按钮修复；不含本节新增功能。当前工作区尚未推送或构建，不能把 seed 534 当作已发布镜像配置。设备是否已升级未重新取证；下方 r54 为 2026-11-07 历史快照，不应再据此断言它是最新发布版。
+
+## 镜像 / 设备历史快照（2026-11-07）
 
 **最新镜像是 r54**（2026-11-07，实际构建提交 `9ad6098a43`，[Releases 已发布](https://github.com/xcy960815/istoreos/releases/tag/r54)，run `42321712975`）。seed `=y` **521**——r50～r54 均无 seed 变更（全是换皮/CI/文档）。r49 那轮「通用 gzip 检查误判」已修复（§四十九），现行规则：**不要用普通 `gzip --test` 拦截 combined.img.gz 尾部的 OpenWrt 元数据**。发布仍不等于逐页自检，设备状态见下文。
 
@@ -101,7 +107,8 @@
 - **openclash**：全家主力代理，GeoIP 数据齐全、多份配置备份（用户本机代理 7897 与之同源）
 - **ddns-go + luci-app-ddns-go**：公网 IP + 免费域名，**开箱即有**（第七条 feed `ddnsgo`）。勿删、勿改回「刷机后商店装」、勿用 `luci-app-ddns` 顶替
 - **tailscale + luci-app-tailscale**：家人设备远程入口，路由器是 exit node（与公网 DDNS 并行，不是二选一）。**2026-10-14 起开箱即有**：官方 1.104.1 amd64 + asvow LuCI，见 §二十二。不要再写成「刷机后商店装 `luci-app-tailscale-community`」
-- **openlist / vlmcsd / eqos / oaf / ttyd / wol(etherwake) / cpufreq / luci-fan / fastnet / floatip**：保留；2026-10-10 用户再次明确 OpenList 和它自带的 WebDAV 要留，不能随下载器删除
+- **FastNet / GoWebDav（2026-11-13 改口，待构建）**：独立服务与 LuCI/中文默认内置，依赖和默认开关见 §六十一；旧版「仅商店安装」记录不再适用于新 seed。
+- **openlist / vlmcsd / eqos / oaf / ttyd / wol(etherwake) / cpufreq / luci-fan / floatip**：保留；2026-10-10 用户再次明确 OpenList 和它自带的 WebDAV 要留，不能随下载器删除
 - **Aria2 / Transmission 已退出保留清单**：2026-10-10 用户明确不需要，连同管理页面和首页入口一起去掉，见 §二十。旧配置行数不再作为保留依据
 - **istore / luci-app-store / argon 主题 / QuickStart 首页**：系统管理骨架，勿动。首页方案见 §二十三（磁盘信息 + 存储服务仅 WebDAV；Samba/易有云/下载器/ddnsto 卡片去掉）；不要加回 Bootstrap（§二十四）
 - **kmod-igc**：四个 2.5G i226-V 网卡的驱动，删了机器变砖
@@ -130,7 +137,7 @@
 | 3G/4G/5G 上网模组、随身 WiFi 拨号 | modemmanager、libmbim/libqmi、comgt、usb-modeswitch、mhi/qrtr | 无此硬件；**断网应急改用手机 USB 共享网络**（rndis/ipheth/cdc-ncm 已保留，插 iPhone/Android 可当 WAN） |
 | USB 转串口设备（调试线/串口模块） | kmod-usb-serial 全系 | 需要时 iStore 临时装回或往 seed 加一行 |
 | 接显示器看图形界面、GPU 工具 | i915/amdgpu/radeon 固件、DRM/fb 全系、nvtop | 无头设备无影响；GRUB 菜单和 VGA 文本控制台仍可用，QEMU 验证不受影响 |
-| 当 NFS/Samba 服务器；用 cifsmount/davfs2 挂载别人的网络盘 | NFS 服务端全家、cifsmount、davfs2（Samba 首轮已删） | OpenList 及其自带 WebDAV 保留；独立的 gowebdav/webdav2 仍不在构建期 |
+| 当 NFS/Samba 服务器；用 cifsmount/davfs2 挂载别人的网络盘 | NFS 服务端全家、cifsmount、davfs2（Samba 首轮已删） | OpenList 及其自带 WebDAV 保留；独立 GoWebDav 已按 §六十一纳入新 seed（出厂关闭），webdav2 仍不在构建期 |
 | RAID / 多盘合并 / 硬盘休眠 / iSCSI / USB over IP | mdadm+kmod-md、kmod-dm、mergerfs、hd-idle、iscsi/aoe、usbip | 单盘直用完全不受影响 |
 | L2TP/PPTP/SSTP VPN 拨号、GRE/IPIP 隧道、IPsec、链路聚合、中继 | 各协议 kmod+用户态、bonding、relayd | 不用这些拨号协议；远程走 Tailscale 或公网端口转发。~~WireGuard 完整保留~~ **（2026-10-17 已删 WireGuard+unetd 全家，远程只走 Tailscale，见 §二十九）** |
 | 跑 KVM 虚拟机 | kvm/vfio/vhost（容器首轮已删） | 虚拟化归 9400F/N100 |
@@ -145,8 +152,7 @@
 - **固件里确实有（r17 快照；r43 现状见文首）**：**tailscale 1.104.1 + luci-app-tailscale（见 §二十二）**、**ddns-go + luci-app-ddns-go（见 §十五）**、openlist（含 WebDAV）、
   vlmcsd、ttyd、wol、iStore 商店本体（`luci-app-store`+`dkml`）、argon 主题、zram、lm-sensors（CPU/风扇温控）、smartd（**r17 有；2026-10-17 无盘删除，见 §三十；注意 smartd 是硬盘 SMART、不是温控，温控是 lm-sensors**）、
   wireguard（**r17 有；2026-10-17 起从 seed 删除，见 §二十九**）、dnsmasq-full、flow offload（kmod-nf-flow）
-- **不在固件里、刷机后要从商店装回**：openclash、eqos、oaf、cpufreq、luci-app-fan、fastnet、floatip、
-  gowebdav——它们从来不是构建期候选，包名与证据见 §十。**Tailscale LuCI 已不在此列**。**QuickStart 也不该再写成商店装：r22 起已烘焙、r28 起完整（§二十三），r38 起流量图走 SSE（§四十）**
+- **不在固件里、刷机后要从商店装回**：openclash、eqos、oaf、cpufreq、luci-app-fan、floatip——它们不在构建期，包名与证据见 §十。**Tailscale LuCI 已不在此列**。**QuickStart 也不该再写成商店装：r22 起已烘焙、r28 起完整（§二十三），r38 起流量图走 SSE（§四十）**
 
 ### 包名明细（按批次）
 
@@ -1652,4 +1658,98 @@ Argon 的 `.cbi-value-title` 使用 `float:left`、`padding-top:.25rem`，并继
 | seed / workflow / 后端 | **无变化**；seed 521。AuthURL 获取、轮询、注销确认/执行、UCI 字段与控件 id 均不改 |
 
 本地验证：真实 Argon 浅/深色、五档屏宽、四种状态共 40 组布局通过，登录/注销按钮均为 34px 高；原始源码与 §五十八 旧皮肤升级产出一致、二次运行不变，Shell/Python 语法和三个生成 JS 的 `node --check` 通过。拦截授权 URL 后验证按钮内边距点击与 Enter 均在新标签打开原链接，`window.opener` 为空；未访问真实授权服务。移除本次登录 DOM / CSS 后与 §五十八 产出逐字一致，中文翻译已核对。**尚未构建或部署到设备。**
+
+## 六十、FastNet 状态与打开入口换皮（2026-11-13，无 seed 变更）
+
+用户截图标出服务 → FastNet 的「状态 / 运行中」和两次重复的「打开 Web 界面」，要求调整样式。此页此前没有换皮；不是 Tailscale 改动的回归。FastNet 仍是商店安装的应用，**不加入 seed、不拉整个 app-hub**。上一轮 r62（提交 `c1f669caf5`，run `42971161518`）已核对为 success，本节的新皮肤尚不在该镜像中；未据截图推断设备固件版本。
+
+### 功能视角
+
+| 变更 | 效果 / 边界 |
+|---|---|
+| 状态改成圆点药丸，打开入口改成蓝色圆角按钮，合并到一张横向白卡 | 左侧状态、右侧操作，整行垂直居中；去掉重复的打开入口标签，窄屏可折行 |
+| 页标题与说明包进 `.fastnet-head` 白卡 | 与既有服务页一致；深色跟随 Argon `body[theme]` 与系统配色 |
+| 保留 `self.running` 条件与 `href="<%=self.url%>"` | 继续走原 `admin/services/linkease_apps/open?id=fastnet` 路由，新标签打开；无论运行与否都保留入口，和原模板行为一致；不新增轮询 |
+| 下方启用 / 端口 / Token / 日志与侧栏不改 | 仅页面状态区与标题外观变化，不改 UCI、controller、守护进程、保存行为或商店安装方式 |
+
+### 文件 / 投递明细（扩展现有第 ⑨ 条例外）
+
+| 动作 | 内容 |
+|---|---|
+| 新增模板 | `.github/scripts/openlist-status/fastnet_status.htm`，固件常驻 `/usr/share/istoreos-ui/fastnet_status.htm` |
+| 新增同步脚本 | `openlist-status/apply-fastnet-skin.sh`，目标 `/usr/lib/lua/luci/view/fastnet/status.htm`；未装应用时跳过；已带 `fastnet-v1` 标记时不重复覆盖或清缓存 |
+| 防漂移 | 仅覆盖已审阅的 666 字节原模板（SHA256 `7bf774f85167f5eb9b19662baabbbaa1a4ebb0d65f361578e3579a417736dab6`）；app-hub 与 nas-packages-luci 两处原文件逐字相同。未知模板输出提示并保留原文件，待审阅后更新指纹，防止吞掉商店新版逻辑 |
+| 接入 | `patch-openlist-status.sh` 通过已有 OpenList 包 rootfs 投递模板、同步脚本及 `99-istoreos-fastnet-skin`；`tailscale-durable/ensure-helper-fix.sh` 开机调用同步脚本。商店后装或装包覆盖后，下次启动可同步已知模板，也可手动运行该同步脚本 |
+| 文档 | 本节、`UI-STYLE.md`、`AGENTS.md`、`BUILD-CUSTOM.md` |
+| seed / workflow | **无变化**；seed 仍为 521 个 `CONFIG_PACKAGE_*=y`，未改构建工作流，无新增 feed / 构建例外 |
+
+本地验证：用真实 Argon CSS 和生产模板生成运行/未运行、浅/深色、1440/800/375/320px 共 16 组预览，状态与按钮居中且不溢出；标题包装重复运行不改变 DOM。模拟打开目标验证整块按钮点击、Enter、新标签和无 opener，未请求真实路由器。隔离根目录验证未安装、已知模板、未知模板、损坏皮肤源和二次运行行为，缓存只在首次成功覆盖时清理；以真实 OpenList feed 的 config.js / log.js 跑完整构建投递脚本，首跑及幂等通过，产出 JS 与页内脚本 `node --check`、Shell 语法及 `git diff --check` 通过。文案全部复用上游中文 PO。**仅本地修改和预览，尚未提交、推送、构建或部署。**
+
+## 六十一、FastNet 与独立 GoWebDav 默认内置（2026-11-13，用户明确要求，待构建）
+
+用户在 §六十 换皮之后要求 FastNet「和 DDNS-Go 一样」默认自带，并追加要求 WebDAV 也内置。WebDAV 按已有 QuickStart 首页入口对应的 **GoWebDav** 实现；**OpenList 自带 WebDAV 原本就在固件中**，本次不是恢复 OpenList 功能。两者各自默认选包，不建立 DDNS-Go → FastNet 等无关依赖关系。
+
+### 功能视角：变更后恢复什么 / 边界 / 成本
+
+| 能做什么 | 影响与边界 |
+|---|---|
+| 新镜像自带 FastNet 程序、服务 → FastNet、中文及 §六十 状态卡 | 不再要求先从商店安装。出厂 enabled=1、监听 3200；去掉上游首次启动自动创建 WAN ACCEPT 规则的代码，不主动放行公网。Token 仍由用户按需设置，已有防火墙规则不被删除 |
+| 自带独立 GoWebDav、服务 → GoWebDav（§六十二 移动菜单）、中文及既有卡片皮肤 | 原包配置 enable=0、allow_wan=0，保留首次设置账号/共享目录后启用；端口 6086，根目录 /mnt，示例 user/pass 不应直接用于公网。保留设置升级会沿用原启用状态、目录、账号和公网选择，不能把「出厂关闭」当作会关闭旧设备服务 |
+| 首页「配置存储服务」及 WebDAV 入口直接进入内置设置 | 移除两个 installAndGo 与向导中一个 checkAndInstallApp 的 GoWebDav 商店调用，离线也能进入设置；仍只留 WebDAV 卡片，不加 Samba / 易有云 / 下载器。FastNet 不因本次变更而保证出现在旧版 QuickStart 的可插拔卡片区，稳定入口是服务菜单 |
+| GoWebDav 公网开关适配 fw4 | 只管理 `firewall.istoreos_gowebdav` 且名称匹配本包的专用规则；用户明确启用 allow_wan 后才放行所选 TCP 端口，关闭/停服务撤销该专用规则。只迁移旧包已知的 /var/etc/gowebdav.include 引用，不改其他规则；同名自定义规则保留并提示 |
+| GoWebDav 认证、只读和 HTTPS 可配置 | procd 参数逐项传递，密码/目录中的空格不再被旧式拼接拆分；HTTPS 缺证书或密钥时拒绝降级到 HTTP；「打开 Web 界面」根据 use_https 选择协议。配置显式列入 conffiles |
+| 不会恢复易有云主服务 | `linkease-app-entry` 是仅监听 127.0.0.1:19290 的 /apps 入口，`luci-lib-linkeaseauth` 是共享 LuCI 认证/跳转库；FastNet 原来的打开路径依赖它们。本节最初不装 linkease / linkeasefull / luci-app-linkease；**随后用户明确要求内置经典易有云（§六十二），仅经典版恢复，仍不引入整个 app-hub 或 NAS 桌面**。兼容注册目录中出现 linkeasefull 字样不代表装了 NAS 程序 |
+| 额外资源成本 | FastNet 与轻量入口的 x86_64 静态二进制分别为 4,794,556 和 9,093,304 字节（合计约 13.9MB，未计 Lua/前端及镜像压缩），入口也会常驻。GoWebDav 最终体积待云端产物核对；其 Go 1.17 源码使用树内现有 Go 1.23 构建，不升级 golang feed。关闭原包 UPX 默认项，避免其未声明 upx/host 时构建失败 |
+
+### 包名明细：seed 521 → 529（新增 8 个 `=y`）
+
+| 功能 / 依赖 | 新增包 |
+|---|---|
+| FastNet 程序 / 页面 / 中文 | `fastnet`、`luci-app-fastnet`、`luci-i18n-fastnet-zh-cn` |
+| FastNet 必需的轻量打开入口 | `linkease-app-entry`、`luci-lib-linkeaseauth` |
+| 独立 WebDAV 程序 / 页面 / 中文 | `gowebdav`、`luci-app-gowebdav`、`luci-i18n-gowebdav-zh-cn` |
+| 构建选项 | `# CONFIG_GOWEBDAV_COMPRESS_UPX is not set`，不是功能删除 |
+
+### 固定来源与构建例外（新增第 ⑬ / ⑭ 条）
+
+| 文件 | 内容 |
+|---|---|
+| `.github/scripts/pin-fastnet.sh` | sparse checkout `istoreos/istoreos-app-hub@56d1630cfc1d0391be2baa61758e6fdd7c78f422`，仅四个目录：FastNet、其 LuCI、轻量入口、共享 Lua 库。原包版本分别 0.8.9-2 / 0.8.9-r2 / 3.0.23-1 / 1.2.1-r3；定制版将前两者修订号升到 0.8.9-3 / 0.8.9-r3，区分去 WAN 默认及皮肤；后两者原样保留。固定预编译归档校验值，直接把 §六十 模板覆盖进生成的 LuCI 包 |
+| `.github/scripts/pin-gowebdav.sh` + `gowebdav-durable/gowebdav.init` | sparse checkout `linkease/istore-packages@dc60ee0b25f01dbc0a072f4a5ed1a944f7c3c053`，仅 GoWebDav 与 LuCI 两个目录。源 GoWebDav 0.0.3-2 / LuCI 1.0-1；定制修订号 0.0.3-3 / 1.0-2。替换 fw3 初始化与 include 注册，补 conffiles、缺失中文 msgid、既有皮肤，不改默认启用/共享范围 |
+| 预编译与源码验证 | FastNet 归档 SHA256 `14214f92b0564df5d930ebcff8b10cc62c0cdaa83ff17fd7984ddd81dfd2a18d`；入口 amd64 归档 `f5a974187ca1c50f043459150e52195c85799673f9ebc18221e9f5d206a4fb3c`；GoWebDav v0.0.3 源码归档 `1e75071216baa5b26aa111771ad87e865a5aacacf7abb8f0e5a2b7b8cb7fd8b3`。下载后二次实算一致；前两者确认为静态 x86_64 ELF |
+| 构建接入 | `build-istoreos.yml` 在 defconfig 前执行两个 pin；`seed-audit.sh` 和发布前 manifest 检查要求八包齐全，并禁止意外回加 LinkEaseFull NAS（§六十二 起经典版改为必需包）。manifest 错误消息使用 `${p}` 明确变量边界，负向测试不会把中文标点读入变量名 |
+| 稳定性 | 不覆盖无来源标记的现存生成包目录；非 x86_64 目标拒绝；固定 commit/版本/哈希/模板锚点变化时失败待复核。两个 pin 首跑/重复运行已验证输出一致。`feeds.conf.default` 仍为原七条，没有新增整仓 feed，没有修改 target 源码 |
+| 记录 / 指路 | 本节及文首当前状态、`AGENTS.md`、`BUILD-CUSTOM.md`、`UI-STYLE.md`。旧版「仅商店装回 FastNet / GoWebDav」记录至此被用户新要求覆盖 |
+
+本地验证：两个 pin 在隔离构建根目录实际拉取固定源、生成包、重复运行幂等；FastNet 首启模拟验证无 firewall 写入且启用/启动仍执行，未知现存目录和错误架构拒绝覆盖。GoWebDav 启动脚本模拟覆盖出厂关闭、内网启动、显式公网、改端口、关闭公网、停服务、专用规则幂等、同名用户规则保留、旧 include 迁移、带空格凭据、只读、有效/缺失 HTTPS 配置和非法端口。真实 QuickStart 编译产物验证三个 WebDAV 商店调用被移除，二次补丁及 node --check 通过；八包缺失/意外 NAS 回加的 seed / manifest 负向检查通过，所有改动 Shell、页面 JS、actionlint 与 git diff --check 通过。
+
+**尚未提交、推送、运行完整 OpenWrt defconfig、云端编译或部署。** Mac 本轮验证不等于固件已编译成功；实际依赖展开、交叉编译及镜像包清单仍由下一轮 CI 的 defconfig / seed 审计 / 编译 / manifest 门禁最终验证。后续推送时，seed、两个 pin、fw4 适配、CI 和本节记录必须同一提交；不要只推八行 seed。
+
+## 六十二、经典易有云默认内置，GoWebDav 归入服务（2026-11-13，用户明确要求，待构建）
+
+用户追加「易有云文件管理器也弄成默认固件配置」，随后要求 WebDAV 放进服务模块。**本节覆盖早期禁止内置经典 LinkEase 的记录**；只恢复截图侧栏同名的经典文件管理器，不恢复 LinkEaseFull NAS 桌面、Samba、Docker、下载器或已删除的首页卡片。§六十一 的 FastNet / GoWebDav 默认内置继续保留。
+
+### 功能视角
+
+| 恢复 / 调整 | 影响与替代方案 |
+|---|---|
+| 固件自带「服务 → 易有云文件管理器」 | 经典 LinkEase 1.7.6、文件管理前端和中文，保留此前状态卡皮肤，无需商店再装；可从服务页打开易有云或本地文件管理。默认 enabled=1、端口 8897、allowPublic=0，沿用上游认证与 UCI 配置保留机制 |
+| 取消公共二进制包首次启动无条件放行 WAN 8897 | 首次启动不覆盖任何已有防火墙规则。公网访问仍需按实际需求手动配置防火墙，并在应用中明确启用公网访问；此开关只向程序传入 --allowPublic，不自动创建规则。已有设备的自定义公网规则不会被本次删除，不能把默认不放行理解为升级会关闭已有入口 |
+| GoWebDav 移至「服务 → GoWebDav」 | controller 和 status RPC 同步移动，取消该应用对 NAS 父菜单的注册；首页两个入口直接去服务下设置。状态模板按当前页面路径选择服务 RPC，兼容此前商店版的旧 NAS 路径；默认固件不注册旧 NAS 菜单 |
+| 资源成本 | 官方经典程序及两个公共工具均为静态 x86_64 ELF，未压缩总计 21,491,492 字节（约 21.5MB），另有文件前端和 Lua；镜像压缩体积和运行内存待云端构建/设备实测。仅需 WebDAV 时可不启动易有云；也可继续使用原有 OpenList |
+
+### 包名与固定来源：seed 529 → 534（新增 5 个 `=y`）
+
+| 内容 | 明细 |
+|---|---|
+| 经典易有云及页面 | `linkease`、`luci-app-linkease`、`luci-i18n-linkease-zh-cn` |
+| 必要公共依赖 | `linkease-common-bin`、`luci-lib-linkeasefile`；后者无独立 PO，不添加不存在的 i18n 包 |
+| 第 ⑮ 条构建例外 | `.github/scripts/pin-linkease.sh` 在 defconfig 前 sparse checkout `istoreos/istoreos-app-hub@56d1630cfc1d0391be2baa61758e6fdd7c78f422`，仅经典程序、其 LuCI、公共二进制、文件前端四个包目录；不加 feed。固定版本/哈希，拒绝覆盖无来源标记的目录 |
+| 本地修订 | `linkease`、`linkease-common-bin` 1.7.6-1 → 1.7.6-2；LuCI 2.1.70-r4 → r5，区分无自动 WAN 和皮肤。文件前端仍 2.1.70-r4；原 init/procd、认证、升级配置保留及版本化文件所有权交接均不改 |
+| 归档校验 | 官方 release `linkease-runtime-v1.7.6`：经典归档 SHA256 `2beab45ffd519f19e7dce62bbb06a4ddf63919e2ed69b1f8b4333134efbab03c`；公共工具 `608806ab0b2983c3abb9c55783673d74533fd56783327354faa246192909a78c`，下载后二次实算一致 |
+| 构建门禁 | seed 审计和发布 manifest 改为要求经典版五包齐全；禁止 `linkeasefull`、`luci-app-linkeasefull`、`luci-app-linkeasefull-embed`。三款内置应用共新增 13 包，seed 与本节记录必须同一提交 |
+
+本地验证：经典四包实际拉取、重复生成逐字一致；认证/controller、init、UCI 默认与配置文件保持源版本，皮肤中文 msgid 齐全，首次防火墙脚本不写任何规则，错误架构及未知现存目录拒绝覆盖。三个应用导入的 rootfs/LuCI/前端文件没有路径所有权重叠；官方归档实算校验值与 ELF 架构通过。真实 QuickStart 原始产物与已改旧 NAS 直达版本均验证入口迁移、无商店依赖及幂等；状态模板分别模拟服务和旧商店路径，含 stok 路径均匹配 RPC。新增经典五包逐个缺失和三个禁用 NAS 包的 manifest 负向检查、seed 审计、GoWebDav fw4 模拟及 Shell/Python/JS/actionlint 检查通过。
+
+**尚未推送、完整 defconfig、云端编译或部署**；实际交叉编译和依赖展开仍需下一轮 CI 验证。不自动放行 WAN 端口只指入站防火墙，不表示易有云原有的云账号、出站连接或远程访问机制被禁用；这些行为仍由原程序和用户配置决定。
 

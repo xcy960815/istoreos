@@ -9,6 +9,8 @@
 
 ## 0. 前提与边界
 
+FastNet 状态卡与蓝色「打开 Web 界面」按钮见 `CUSTOM-TRIMMING.md` §六十；来源是商店包 `fastnet/status.htm`，通过第 ⑨ 条例外投递。保留 `self.running` 和 `self.url`，不加轮询、不改打开路径。§六十一已按用户新要求把 FastNet / GoWebDav 默认内置，两个 pin 直接打包皮肤，兼容投递层继续保留。页标题与说明包进 `.fastnet-head` 白卡，状态和操作合并为一行，窄屏自动折行。
+
 | 约束 | 说明 |
 |---|---|
 | 主题 | 只装 Argon（Bootstrap 已在构建期移除，见 CUSTOM-TRIMMING §二十四）。不要写依赖 Bootstrap 的类名 |
@@ -220,3 +222,5 @@ print([i for i in sorted(ids) if f'msgid "{i}"' not in po])
 - 局部变量前缀同上（`--ota-accent`）。
 - 提交信息写清「哪个页面 + 什么变化 + §章节」，例：`fix(ota): 当前版本未知——解析 DISTRIB_DESCRIPTION 行尾 rNN；页面重排为卡片式（§四十五）`。
 - 文档两层记录：功能视角（用户看到什么变化、不能做什么）+ 包名/文件明细。**不留记录的界面改造视同未完成。**
+
+2026-11-13（§六十二）：GoWebDav 菜单和 status RPC 移到 admin/services/gowebdav，首页直接入口同步。模板保留按当前路径兼容旧商店 NAS 页面。经典易有云默认包直接烘焙已有 linkease_status.htm，投递层仍兼容旧商店安装；不改认证和 procd。

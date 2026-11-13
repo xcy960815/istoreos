@@ -356,10 +356,25 @@ else:
 if s.count(cfg_old) == 1:
     s = s.replace(cfg_old, cfg_new, 1)
     print("index.js: 配置存储服务改走 GoWebDAV")
-elif 'k=()=>{zt.installAndGo("app-meta-gowebdav"' in s:
+elif 'k=()=>{zt.installAndGo("app-meta-gowebdav"' in s or 'k=()=>{window.location.assign("/cgi-bin/luci/admin/services/gowebdav")' in s or 'k=()=>{window.location.assign("/cgi-bin/luci/admin/nas/gowebdav")' in s:
     print("index.js 配置存储服务已走 GoWebDAV")
 else:
     raise SystemExit("::error::index.js 配置存储服务入口改不了")
+
+# GoWebDav is built in (§六十一): open settings without installing store metadata.
+webdav_direct = 'window.location.assign("/cgi-bin/luci/admin/services/gowebdav")'
+webdav_store = 'zt.installAndGo("app-meta-gowebdav","GoWebDAV","/cgi-bin/luci/admin/nas/gowebdav")'
+webdav_wizard = '(yield zt.checkAndInstallApp("app-meta-gowebdav","GoWebdav"))&&y()'
+webdav_marker = '/* istoreos: built-in GoWebDav bypasses store installation */'
+if webdav_marker in s:
+    s = s.replace('window.location.assign("/cgi-bin/luci/admin/nas/gowebdav")', webdav_direct)
+if webdav_marker not in s:
+    if s.count(webdav_store) != 2 or s.count(webdav_wizard) != 1:
+        raise SystemExit("::error::GoWebDav store-call anchors changed")
+    s = s.replace(webdav_store, webdav_direct).replace(webdav_wizard, 'y()')
+    s += '\n' + webdav_marker + '\n'
+if 'app-meta-gowebdav' in s or s.count(webdav_direct) != 2:
+    raise SystemExit("::error::built-in GoWebDav still depends on store installation")
 
 if new_push not in s or webdav_item not in s or storage_blob not in s:
     raise SystemExit("::error::首页存储服务/WebDAV 没有留下")

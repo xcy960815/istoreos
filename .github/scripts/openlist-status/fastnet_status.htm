@@ -1,0 +1,106 @@
+<%# FastNet status skin. Keep self.running, self.url and the original launch route. -%>
+<div id="cbi-fastnet-status">
+	<style data-ui-skin="fastnet-v1">
+	#cbi-fastnet, #cbi-fastnet-status {
+		--fn-accent: #5e72e4; --fn-accent-hover: #4b5fd1; --fn-on-accent: #fff;
+		--fn-ok: #2dce89; --fn-warn: #fb6340; --fn-border: #e9ecef;
+		--fn-muted: #8898aa; --fn-text: #32325d; --fn-card: #fff; --fn-soft: #f7f9fc;
+	}
+	body[theme="dark"] #cbi-fastnet, body[theme="dark"] #cbi-fastnet-status {
+		--fn-border: #3a3a3d; --fn-muted: #9aa2ad; --fn-text: #d7dae0;
+		--fn-card: #232324; --fn-soft: #2b2b2d;
+	}
+	@media (prefers-color-scheme: dark) {
+		body[theme="normal"] #cbi-fastnet, body[theme="normal"] #cbi-fastnet-status {
+			--fn-border: #3a3a3d; --fn-muted: #9aa2ad; --fn-text: #d7dae0;
+			--fn-card: #232324; --fn-soft: #2b2b2d;
+		}
+	}
+	#cbi-fastnet-status .fastnet-card, #cbi-fastnet .fastnet-head {
+		padding: 16px 22px; margin: 0 0 16px;
+		background: var(--fn-card); border: 1px solid var(--fn-border); border-radius: 12px;
+		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
+	}
+	#cbi-fastnet-status .fastnet-row {
+		display: flex; align-items: center; justify-content: space-between;
+		gap: 12px 20px; flex-wrap: wrap;
+	}
+	#cbi-fastnet-status .fastnet-info {
+		display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap;
+	}
+	#cbi-fastnet-status .fastnet-label {
+		color: var(--fn-muted); font-size: 13px; line-height: 20px;
+	}
+	#cbi-fastnet-status .fastnet-pill {
+		display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px;
+		background: var(--fn-soft); border-radius: 999px;
+		color: var(--fn-text); font-size: 13px; font-weight: 600; line-height: 20px;
+	}
+	#cbi-fastnet-status .fastnet-dot {
+		width: 10px; height: 10px; flex: 0 0 10px; border-radius: 50%;
+		background: var(--fn-ok); box-shadow: 0 0 0 4px rgba(45, 206, 137, .12);
+	}
+	#cbi-fastnet-status .fastnet-pill-off .fastnet-dot {
+		background: var(--fn-warn); box-shadow: 0 0 0 4px rgba(251, 99, 64, .12);
+	}
+	#cbi-fastnet-status .fastnet-open {
+		display: inline-flex; align-items: center; justify-content: center;
+		box-sizing: border-box; min-width: 132px; margin: 0; padding: 8px 18px;
+		border: 1px solid var(--fn-accent); border-radius: 8px;
+		background: var(--fn-accent); color: var(--fn-on-accent);
+		font-size: 14px; font-weight: 600; line-height: 20px; text-decoration: none;
+		transition: background-color .15s, border-color .15s;
+	}
+	#cbi-fastnet-status .fastnet-open:hover {
+		background: var(--fn-accent-hover); border-color: var(--fn-accent-hover);
+		color: var(--fn-on-accent); text-decoration: none;
+	}
+	#cbi-fastnet-status .fastnet-open:focus-visible {
+		outline: 2px solid var(--fn-accent); outline-offset: 2px;
+	}
+	#cbi-fastnet .fastnet-head {
+		display: flex; align-items: baseline; justify-content: space-between;
+		gap: 8px 16px; flex-wrap: wrap;
+	}
+	#cbi-fastnet .fastnet-head > h2 {
+		margin: 0; padding: 0; background: none; border: 0; box-shadow: none;
+		color: var(--fn-text); font-size: 18px; font-weight: 600; line-height: 1.3;
+	}
+	#cbi-fastnet .fastnet-head > .cbi-map-descr {
+		margin: 0 0 0 auto; padding: 0; text-align: right;
+		color: var(--fn-muted); font-size: 13px; line-height: 1.6;
+	}
+	</style>
+	<div class="fastnet-card">
+		<div class="fastnet-row">
+			<div class="fastnet-info">
+				<span class="fastnet-label"><%:Status%></span>
+				<% if self.running then %>
+				<span class="fastnet-pill"><span class="fastnet-dot" aria-hidden="true"></span><%:Running%></span>
+				<% else %>
+				<span class="fastnet-pill fastnet-pill-off"><span class="fastnet-dot" aria-hidden="true"></span><%:Not running%></span>
+				<% end %>
+			</div>
+			<a class="fastnet-open" href="<%=self.url%>" target="_blank" rel="noopener noreferrer"><%:Open Web UI%></a>
+		</div>
+	</div>
+</div>
+<script>
+(function() {
+	var root = document.getElementById('cbi-fastnet');
+	if (!root || root.querySelector('.fastnet-head'))
+		return;
+	var title = null, descr = null;
+	for (var i = 0; i < root.children.length; i++) {
+		var child = root.children[i];
+		if (child.tagName === 'H2') title = child;
+		if (child.classList.contains('cbi-map-descr')) descr = child;
+	}
+	if (!title || !descr) return;
+	var head = document.createElement('div');
+	head.className = 'fastnet-head';
+	root.insertBefore(head, title);
+	head.appendChild(title);
+	head.appendChild(descr);
+})();
+</script>

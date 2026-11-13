@@ -1,0 +1,88 @@
+#!/bin/sh /etc/rc.common
+# procd + fw4 integration; only manage the dedicated GoWebDav firewall rule.
+START=99
+STOP=10
+USE_PROCD=1
+PROG=/usr/bin/gowebdav
+
+sync_firewall() {
+	local changed=0 current
+	# Retire only the old package's iptables include, never a user-defined rule.
+	if [ "$(uci -q get firewall.gowebdav)" = include ] &&
+	   [ "$(uci -q get firewall.gowebdav.path)" = /var/etc/gowebdav.include ]; then
+		uci -q delete firewall.gowebdav
+		changed=1
+	fi
+	current=$(uci -q get firewall.istoreos_gowebdav)
+	if [ "$enable" = 1 ] && [ "$allow_wan" = 1 ]; then
+		if [ -n "$current" ] && [ "$(uci -q get firewall.istoreos_gowebdav.name)" != 'GoWebDav (iStoreOS)' ]; then
+			logger -t gowebdav 'firewall section already in use; preserving user rule'
+		elif [ "$current" != rule ] ||
+		     [ "$(uci -q get firewall.istoreos_gowebdav.dest_port)" != "$listen_port" ] ||
+		     [ "$(uci -q get firewall.istoreos_gowebdav.src)" != wan ] ||
+		     [ "$(uci -q get firewall.istoreos_gowebdav.proto)" != tcp ] ||
+		     [ "$(uci -q get firewall.istoreos_gowebdav.target)" != ACCEPT ] ||
+		     [ "$(uci -q get firewall.istoreos_gowebdav.enabled)" != 1 ]; then
+			uci -q set firewall.istoreos_gowebdav=rule
+			uci -q set 'firewall.istoreos_gowebdav.name=GoWebDav (iStoreOS)'
+			uci -q set firewall.istoreos_gowebdav.src=wan
+			uci -q set firewall.istoreos_gowebdav.proto=tcp
+			uci -q set "firewall.istoreos_gowebdav.dest_port=$listen_port"
+			uci -q set firewall.istoreos_gowebdav.target=ACCEPT
+			uci -q set firewall.istoreos_gowebdav.enabled=1
+			changed=1
+		fi
+	elif [ -n "$current" ] && [ "$(uci -q get firewall.istoreos_gowebdav.name)" = 'GoWebDav (iStoreOS)' ]; then
+		uci -q delete firewall.istoreos_gowebdav
+		changed=1
+	fi
+	if [ "$changed" = 1 ]; then
+		uci -q commit firewall
+		/etc/init.d/firewall reload
+	fi
+}
+
+start_service() {
+	local enable listen_port username password root_dir read_only allow_wan use_https cert_cer cert_key
+	config_load gowebdav
+	config_get_bool enable config enable 0
+	config_get listen_port config listen_port 6086
+	config_get username config username
+	config_get password config password
+	config_get root_dir config root_dir /mnt
+	config_get_bool read_only config read_only 0
+	config_get_bool allow_wan config allow_wan 0
+	config_get_bool use_https config use_https 0
+	config_get cert_cer config cert_cer
+	config_get cert_key config cert_key
+	case "$listen_port" in ''|*[!0-9]*) return 1 ;; esac
+	[ "$listen_port" -ge 1 ] && [ "$listen_port" -le 65535 ] || return 1
+	if [ "$enable" != 1 ]; then sync_firewall; return 0; fi
+	[ -n "$root_dir" ] || return 1
+	if [ "$use_https" = 1 ] && { [ ! -f "$cert_cer" ] || [ ! -f "$cert_key" ]; }; then
+		logger -t gowebdav 'HTTPS certificate/key missing; refusing HTTP fallback'
+		return 1
+	fi
+	mkdir -p "$root_dir" || return 1
+	procd_open_instance
+	procd_set_param command "$PROG" -dir "$root_dir" -http ":$listen_port"
+	if [ -n "$username" ] && [ -n "$password" ]; then
+		procd_append_param command -user "$username" -password "$password"
+	fi
+	[ "$read_only" = 1 ] && procd_append_param command -read-only
+	[ "$use_https" = 1 ] && procd_append_param command -https-mode -https-cert-file "$cert_cer" -https-key-file "$cert_key"
+	procd_set_param respawn
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+	sync_firewall
+}
+
+stop_service() {
+	local enable=0
+	sync_firewall
+}
+
+service_triggers() {
+	procd_add_reload_trigger gowebdav
+}

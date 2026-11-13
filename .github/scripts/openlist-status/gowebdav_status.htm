@@ -3,7 +3,10 @@
   Keep id=gowebdav_status, XHR.poll(1, .../status), data.running, and openwebui().
 -%>
 <script type="text/javascript">//<![CDATA[
-XHR.poll(1, '<%=url([[admin]], [[nas]], [[gowebdav]], [[status]])%>', null,
+var gowebdavStatusURL = window.location.pathname.indexOf('/admin/services/gowebdav') !== -1
+	? '<%=url([[admin]], [[services]], [[gowebdav]], [[status]])%>'
+	: '<%=url([[admin]], [[nas]], [[gowebdav]], [[status]])%>';
+XHR.poll(1, gowebdavStatusURL, null,
 	function(x, data) {
 		var tb = document.getElementById('gowebdav_status');
 		if (data && tb) {
@@ -20,7 +23,8 @@ XHR.poll(1, '<%=url([[admin]], [[nas]], [[gowebdav]], [[status]])%>', null,
 
 function openwebui() {
 	var url = window.location.hostname+":<%=luci.sys.exec("uci -q get gowebdav.config.listen_port"):gsub("^%s*(.-)%s*$", "%1")%>";
-	window.open('http://'+url,'target','');
+	var scheme = '<%=luci.sys.exec("uci -q get gowebdav.config.use_https"):gsub("^%s*(.-)%s*$", "%1") == "1" and "https" or "http"%>';
+	window.open(scheme+'://'+url,'target','');
 };
 //]]>
 </script>
