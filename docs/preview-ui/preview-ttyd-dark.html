@@ -1,0 +1,84 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>系统终端 - UI 预览</title>
+<style>
+body { background:#f4f6fb; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; margin:0; padding:24px; }
+body[theme="dark"] { background:#181819; color:#d7dae0; }
+.cbi-map { max-width:1080px; margin:0 auto; }
+#cbi-ttyd {
+	--ttyd-accent: #5e72e4; --ttyd-border: #e9ecef; --ttyd-muted: #8898aa;
+	--ttyd-text: #32325d; --ttyd-card: #fff; --ttyd-soft: #f7f9fc;
+}
+body[theme="dark"] #cbi-ttyd { --ttyd-border:#3a3a3d; --ttyd-muted:#9aa2ad; --ttyd-text:#d7dae0; --ttyd-card:#232324; --ttyd-soft:#2b2b2d; }
+@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-ttyd { --ttyd-border:#3a3a3d; --ttyd-muted:#9aa2ad; --ttyd-text:#d7dae0; --ttyd-card:#232324; --ttyd-soft:#2b2b2d; } }
+#cbi-ttyd.cbi-map, #cbi-ttyd .cbi-map { padding: 0; margin: 0; }
+#cbi-ttyd .ttyd-head {
+	display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px;
+	padding: 16px 22px; margin: 0 0 16px; background: var(--ttyd-card); border: 1px solid var(--ttyd-border);
+	border-radius: 12px; box-shadow: 0 2px 12px rgba(50,50,93,.06);
+}
+#cbi-ttyd .ttyd-title { margin: 0 0 4px; font-size: 18px; font-weight: 600; line-height: 1.3; color: var(--ttyd-text); }
+#cbi-ttyd .ttyd-head .cbi-map-descr { margin: 0; font-size: 13px; line-height: 1.6; color: var(--ttyd-muted); }
+#cbi-ttyd .ttyd-port-badge {
+	display: inline-block; padding: 2px 8px; border-radius: 4px; background: var(--ttyd-soft);
+	border: 1px solid var(--ttyd-border); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 12px; color: var(--ttyd-text); font-weight: 600; margin-left: 4px;
+}
+#cbi-ttyd .ttyd-open-btn {
+	display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px;
+	font-weight: 600; background: var(--ttyd-accent); color: #fff !important; text-decoration: none;
+	box-shadow: 0 2px 6px rgba(94, 114, 228, .25); transition: all .15s ease;
+}
+#cbi-ttyd .ttyd-open-btn:hover { filter: brightness(1.08); text-decoration: none; }
+#cbi-ttyd .ttyd-window {
+	background: #1e1e24; border: 1px solid var(--ttyd-border); border-radius: 12px;
+	box-shadow: 0 4px 20px rgba(0,0,0,.15); overflow: hidden; margin: 0 0 16px;
+}
+#cbi-ttyd .ttyd-window-bar {
+	display: flex; align-items: center; padding: 10px 14px; background: #2b2b36;
+	border-bottom: 1px solid rgba(255,255,255,.08); position: relative;
+}
+#cbi-ttyd .ttyd-dots { display: flex; align-items: center; gap: 6px; z-index: 1; }
+#cbi-ttyd .ttyd-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+#cbi-ttyd .ttyd-dot-red { background: #ff5f56; }
+#cbi-ttyd .ttyd-dot-yellow { background: #ffbd2e; }
+#cbi-ttyd .ttyd-dot-green { background: #27c93f; }
+#cbi-ttyd .ttyd-window-title {
+	position: absolute; left: 0; right: 0; text-align: center;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px;
+	color: rgba(255,255,255,.6); pointer-events: none;
+}
+#cbi-ttyd .ttyd-iframe {
+	width: 100%; height: calc(100vh - 240px); min-height: 540px; border: none; display: block;
+	background: #000; resize: vertical;
+}
+</style></head>
+<body theme="dark">
+<div id="cbi-ttyd" class="cbi-map">
+	<div class="ttyd-head">
+		<div class="ttyd-head-left">
+			<h2 class="ttyd-title">终端</h2>
+			<div class="cbi-map-descr">通过 Web 终端访问系统命令行。 <span class="ttyd-port-badge">端口: 7681</span></div>
+		</div>
+		<div class="ttyd-head-right">
+			<a class="ttyd-open-btn" href="#" target="_blank">在新标签页打开 <span class="ttyd-external-icon">↗</span></a>
+		</div>
+	</div>
+	<div class="ttyd-window">
+		<div class="ttyd-window-bar">
+			<div class="ttyd-dots">
+				<span class="ttyd-dot ttyd-dot-red"></span>
+				<span class="ttyd-dot ttyd-dot-yellow"></span>
+				<span class="ttyd-dot ttyd-dot-green"></span>
+			</div>
+			<div class="ttyd-window-title">root@iStoreOS ~ ttyd</div>
+		</div>
+		<div style="height:420px; background:#000; color:#27c93f; font-family:monospace; padding:16px; font-size:13px; line-height:1.5;">
+			root@iStoreOS:~# uname -a<br>
+			Linux iStoreOS 6.6.54 #0 SMP PREEMPT_DYNAMIC x86_64 GNU/Linux<br>
+			root@iStoreOS:~# uptime<br>
+			 11:15:30 up 12 days,  3:24,  load average: 0.08, 0.04, 0.01<br>
+			root@iStoreOS:~# _
+		</div>
+	</div>
+</div>
+</body></html>

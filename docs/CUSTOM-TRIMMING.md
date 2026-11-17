@@ -4,9 +4,9 @@
 > 用于为家里的 J4125 四口 2.5G 软路由（LAN IP `192.168.100.1`）构建裁剪版固件。
 > 用户在 2026-10-05 明确要求删除下列功能，**除非用户再次明确要求，不得在 seed 中加回**。
 
-## 当前工作区（2026-11-13，待推送 / 构建）
+## 当前工作区（2026-11-17，待推送 / 构建）
 
-用户要求 **FastNet、独立 GoWebDav、经典易有云文件管理器默认内置**（§六十一/§六十二），seed 521→**534**。三者由 seed 独立默认选中，不与 DDNS-Go 互挂依赖。固定必要源码及预编译，不升级 Go、不引入 LinkEaseFull NAS 或整个 app-hub。FastNet 不自动开放 WAN 3200；GoWebDav 新配置默认关闭，账号/共享目录设置后启用，公网开关适配 fw4；经典易有云默认启动、allowPublic=0，不自动开放 WAN 8897。页面保留既有皮肤。GoWebDav 移到「服务」，首页和状态查询路径同步更新，首页不再先走商店安装。
+用户要求 **FastNet、独立 GoWebDav、经典易有云文件管理器默认内置**（§六十一/§六十二），seed 521→**534**。三者由 seed 独立默认选中，不与 DDNS-Go 互挂依赖。固定必要源码及预编译，不升级 Go、不引入 LinkEaseFull NAS 或整个 app-hub。FastNet 不自动开放 WAN 3200；GoWebDav 新配置默认关闭，账号/共享目录设置后启用，公网开关适配 fw4；经典易有云默认启动、allowPublic=0，不自动开放 WAN 8897。页面保留既有皮肤。GoWebDav 移到「服务」，首页和状态查询路径同步更新，首页不再先走商店安装。2026-11-17 追加 **系统终端 / 密码修改 / 系统进程** 三个高频页面的卡片化换皮与即时搜索支持（§六十三），无 seed 变更。
 
 **上一轮 r62（提交 `c1f669caf5`，run `42971161518`）已核对构建成功**，含 Tailscale 居中与登录/注销按钮修复；不含本节新增功能。当前工作区尚未推送或构建，不能把 seed 534 当作已发布镜像配置。设备是否已升级未重新取证；下方 r54 为 2026-11-07 历史快照，不应再据此断言它是最新发布版。
 
@@ -1752,4 +1752,29 @@ Argon 的 `.cbi-value-title` 使用 `float:left`、`padding-top:.25rem`，并继
 本地验证：经典四包实际拉取、重复生成逐字一致；认证/controller、init、UCI 默认与配置文件保持源版本，皮肤中文 msgid 齐全，首次防火墙脚本不写任何规则，错误架构及未知现存目录拒绝覆盖。三个应用导入的 rootfs/LuCI/前端文件没有路径所有权重叠；官方归档实算校验值与 ELF 架构通过。真实 QuickStart 原始产物与已改旧 NAS 直达版本均验证入口迁移、无商店依赖及幂等；状态模板分别模拟服务和旧商店路径，含 stok 路径均匹配 RPC。新增经典五包逐个缺失和三个禁用 NAS 包的 manifest 负向检查、seed 审计、GoWebDav fw4 模拟及 Shell/Python/JS/actionlint 检查通过。
 
 **尚未推送、完整 defconfig、云端编译或部署**；实际交叉编译和依赖展开仍需下一轮 CI 验证。不自动放行 WAN 端口只指入站防火墙，不表示易有云原有的云账号、出站连接或远程访问机制被禁用；这些行为仍由原程序和用户配置决定。
+
+## 六十三、系统终端 / 密码修改 / 系统进程「只换皮」（2026-11-17，无 seed 变更）
+
+针对此前视觉遗留较重、风格不统一的高频工具页面进行第二轮局部换皮，包含：**系统终端（`luci-app-ttyd`）**、**管理权/密码修改（`luci-mod-system/password.js`）**、**系统进程（`luci-mod-status/processes.js`）**。
+无 seed 变更，不改动后端任何 RPC / kill 逻辑，仅在 feeds 阶段通过构建期补丁脚本换皮。
+
+### 功能视角
+
+| 页面 / 模块 | 变更后外观与体验 | 原生行为保留 |
+|---|---|---|
+| **系统 → 终端** (`luci-app-ttyd`) | 增加 `.ttyd-head` 白卡（标题 + 端口徽章 + 右侧蓝色「在新标签页打开 ↗」按钮），告别裸 iframe 灰底悬挂；外层仿现代终端控制台窗口（顶部三色小圆点控制条、居中深色标题 `root@iStoreOS ~ ttyd`），iframe 自适应视口高度（`calc(100vh - 240px)`），提供更舒适的命令行交互体验 | 端口/SSL/URL 重写/随机端口警告原样保留，自动补全中文化翻译 |
+| **系统 → 管理权 / 密码修改** (`luci-mod-system`) | 增加 `.password-head` 白卡包裹标题与说明；表单卡片全宽铺满（与头部两端右边缘对齐补齐空白），对齐 label 与输入框；密码强度提示由生硬的内联红绿文字升级为弱/中/强三种柔和圆角胶囊徽章（`--pw-ok`, `--pw-warn`, `--pw-danger`），保存按钮统一放置在右下方 | `luci.setPassword` RPC、密码一致性校验、Enter 快捷键提交行为逐字保留 |
+| **状态 → 系统进程** (`luci-mod-status`) | 增加 `.proc-head` 白卡并引入**即时搜索过滤框**（输入命令名或 PID 实时无缝过滤表格行，实时更新匹配进程数），表格卡片化；PID 等宽浅底徽章；CPU/内存占用率支持高占用红色突出；挂起/终止/强杀按钮由粗糙原生按钮重构为精致紧凑的动作按钮组（幽灵灰 / 柔橙 / 警示红） | `callLuciProcessList`、`fs.exec('/bin/kill')`、信号编号（1/15/9）与 `cbi_update_table` 排序原样保留 |
+
+### 涉及文件与构建例外明细
+
+| 脚本 / 补丁 | 明细 |
+|---|---|
+| `.github/scripts/luci-mod-system-ui/apply-password.py` | 替换 `password.js` 的 `m.render()`，注入 `#cbi-password` 作用域样式与 `.password-head` 白卡，美化强度徽章与输入框 |
+| `.github/scripts/patch-luci-mod-system-ui.sh` | 增补调用 `apply-password.py`，属于第 ⑧ 条构建例外 |
+| `.github/scripts/status-logs-ui/apply-processes.py` | 替换 `processes.js` 的 `updateTable` 与 `render`，注入 `#cbi-processes` 样式、搜索筛选框、微型指标与紧凑按钮组 |
+| `.github/scripts/patch-status-logs-ui.sh` | 增补调用 `apply-processes.py`，属于第 ⑫ 条构建例外 |
+| `.github/scripts/ttyd-ui/apply-ttyd.py` + `.github/scripts/patch-ttyd-ui.sh` | 第 ⑯ 条构建例外。替换 `term.js`，包裹控制台窗口与自适应视口高度，并向 `zh_Hans/ttyd.po` 追加中文翻译 |
+| `.github/workflows/build-istoreos.yml` | 在「Patch ... UI shells」步骤中追加 `bash .github/scripts/patch-ttyd-ui.sh` |
+
 

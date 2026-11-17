@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# luci-mod-system (reboot.js / flash.js / crontab.js / startup.js) + luci-mod-network (diagnostics.js) 换皮（§四十七/§五十一）
+# luci-mod-system (reboot.js / flash.js / crontab.js / startup.js / password.js) + luci-mod-network (diagnostics.js) 换皮（§四十七/§五十一/§六十三）
 set -euo pipefail
 script_dir=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$script_dir/../.." && pwd)
@@ -13,6 +13,7 @@ python3 "$script_dir/luci-mod-system-ui/apply-reboot.py" "$d/htdocs/luci-static/
 python3 "$script_dir/luci-mod-system-ui/apply-flash.py" "$d/htdocs/luci-static/resources/view/system/flash.js"
 python3 "$script_dir/luci-mod-system-ui/apply-crontab.py" "$d/htdocs/luci-static/resources/view/system/crontab.js"
 python3 "$script_dir/luci-mod-system-ui/apply-startup.py" "$d/htdocs/luci-static/resources/view/system/startup.js"
+python3 "$script_dir/luci-mod-system-ui/apply-password.py" "$d/htdocs/luci-static/resources/view/system/password.js"
 
 net_d=
 for p in package/feeds/luci/luci-mod-network feeds/luci/luci-mod-network; do

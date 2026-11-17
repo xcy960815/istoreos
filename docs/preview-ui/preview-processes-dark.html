@@ -1,0 +1,131 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>系统进程 - UI 预览</title>
+<style>
+body { background:#f4f6fb; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; margin:0; padding:24px; }
+body[theme="dark"] { background:#181819; color:#d7dae0; }
+.cbi-map { max-width:1080px; margin:0 auto; }
+#cbi-processes {
+	--proc-accent: #5e72e4; --proc-ok: #2dce89; --proc-warn: #fb6340; --proc-danger: #f5365c;
+	--proc-border: #e9ecef; --proc-muted: #8898aa; --proc-text: #32325d; --proc-card: #fff; --proc-soft: #f7f9fc;
+}
+body[theme="dark"] #cbi-processes { --proc-border:#3a3a3d; --proc-muted:#9aa2ad; --proc-text:#d7dae0; --proc-card:#232324; --proc-soft:#2b2b2d; }
+@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-processes { --proc-border:#3a3a3d; --proc-muted:#9aa2ad; --proc-text:#d7dae0; --proc-card:#232324; --proc-soft:#2b2b2d; } }
+#cbi-processes.cbi-map, #cbi-processes .cbi-map { padding: 0; margin: 0; }
+#cbi-processes .proc-head {
+	display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px;
+	padding: 16px 22px; margin: 0 0 16px; background: var(--proc-card); border: 1px solid var(--proc-border);
+	border-radius: 12px; box-shadow: 0 2px 12px rgba(50,50,93,.06);
+}
+#cbi-processes .proc-head-left h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; line-height: 1.3; color: var(--proc-text); }
+#cbi-processes .proc-head-left .cbi-map-descr { margin: 0; font-size: 13px; line-height: 1.6; color: var(--proc-muted); }
+#cbi-processes .proc-head-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+#cbi-processes .proc-badge-count {
+	display: inline-block; padding: 4px 10px; border-radius: 999px; background: var(--proc-soft);
+	border: 1px solid var(--proc-border); font-size: 12px; font-weight: 600; color: var(--proc-muted); white-space: nowrap;
+}
+#cbi-processes .proc-filter-input {
+	box-sizing: border-box; padding: 6px 12px; border: 1px solid var(--proc-border); border-radius: 8px;
+	background: var(--proc-soft); color: var(--proc-text); font-size: 13px; width: 200px;
+	transition: border-color .15s ease, box-shadow .15s ease;
+}
+#cbi-processes .proc-filter-input:focus { border-color: var(--proc-accent); outline: 0; box-shadow: 0 0 0 3px rgba(94, 114, 228, .15); }
+#cbi-processes .proc-card {
+	background: var(--proc-card); border: 1px solid var(--proc-border); border-radius: 12px;
+	box-shadow: 0 2px 12px rgba(50,50,93,.06); overflow: hidden; margin: 0 0 16px;
+}
+#cbi-processes table.table { width: 100%; border-collapse: collapse; margin: 0; }
+#cbi-processes table.table .table-titles th {
+	background: var(--proc-soft); color: var(--proc-muted); font-size: 12px; font-weight: 600;
+	text-transform: uppercase; letter-spacing: .5px; padding: 12px 16px; border-bottom: 1px solid var(--proc-border); text-align: left;
+}
+#cbi-processes table.table tr.tr:not(.table-titles) { border-bottom: 1px solid var(--proc-border); transition: background-color .15s ease; }
+#cbi-processes table.table tr.tr:not(.table-titles):hover { background-color: var(--proc-soft); }
+#cbi-processes table.table tr.tr:not(.table-titles):last-child { border-bottom: 0; }
+#cbi-processes table.table td.td { padding: 10px 16px; font-size: 13px; color: var(--proc-text); vertical-align: middle; }
+#cbi-processes .proc-badge-pid {
+	display: inline-block; padding: 2px 6px; border-radius: 4px; background: var(--proc-soft);
+	border: 1px solid var(--proc-border); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 12px; color: var(--proc-text); font-weight: 600;
+}
+#cbi-processes .proc-user { font-size: 13px; font-weight: 500; color: var(--proc-muted); }
+#cbi-processes .proc-cmd {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--proc-text);
+	word-break: break-all; display: block; max-width: 520px;
+}
+#cbi-processes .proc-pct { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; font-weight: 600; }
+#cbi-processes .proc-pct.proc-high { color: var(--proc-danger) !important; }
+#cbi-processes .proc-btn-group { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
+#cbi-processes .proc-btn {
+	padding: 4px 10px !important; border-radius: 6px !important; font-size: 12px !important;
+	font-weight: 500 !important; min-width: 0 !important; line-height: 1.4 !important; cursor: pointer;
+	transition: all .15s ease; border: 1px solid transparent;
+}
+#cbi-processes .proc-btn-hup { background: var(--proc-soft) !important; border-color: var(--proc-border) !important; color: var(--proc-text) !important; }
+#cbi-processes .proc-btn-hup:hover { background: var(--proc-border) !important; }
+#cbi-processes .proc-btn-term { background: rgba(251, 99, 64, .1) !important; border-color: rgba(251, 99, 64, .25) !important; color: var(--proc-warn) !important; }
+#cbi-processes .proc-btn-term:hover { background: rgba(251, 99, 64, .2) !important; }
+#cbi-processes .proc-btn-kill { background: rgba(245, 54, 92, .1) !important; border-color: rgba(245, 54, 92, .25) !important; color: var(--proc-danger) !important; }
+#cbi-processes .proc-btn-kill:hover { background: rgba(245, 54, 92, .2) !important; }
+</style></head>
+<body theme="dark">
+<div id="cbi-processes" class="cbi-map">
+	<div class="proc-head">
+		<div class="proc-head-left">
+			<h2>进程</h2>
+			<div class="cbi-map-descr">查看当前系统运行的进程及其状态。</div>
+		</div>
+		<div class="proc-head-right">
+			<span id="proc-count" class="proc-badge-count">3 进程</span>
+			<input type="text" class="cbi-input-text proc-filter-input" placeholder="筛选...">
+		</div>
+	</div>
+	<div class="proc-card">
+		<table class="table">
+			<tr class="tr table-titles">
+				<th class="th">PID</th>
+				<th class="th">所有者</th>
+				<th class="th">命令</th>
+				<th class="th">CPU 使用率 (%)</th>
+				<th class="th">内存使用率 (%)</th>
+				<th class="th right nowrap cbi-section-actions"></th>
+			</tr>
+			<tr class="tr">
+				<td class="td"><span class="proc-badge-pid">1</span></td>
+				<td class="td"><span class="proc-user">root</span></td>
+				<td class="td"><span class="proc-cmd">/sbin/procd</span></td>
+				<td class="td"><span class="proc-pct">0%</span></td>
+				<td class="td"><span class="proc-pct">0.4%</span></td>
+				<td class="td"><div class="proc-btn-group">
+					<button class="btn cbi-button proc-btn proc-btn-hup">挂起</button>
+					<button class="btn cbi-button proc-btn proc-btn-term">终止</button>
+					<button class="btn cbi-button proc-btn proc-btn-kill">强杀</button>
+				</div></td>
+			</tr>
+			<tr class="tr">
+				<td class="td"><span class="proc-badge-pid">2841</span></td>
+				<td class="td"><span class="proc-user">root</span></td>
+				<td class="td"><span class="proc-cmd">/usr/sbin/tailscaled --state=/etc/tailscale/tailscaled.state</span></td>
+				<td class="td"><span class="proc-pct proc-high">12.5%</span></td>
+				<td class="td"><span class="proc-pct">2.1%</span></td>
+				<td class="td"><div class="proc-btn-group">
+					<button class="btn cbi-button proc-btn proc-btn-hup">挂起</button>
+					<button class="btn cbi-button proc-btn proc-btn-term">终止</button>
+					<button class="btn cbi-button proc-btn proc-btn-kill">强杀</button>
+				</div></td>
+			</tr>
+			<tr class="tr">
+				<td class="td"><span class="proc-badge-pid">3102</span></td>
+				<td class="td"><span class="proc-user">root</span></td>
+				<td class="td"><span class="proc-cmd">/usr/bin/ttyd -p 7681 login</span></td>
+				<td class="td"><span class="proc-pct">0.1%</span></td>
+				<td class="td"><span class="proc-pct">0.8%</span></td>
+				<td class="td"><div class="proc-btn-group">
+					<button class="btn cbi-button proc-btn proc-btn-hup">挂起</button>
+					<button class="btn cbi-button proc-btn proc-btn-term">终止</button>
+					<button class="btn cbi-button proc-btn proc-btn-kill">强杀</button>
+				</div></td>
+			</tr>
+		</table>
+	</div>
+</div>
+</body></html>

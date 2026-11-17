@@ -16,7 +16,7 @@ known='PACKAGE_kmod-thermal
 PACKAGE_kmod-xdp-sockets-diag'
 
 for f in config-custom.seed tmp/.config-package.in .config; do
-  [ -f "$f" ] || { echo "::error::缺少 $f，审计前提不成立（feeds install -a 与 make defconfig 都要先跑）"; exit 1; }
+  [ -f "$f" ] || { echo "::error::缺少 ${f}，审计前提不成立（feeds install -a 与 make defconfig 都要先跑）"; exit 1; }
 done
 
 grep -oE '(menu)?config PACKAGE_[A-Za-z0-9_.+-]+' tmp/.config-package.in | sed 's/.*config //' | sort -u > ksyms.txt

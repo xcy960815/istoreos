@@ -167,7 +167,9 @@ Argon 的 `header.htm` 会在 `<body theme="light|dark|normal">` 上输出模式
 5. `python3 -m http.server` 起本地服务（`file://` 在浏览器工具里会被拒），打开截图；
 6. 用 `browser.preview` 把文件展示给用户确认。
 
-预览脚本可以照抄这个骨架（放到临时目录即可，不用进仓库）：
+项目内统一将生成的自包含预览页面和生成工具维护在 [`docs/preview-ui/`](file:///Users/opera/Documents/my-repositories/istoreos/docs/preview-ui/) 目录：
+- 导航总览：[`docs/preview-ui/index.html`](file:///Users/opera/Documents/my-repositories/istoreos/docs/preview-ui/index.html)（卡片式列出所有模块的浅色/深色预览入口）
+- 一键生成器：[`docs/preview-ui/generate.py`](file:///Users/opera/Documents/my-repositories/istoreos/docs/preview-ui/generate.py)（从补丁脚本中提取真实 CSS 变量与规则并产出预览 HTML）
 
 ```python
 import re
@@ -224,3 +226,8 @@ print([i for i in sorted(ids) if f'msgid "{i}"' not in po])
 - 文档两层记录：功能视角（用户看到什么变化、不能做什么）+ 包名/文件明细。**不留记录的界面改造视同未完成。**
 
 2026-11-13（§六十二）：GoWebDav 菜单和 status RPC 移到 admin/services/gowebdav，首页直接入口同步。模板保留按当前路径兼容旧商店 NAS 页面。经典易有云默认包直接烘焙已有 linkease_status.htm，投递层仍兼容旧商店安装；不改认证和 procd。
+
+2026-11-17（§六十三）：系统终端（ttyd / `term.js`）、密码修改（`password.js`）、系统进程（`processes.js`）换皮完成。
+- **终端**：采用 `#cbi-ttyd`，增加 `.ttyd-head` 白卡行（端口小徽章 + 右侧蓝色「在新标签页打开 ↗」按钮），终端窗口仿 macOS 控制台（三色小圆点 + 居中标题 + 黑色窗口底），自适应视口高度（`calc(100vh - 240px)`），自动补齐中文化 po 条目。
+- **密码修改**：采用 `#cbi-password`，头部提取为 `.password-head` 白卡，表单卡片全宽铺满（与头部两端对齐补齐右侧空白），对齐 label 与输入框，密码强度提示自动转换为弱/中/强柔和胶囊徽章（`--pw-ok`, `--pw-warn`, `--pw-danger`），保存按钮统一放置在右下方。
+- **系统进程**：采用 `#cbi-processes`，头部增加 `.proc-head` 白卡与即时搜索过滤框（支持输入 PID 或命令实时过滤行并更新计数），表格卡片化，PID 等宽浅底徽章，CPU/内存占用率支持高占用红色突出，挂起/终止/杀死按钮重构为紧凑精致的动作按钮组。

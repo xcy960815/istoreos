@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# luci-mod-status syslog.js + dmesg.js 只换皮（§五十一）。
+# luci-mod-status syslog.js + dmesg.js + processes.js 只换皮（§五十一/§六十三）。
 set -euo pipefail
 script_dir=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$script_dir/../.." && pwd)
@@ -11,4 +11,5 @@ done
 [ -n "$d" ] || { echo "::error::找不到 luci-mod-status"; exit 1; }
 python3 "$script_dir/status-logs-ui/apply-syslog.py" "$d/htdocs/luci-static/resources/view/status/syslog.js"
 python3 "$script_dir/status-logs-ui/apply-dmesg.py" "$d/htdocs/luci-static/resources/view/status/dmesg.js"
+python3 "$script_dir/status-logs-ui/apply-processes.py" "$d/htdocs/luci-static/resources/view/status/processes.js"
 echo "luci-mod-status logs UI patch done ($d)"
