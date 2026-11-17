@@ -1,0 +1,129 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>端口转发 - UI 预览</title>
+<style>
+body { background:#f4f6fb; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; margin:0; padding:24px; }
+body[theme="dark"] { background:#181819; color:#d7dae0; }
+.cbi-map { max-width:1080px; margin:0 auto; }
+#cbi-firewall-forwards {
+	--fw-accent: #5e72e4; --fw-ok: #2dce89; --fw-warn: #fb6340; --fw-danger: #f5365c; --fw-border: #e9ecef;
+	--fw-muted: #8898aa; --fw-text: #32325d; --fw-card: #fff; --fw-soft: #f7f9fc;
+}
+body[theme="dark"] #cbi-firewall-forwards { --fw-border:#3a3a3d; --fw-muted:#9aa2ad; --fw-text:#d7dae0; --fw-card:#232324; --fw-soft:#2b2b2d; }
+@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-firewall-forwards { --fw-border:#3a3a3d; --fw-muted:#9aa2ad; --fw-text:#d7dae0; --fw-card:#232324; --fw-soft:#2b2b2d; } }
+#cbi-firewall-forwards.cbi-map, #cbi-firewall-forwards .cbi-map { padding: 0; margin: 0; }
+#cbi-firewall-forwards .forwards-head {
+	display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 20px;
+	padding: 18px 24px; margin: 0 0 16px; background: var(--fw-card); border: 1px solid var(--fw-border);
+	border-radius: 12px; box-shadow: 0 2px 12px rgba(50,50,93,.06);
+}
+#cbi-firewall-forwards .forwards-head-left h2 { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.3; color: var(--fw-text); }
+#cbi-firewall-forwards .forwards-head-right .cbi-map-descr { margin: 0; font-size: 13px; line-height: 1.5; color: var(--fw-muted); max-width: 540px; text-align: right; }
+@media (max-width: 768px) { #cbi-firewall-forwards .forwards-head-right .cbi-map-descr { text-align: left; } }
+/* 端口转发网格卡片化 */
+#cbi-firewall-forwards .cbi-section {
+	background: var(--fw-card); border: 1px solid var(--fw-border); border-radius: 12px;
+	box-shadow: 0 2px 12px rgba(50,50,93,.06); padding: 20px 22px; margin: 0 0 16px; box-sizing: border-box;
+}
+#cbi-firewall-forwards .cbi-section-node { padding: 0; }
+#cbi-firewall-forwards table.cbi-section-table { width: 100%; border-collapse: collapse; margin: 0 0 12px; }
+#cbi-firewall-forwards table.cbi-section-table th {
+	padding: 10px 14px; font-size: 13px; font-weight: 600; color: var(--fw-muted); border-bottom: 1px solid var(--fw-border); text-align: left;
+}
+#cbi-firewall-forwards table.cbi-section-table td {
+	padding: 12px 14px; font-size: 13px; color: var(--fw-text); border-bottom: 1px solid var(--fw-border); vertical-align: middle;
+}
+#cbi-firewall-forwards table.cbi-section-table tr:hover td { background: var(--fw-soft); }
+#cbi-firewall-forwards .zonebadge {
+	display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; margin-right: 4px;
+}
+#cbi-firewall-forwards var { font-family: monospace; font-style: normal; font-weight: 600; color: var(--fw-accent); }
+#cbi-firewall-forwards .cbi-button-add {
+	background: var(--fw-accent) !important; border: 1px solid var(--fw-accent) !important; color: #fff !important;
+	padding: 6px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s ease;
+}
+#cbi-firewall-forwards .cbi-button-add:hover { filter: brightness(1.08); }
+/* 底部操作区统一收纳在右下方 */
+#cbi-firewall-forwards .cbi-page-actions {
+	display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin: 20px 0 0; padding: 18px 0 0;
+	border-top: 1px solid var(--fw-border); background: none; border-radius: 0; box-shadow: none;
+}
+#cbi-firewall-forwards .cbi-page-actions .cbi-button {
+	min-width: 110px; height: 36px; padding: 0 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+	margin: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all .15s ease;
+}
+#cbi-firewall-forwards .cbi-page-actions .cbi-button-apply, #cbi-firewall-forwards .cbi-page-actions .cbi-button-save {
+	background: var(--fw-accent) !important; border: 1px solid var(--fw-accent) !important; color: #fff !important;
+	box-shadow: 0 2px 6px rgba(94, 114, 228, .25);
+}
+#cbi-firewall-forwards .cbi-page-actions .cbi-button-apply:hover, #cbi-firewall-forwards .cbi-page-actions .cbi-button-save:hover { filter: brightness(1.08); }
+#cbi-firewall-forwards .cbi-page-actions .cbi-button-reset {
+	background: rgba(245, 54, 92, .08) !important; border: 1px solid rgba(245, 54, 92, .2) !important; color: var(--fw-danger) !important;
+}
+</style></head>
+<body theme="dark">
+<div id="cbi-firewall-forwards" class="cbi-map">
+	<div class="forwards-head">
+		<div class="forwards-head-left">
+			<h2>防火墙 - 端口转发</h2>
+		</div>
+		<div class="forwards-head-right">
+			<div class="cbi-map-descr">端口转发允许互联网远程计算机访问私有局域网内的指定服务或设备 (DNAT)。</div>
+		</div>
+	</div>
+
+	<div class="cbi-section">
+		<table class="cbi-section-table">
+			<thead>
+				<tr>
+					<th>名称</th>
+					<th>匹配条件 (协议 / 来源)</th>
+					<th>转发目标 (内部 IP : 端口)</th>
+					<th style="text-align:right">操作</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><strong>WebDAV 外网访问</strong></td>
+					<td>
+						<span class="zonebadge" style="background:#f5365c;color:#fff">WAN</span>
+						协议 <var>TCP</var>，端口 <var>8080</var>
+					</td>
+					<td>
+						➔ <span class="zonebadge" style="background:#2dce89;color:#fff">LAN</span>
+						IP <var>192.168.1.1</var>，端口 <var>80</var>
+					</td>
+					<td style="text-align:right">
+						<button class="cbi-button cbi-button-action" style="padding:4px 12px;border-radius:6px;font-size:12px;cursor:pointer">修改</button>
+						<button class="cbi-button" style="padding:4px 12px;border-radius:6px;font-size:12px;background:rgba(245,54,92,.08);color:#f5365c;border:1px solid rgba(245,54,92,.2);cursor:pointer">删除</button>
+					</td>
+				</tr>
+				<tr>
+					<td><strong>NAS 控制台</strong></td>
+					<td>
+						<span class="zonebadge" style="background:#f5365c;color:#fff">WAN</span>
+						协议 <var>TCP</var>，端口 <var>5001</var>
+					</td>
+					<td>
+						➔ <span class="zonebadge" style="background:#2dce89;color:#fff">LAN</span>
+						IP <var>192.168.1.100</var>，端口 <var>5001</var>
+					</td>
+					<td style="text-align:right">
+						<button class="cbi-button cbi-button-action" style="padding:4px 12px;border-radius:6px;font-size:12px;cursor:pointer">修改</button>
+						<button class="cbi-button" style="padding:4px 12px;border-radius:6px;font-size:12px;background:rgba(245,54,92,.08);color:#f5365c;border:1px solid rgba(245,54,92,.2);cursor:pointer">删除</button>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px">
+			<button class="cbi-button cbi-button-add">+ 添加新规则</button>
+		</div>
+
+		<div class="cbi-page-actions">
+			<button class="cbi-button cbi-button-reset">复位</button>
+			<button class="cbi-button cbi-button-action">保存</button>
+			<button class="cbi-button cbi-button-apply">保存并应用</button>
+		</div>
+	</div>
+</div>
+</body></html>

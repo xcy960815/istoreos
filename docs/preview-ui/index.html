@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LuCI 样式重构预览总览</title>
+<title>LuCI 页面样式重构预览总览</title>
 <style>
 :root {
 	--bg: #f4f6fb;
@@ -32,7 +32,7 @@ body {
 	padding: 40px 24px;
 }
 .container {
-	max-width: 900px;
+	max-width: 1040px;
 	margin: 0 auto;
 }
 .header {
@@ -51,7 +51,7 @@ p.sub {
 }
 .grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 	gap: 20px;
 }
 .card {
@@ -115,13 +115,23 @@ p.sub {
 <body>
 <div class="container">
 	<div class="header">
-		<h1>🎨 LuCI 页面样式重构预览</h1>
+		<h1>🎨 LuCI 页面样式重构预览总览</h1>
 		<p class="sub">遵循 docs/UI-STYLE.md 规范打造的现代卡片化、无 Bootstrap、全深色自适应样式预览。</p>
 	</div>
 	<div class="grid">
 		<div class="card">
 			<div>
-				<h2>系统终端</h2>
+				<h2>易有云文件管理器</h2>
+				<p>白卡头精简摘要、状态横向卡片（蓝主按钮+浅灰次按钮）、全局设置白卡化，并将保存操作底栏直接收纳进卡片右下方。</p>
+			</div>
+			<div class="links">
+				<a class="btn btn-light" href="preview-linkease.html">浅色预览</a>
+				<a class="btn btn-dark" href="preview-linkease-dark.html">深色预览</a>
+			</div>
+		</div>
+		<div class="card">
+			<div>
+				<h2>系统终端 (Web Terminal)</h2>
 				<p>Web Terminal 仿窗口外壳、三色圆点装饰、新标签页全屏打开入口与自适应视口高度。</p>
 			</div>
 			<div class="links">
@@ -132,7 +142,7 @@ p.sub {
 		<div class="card">
 			<div>
 				<h2>管理权 / 密码修改</h2>
-				<p>收敛至 680px 白卡容器，弱/中/强密码强度圆角胶囊徽章与对齐表单。</p>
+				<p>卡片全宽铺满对齐，弱/中/强密码强度圆角胶囊徽章与右下方保存按钮。</p>
 			</div>
 			<div class="links">
 				<a class="btn btn-light" href="preview-password.html">浅色预览</a>
@@ -141,12 +151,52 @@ p.sub {
 		</div>
 		<div class="card">
 			<div>
-				<h2>系统进程</h2>
+				<h2>系统进程 (Processes)</h2>
 				<p>白卡容器与表头美化，支持输入命令名或 PID 即时搜索过滤，指标徽章与紧凑动作按钮组。</p>
 			</div>
 			<div class="links">
 				<a class="btn btn-light" href="preview-processes.html">浅色预览</a>
 				<a class="btn btn-dark" href="preview-processes-dark.html">深色预览</a>
+			</div>
+		</div>
+		<div class="card">
+			<div>
+				<h2>系统属性 (System Properties)</h2>
+				<p>药丸标签栏 (Pill Tabs)、数字时钟小部件 (Live 呼吸绿点、浏览器同步与 NTP 同步操作组) 与表单卡片化。</p>
+			</div>
+			<div class="links">
+				<a class="btn btn-light" href="preview-system.html">浅色预览</a>
+				<a class="btn btn-dark" href="preview-system-dark.html">深色预览</a>
+			</div>
+		</div>
+		<div class="card">
+			<div>
+				<h2>SSH 密钥管理 (SSH-Keys)</h2>
+				<p>虚线拖拽与粘贴密钥导入区、密钥凭据卡片化（算法胶囊、注释标题、等宽指纹与垃圾桶删除动作）。</p>
+			</div>
+			<div class="links">
+				<a class="btn btn-light" href="preview-sshkeys.html">浅色预览</a>
+				<a class="btn btn-dark" href="preview-sshkeys-dark.html">深色预览</a>
+			</div>
+		</div>
+		<div class="card">
+			<div>
+				<h2>防火墙 - 端口转发 (Port Forwards)</h2>
+				<p>规则表格现代卡片化、区域流量流向胶囊 (WAN:port ➔ LAN:ip:port)、紧凑操作与添加按钮。</p>
+			</div>
+			<div class="links">
+				<a class="btn btn-light" href="preview-forwards.html">浅色预览</a>
+				<a class="btn btn-dark" href="preview-forwards-dark.html">深色预览</a>
+			</div>
+		</div>
+		<div class="card">
+			<div>
+				<h2>DHCP / DNS 与静态地址分配</h2>
+				<p>活跃 DHCP 租约卡片表格、等宽 IP/MAC 标签、租约剩余时间胶囊与静态地址分配表格美化。</p>
+			</div>
+			<div class="links">
+				<a class="btn btn-light" href="preview-dhcp.html">浅色预览</a>
+				<a class="btn btn-dark" href="preview-dhcp-dark.html">深色预览</a>
 			</div>
 		</div>
 	</div>

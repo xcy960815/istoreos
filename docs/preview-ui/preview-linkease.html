@@ -1,0 +1,393 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>易有云文件管理器 - UI 预览</title>
+<style>
+body { background:#f4f6fb; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; margin:0; padding:24px; }
+body[theme="dark"] { background:#181819; color:#d7dae0; }
+.cbi-map { max-width:980px; margin:0 auto; }
+#cbi-linkease,
+	#cbi-linkease-status {
+		--le-accent: #5e72e4;
+		--le-ok: #2dce89;
+		--le-warn: #fb6340;
+		--le-danger: #f5365c;
+		--le-border: #e9ecef;
+		--le-muted: #8898aa;
+		--le-text: #32325d;
+		--le-card: #fff;
+		--le-soft: #f7f9fc;
+	}
+	body[theme="dark"] #cbi-linkease,
+	body[theme="dark"] #cbi-linkease-status {
+		--le-border: #3a3a3d;
+		--le-muted: #9aa2ad;
+		--le-text: #d7dae0;
+		--le-card: #232324;
+		--le-soft: #2b2b2d;
+	}
+	@media (prefers-color-scheme: dark) {
+		body[theme="normal"] #cbi-linkease,
+		body[theme="normal"] #cbi-linkease-status {
+			--le-border: #3a3a3d;
+			--le-muted: #9aa2ad;
+			--le-text: #d7dae0;
+			--le-card: #232324;
+			--le-soft: #2b2b2d;
+		}
+	}
+	#cbi-linkease.cbi-map,
+	#cbi-linkease-status.cbi-map {
+		padding: 0;
+		margin: 0;
+	}
+	#cbi-linkease > h2 {
+		margin: 0 0 6px;
+		font-size: 18px;
+		font-weight: 600;
+		line-height: 1.3;
+		color: var(--le-text);
+	}
+	#cbi-linkease .cbi-map-descr {
+		margin: 0 0 16px;
+		font-size: 13px;
+		line-height: 1.6;
+		color: var(--le-muted);
+	}
+	#cbi-linkease .linkease-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px 20px;
+		flex-wrap: wrap;
+		margin: 0 0 16px;
+		padding: 16px 22px;
+		background: var(--le-card);
+		border: 1px solid var(--le-border);
+		border-radius: 12px;
+		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
+	}
+	#cbi-linkease .linkease-head-left h2 {
+		margin: 0;
+		font-size: 18px;
+		font-weight: 600;
+		line-height: 1.3;
+		color: var(--le-text);
+	}
+	#cbi-linkease .linkease-head-right .cbi-map-descr {
+		margin: 0;
+		font-size: 13px;
+		line-height: 1.5;
+		color: var(--le-muted);
+		max-width: 540px;
+		text-align: right;
+	}
+	@media (max-width: 768px) {
+		#cbi-linkease .linkease-head-right .cbi-map-descr {
+			text-align: left;
+		}
+	}
+	#cbi-linkease-status.cbi-section,
+	#cbi-linkease-status .cbi-section {
+		padding: 0;
+		border: 0;
+		background: none;
+		box-shadow: none;
+		margin: 0 0 16px;
+	}
+	#cbi-linkease-status .linkease-card {
+		background: var(--le-card);
+		border: 1px solid var(--le-border);
+		border-radius: 12px;
+		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
+		padding: 18px 24px;
+	}
+	#cbi-linkease-status .linkease-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		flex-wrap: wrap;
+	}
+	#cbi-linkease-status .linkease-label {
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--le-text);
+	}
+	#cbi-linkease-status .linkease-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 14px;
+		border-radius: 999px;
+		background: var(--le-soft);
+		border: 1px solid var(--le-border);
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--le-text);
+		font-style: normal;
+	}
+	#cbi-linkease-status .linkease-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: var(--le-muted);
+		box-shadow: 0 0 0 4px rgba(136, 152, 170, .12);
+		flex-shrink: 0;
+	}
+	#cbi-linkease-status .linkease-pill-ok .linkease-dot {
+		background: var(--le-ok);
+		box-shadow: 0 0 0 4px rgba(45, 206, 137, .15);
+	}
+	#cbi-linkease-status .linkease-pill-off .linkease-dot {
+		background: var(--le-warn);
+		box-shadow: 0 0 0 4px rgba(251, 99, 64, .15);
+	}
+	#cbi-linkease-status .linkease-btn {
+		min-width: 120px;
+		height: 34px;
+		padding: 0 16px;
+		border-radius: 8px;
+		font-size: 13px;
+		font-weight: 600;
+		margin: 0;
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		transition: all .15s ease;
+	}
+	#cbi-linkease-status .linkease-btn-primary {
+		background: var(--le-accent) !important;
+		border: 1px solid var(--le-accent) !important;
+		color: #fff !important;
+		box-shadow: 0 2px 6px rgba(94, 114, 228, .25);
+	}
+	#cbi-linkease-status .linkease-btn-primary:hover {
+		filter: brightness(1.08);
+	}
+	#cbi-linkease-status .linkease-btn-secondary {
+		background: var(--le-soft) !important;
+		border: 1px solid var(--le-border) !important;
+		color: var(--le-text) !important;
+	}
+	#cbi-linkease-status .linkease-btn-secondary:hover {
+		background: var(--le-border) !important;
+	}
+	#cbi-linkease-status #linkease_status {
+		margin: 0;
+		min-height: 1.5em;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+	}
+	#cbi-linkease-status #linkease_status em {
+		font-style: normal;
+		color: var(--le-muted);
+		font-size: 13px;
+	}
+
+	/* 设置卡片白卡化与内联操作底栏 */
+	#cbi-linkease .cbi-section:not(#cbi-linkease-status),
+	#cbi-linkease fieldset.cbi-section {
+		background: var(--le-card);
+		border: 1px solid var(--le-border);
+		border-radius: 12px;
+		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
+		padding: 24px 26px;
+		margin: 0 0 16px;
+		width: 100%;
+		box-sizing: border-box;
+	}
+	#cbi-linkease fieldset.cbi-section > legend,
+	#cbi-linkease .cbi-section:not(#cbi-linkease-status) > h3,
+	#cbi-linkease .cbi-section-title {
+		padding: 0 0 12px;
+		margin: 0 0 16px;
+		font-size: 16px;
+		font-weight: 600;
+		color: var(--le-text);
+		background: none;
+		border: 0;
+		border-bottom: 1px solid var(--le-border);
+		display: block;
+		width: 100%;
+	}
+	#cbi-linkease .cbi-section:not(#cbi-linkease-status) .cbi-value,
+	#cbi-linkease fieldset.cbi-section .cbi-value {
+		display: flex;
+		align-items: flex-start;
+		gap: 16px;
+		padding: 14px 0;
+		margin: 0;
+		border-top: 1px solid var(--le-border);
+		border-bottom: 0;
+		flex-wrap: wrap;
+	}
+	#cbi-linkease .cbi-section:not(#cbi-linkease-status) .cbi-value:first-of-type,
+	#cbi-linkease fieldset.cbi-section .cbi-value:first-of-type {
+		border-top: 0;
+		padding-top: 2px;
+	}
+	#cbi-linkease .cbi-section:not(#cbi-linkease-status) .cbi-value-title,
+	#cbi-linkease fieldset.cbi-section .cbi-value-title {
+		width: 140px;
+		flex-shrink: 0;
+		padding: 6px 0 0;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--le-text);
+		text-align: left;
+	}
+	#cbi-linkease .cbi-section:not(#cbi-linkease-status) .cbi-value-field,
+	#cbi-linkease fieldset.cbi-section .cbi-value-field {
+		flex: 1;
+		min-width: 240px;
+		text-align: left;
+	}
+	#cbi-linkease .cbi-input-text {
+		width: 100%;
+		max-width: 280px;
+		box-sizing: border-box;
+		padding: 8px 12px;
+		border: 1px solid var(--le-border);
+		border-radius: 8px;
+		background: var(--le-soft);
+		color: var(--le-text);
+		font-size: 14px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		transition: border-color .15s ease, box-shadow .15s ease;
+	}
+	#cbi-linkease .cbi-input-text:focus {
+		border-color: var(--le-accent);
+		outline: 0;
+		box-shadow: 0 0 0 3px rgba(94, 114, 228, .15);
+	}
+	#cbi-linkease .cbi-input-checkbox {
+		accent-color: var(--le-accent);
+		width: 18px;
+		height: 18px;
+		cursor: pointer;
+		margin-top: 6px;
+	}
+	#cbi-linkease .cbi-value-description {
+		margin: 6px 0 0;
+		font-size: 13px;
+		line-height: 1.6;
+		color: var(--le-muted);
+	}
+
+	/* 底部操作区统一收纳在右下方 */
+	#cbi-linkease .cbi-page-actions {
+		display: flex;
+		justify-content: flex-end;
+		align-items: center;
+		gap: 12px;
+		margin: 20px 0 0;
+		padding: 18px 0 0;
+		border-top: 1px solid var(--le-border);
+		background: none;
+		border-radius: 0;
+		box-shadow: none;
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button {
+		min-width: 110px;
+		height: 36px;
+		padding: 0 18px;
+		border-radius: 8px;
+		font-size: 13px;
+		font-weight: 600;
+		margin: 0;
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		transition: all .15s ease;
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button-apply,
+	#cbi-linkease .cbi-page-actions .cbi-button-save {
+		background: var(--le-accent) !important;
+		border: 1px solid var(--le-accent) !important;
+		color: #fff !important;
+		box-shadow: 0 2px 6px rgba(94, 114, 228, .25);
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button-apply:hover,
+	#cbi-linkease .cbi-page-actions .cbi-button-save:hover {
+		filter: brightness(1.08);
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button-action {
+		background: var(--le-soft) !important;
+		border: 1px solid var(--le-border) !important;
+		color: var(--le-text) !important;
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button-action:hover {
+		background: var(--le-border) !important;
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button-reset {
+		background: rgba(245, 54, 92, .08) !important;
+		border: 1px solid rgba(245, 54, 92, .2) !important;
+		color: var(--le-danger) !important;
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button-reset:hover {
+		background: rgba(245, 54, 92, .18) !important;
+	}
+</style></head>
+<body>
+<div id="cbi-linkease" class="cbi-map">
+	<div class="linkease-head">
+		<div class="linkease-head-left">
+			<h2>易有云文件管理器</h2>
+		</div>
+		<div class="linkease-head-right">
+			<div class="cbi-map-descr" title="易有云是一个微型家庭私有数据服务中心，主要用于文件的集中存放、读取、备份及日常管理。释放用户终端设备空间，实现个人、家庭文件长久留存；支持家庭相册、视频文件随时随地多终端查看、播放，满足家庭文件的日常管理。">
+				微型家庭私有数据服务中心，支持多终端集中存储与文件管理。
+			</div>
+		</div>
+	</div>
+
+	<div id="cbi-linkease-status" class="cbi-section">
+		<div class="linkease-card">
+			<div class="linkease-row">
+				<div class="linkease-label">易有云服务状态</div>
+				<div class="linkease-actions">
+					<span class="linkease-pill linkease-pill-ok"><span class="linkease-dot"></span>易有云服务已启动</span>
+					<input class="cbi-button linkease-btn linkease-btn-primary" type="button" value="点击打开易有云">
+					<input class="cbi-button linkease-btn linkease-btn-secondary" type="button" value="本地文件管理">
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="cbi-section">
+		<div class="cbi-section-node">
+			<legend>全局设置</legend>
+			<div class="cbi-value">
+				<label class="cbi-value-title">启用</label>
+				<div class="cbi-value-field">
+					<input type="checkbox" class="cbi-input-checkbox" checked>
+				</div>
+			</div>
+			<div class="cbi-value">
+				<label class="cbi-value-title">端口</label>
+				<div class="cbi-value-field">
+					<input type="text" class="cbi-input-text" value="8897">
+				</div>
+			</div>
+			<div class="cbi-value">
+				<label class="cbi-value-title">公网访问</label>
+				<div class="cbi-value-field">
+					<input type="checkbox" class="cbi-input-checkbox">
+					<div class="cbi-value-description">允许公网 IP 访问，可能会导致不够安全。</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- 整合进卡片底部的操作栏：彻底消除下方巨大空白与悬空 -->
+		<div class="cbi-page-actions">
+			<button class="cbi-button cbi-button-reset">复位</button>
+			<button class="cbi-button cbi-button-action">保存</button>
+			<button class="cbi-button cbi-button-apply">保存并应用</button>
+		</div>
+	</div>
+</div>
+</body></html>

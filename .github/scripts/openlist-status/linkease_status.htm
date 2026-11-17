@@ -17,8 +17,8 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 			else if (st.running)
 			{
 				tb.innerHTML = '<span class="linkease-pill linkease-pill-ok"><span class="linkease-dot"></span><%:The LinkEase service is running.%></span>'
-					+ '<input class="cbi-button linkease-linkbtn" type="button" value="<%:Click to open LinkEase%>" onclick="window.open(\'http://' + window.location.hostname + ':' + st.port + '/\')"/>'
-					+ '<input class="cbi-button linkease-linkbtn" type="button" value="<%:Click to open Files%>" onclick="window.open(\'/cgi-bin/luci/admin/services/linkease/file/\')"/>';
+					+ '<input class="cbi-button linkease-btn linkease-btn-primary" type="button" value="<%:Click to open LinkEase%>" onclick="window.open(\'http://' + window.location.hostname + ':' + st.port + '/\')"/>'
+					+ '<input class="cbi-button linkease-btn linkease-btn-secondary" type="button" value="<%:Click to open Files%>" onclick="window.open(\'/cgi-bin/luci/admin/services/linkease/file/\')"/>';
 			}
 			else
 			{
@@ -36,6 +36,7 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 		--le-accent: #5e72e4;
 		--le-ok: #2dce89;
 		--le-warn: #fb6340;
+		--le-danger: #f5365c;
 		--le-border: #e9ecef;
 		--le-muted: #8898aa;
 		--le-text: #32325d;
@@ -60,6 +61,11 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 			--le-soft: #2b2b2d;
 		}
 	}
+	#cbi-linkease.cbi-map,
+	#cbi-linkease-status.cbi-map {
+		padding: 0;
+		margin: 0;
+	}
 	#cbi-linkease > h2 {
 		margin: 0 0 6px;
 		font-size: 18px;
@@ -75,9 +81,9 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 	}
 	#cbi-linkease .linkease-head {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		justify-content: space-between;
-		gap: 8px 16px;
+		gap: 12px 20px;
 		flex-wrap: wrap;
 		margin: 0 0 16px;
 		padding: 16px 22px;
@@ -86,59 +92,61 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 		border-radius: 12px;
 		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
 	}
-	#cbi-linkease .linkease-head > h2 {
+	#cbi-linkease .linkease-head-left h2 {
 		margin: 0;
 		font-size: 18px;
 		font-weight: 600;
 		line-height: 1.3;
 		color: var(--le-text);
 	}
-	#cbi-linkease .linkease-head > .cbi-map-descr {
-		margin: 0 0 0 auto;
+	#cbi-linkease .linkease-head-right .cbi-map-descr {
+		margin: 0;
 		font-size: 13px;
-		line-height: 1.6;
+		line-height: 1.5;
 		color: var(--le-muted);
+		max-width: 540px;
 		text-align: right;
 	}
+	@media (max-width: 768px) {
+		#cbi-linkease .linkease-head-right .cbi-map-descr {
+			text-align: left;
+		}
+	}
 	#cbi-linkease-status.cbi-section,
-	#cbi-linkease-status .cbi-section,
-	#cbi-linkease-status fieldset.cbi-section {
+	#cbi-linkease-status .cbi-section {
 		padding: 0;
 		border: 0;
 		background: none;
 		box-shadow: none;
-		margin: 0;
+		margin: 0 0 16px;
 	}
-	#cbi-linkease-status .linkease-card,
-	#cbi-linkease fieldset.cbi-section {
+	#cbi-linkease-status .linkease-card {
 		background: var(--le-card);
 		border: 1px solid var(--le-border);
 		border-radius: 12px;
 		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
-		padding: 20px 22px;
-		margin: 0 0 16px;
-	}
-	#cbi-linkease-status .linkease-card {
-		padding: 16px 18px;
+		padding: 18px 24px;
 	}
 	#cbi-linkease-status .linkease-row {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 12px;
+		gap: 16px;
 		flex-wrap: wrap;
 	}
 	#cbi-linkease-status .linkease-label {
-		font-size: 13px;
-		color: var(--le-muted);
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--le-text);
 	}
 	#cbi-linkease-status .linkease-pill {
 		display: inline-flex;
 		align-items: center;
 		gap: 8px;
-		padding: 8px 12px;
+		padding: 6px 14px;
 		border-radius: 999px;
 		background: var(--le-soft);
+		border: 1px solid var(--le-border);
 		font-size: 13px;
 		font-weight: 600;
 		color: var(--le-text);
@@ -154,26 +162,49 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 	}
 	#cbi-linkease-status .linkease-pill-ok .linkease-dot {
 		background: var(--le-ok);
-		box-shadow: 0 0 0 4px rgba(45, 206, 137, .12);
+		box-shadow: 0 0 0 4px rgba(45, 206, 137, .15);
 	}
 	#cbi-linkease-status .linkease-pill-off .linkease-dot {
 		background: var(--le-warn);
-		box-shadow: 0 0 0 4px rgba(251, 99, 64, .12);
+		box-shadow: 0 0 0 4px rgba(251, 99, 64, .15);
 	}
-	#cbi-linkease-status .linkease-linkbtn {
-		min-width: 132px;
-		padding: 8px 18px;
+	#cbi-linkease-status .linkease-btn {
+		min-width: 120px;
+		height: 34px;
+		padding: 0 16px;
 		border-radius: 8px;
-		font-size: 14px;
+		font-size: 13px;
 		font-weight: 600;
 		margin: 0;
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		transition: all .15s ease;
+	}
+	#cbi-linkease-status .linkease-btn-primary {
+		background: var(--le-accent) !important;
+		border: 1px solid var(--le-accent) !important;
+		color: #fff !important;
+		box-shadow: 0 2px 6px rgba(94, 114, 228, .25);
+	}
+	#cbi-linkease-status .linkease-btn-primary:hover {
+		filter: brightness(1.08);
+	}
+	#cbi-linkease-status .linkease-btn-secondary {
+		background: var(--le-soft) !important;
+		border: 1px solid var(--le-border) !important;
+		color: var(--le-text) !important;
+	}
+	#cbi-linkease-status .linkease-btn-secondary:hover {
+		background: var(--le-border) !important;
 	}
 	#cbi-linkease-status #linkease_status {
 		margin: 0;
 		min-height: 1.5em;
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: 12px;
 		flex-wrap: wrap;
 		justify-content: flex-end;
 	}
@@ -182,34 +213,52 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 		color: var(--le-muted);
 		font-size: 13px;
 	}
-	#cbi-linkease fieldset.cbi-section > legend {
-		padding: 0;
-		margin: 0 0 12px;
-		font-size: 15px;
+
+	/* 设置卡片白卡化与内联操作底栏 */
+	#cbi-linkease .cbi-section:not(#cbi-linkease-status),
+	#cbi-linkease fieldset.cbi-section {
+		background: var(--le-card);
+		border: 1px solid var(--le-border);
+		border-radius: 12px;
+		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
+		padding: 24px 26px;
+		margin: 0 0 16px;
+		width: 100%;
+		box-sizing: border-box;
+	}
+	#cbi-linkease fieldset.cbi-section > legend,
+	#cbi-linkease .cbi-section:not(#cbi-linkease-status) > h3,
+	#cbi-linkease .cbi-section-title {
+		padding: 0 0 12px;
+		margin: 0 0 16px;
+		font-size: 16px;
 		font-weight: 600;
 		color: var(--le-text);
 		background: none;
 		border: 0;
+		border-bottom: 1px solid var(--le-border);
+		display: block;
+		width: 100%;
 	}
+	#cbi-linkease .cbi-section:not(#cbi-linkease-status) .cbi-value,
 	#cbi-linkease fieldset.cbi-section .cbi-value {
 		display: flex;
 		align-items: flex-start;
-		gap: 12px 18px;
-		padding: 12px 0;
+		gap: 16px;
+		padding: 14px 0;
 		margin: 0;
 		border-top: 1px solid var(--le-border);
 		border-bottom: 0;
 		flex-wrap: wrap;
 	}
+	#cbi-linkease .cbi-section:not(#cbi-linkease-status) .cbi-value:first-of-type,
 	#cbi-linkease fieldset.cbi-section .cbi-value:first-of-type {
 		border-top: 0;
-		padding-top: 4px;
+		padding-top: 2px;
 	}
-	#cbi-linkease fieldset.cbi-section .cbi-value:last-child {
-		padding-bottom: 4px;
-	}
+	#cbi-linkease .cbi-section:not(#cbi-linkease-status) .cbi-value-title,
 	#cbi-linkease fieldset.cbi-section .cbi-value-title {
-		width: 190px;
+		width: 140px;
 		flex-shrink: 0;
 		padding: 6px 0 0;
 		font-size: 13px;
@@ -217,23 +266,97 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 		color: var(--le-text);
 		text-align: left;
 	}
+	#cbi-linkease .cbi-section:not(#cbi-linkease-status) .cbi-value-field,
 	#cbi-linkease fieldset.cbi-section .cbi-value-field {
 		flex: 1;
-		min-width: 220px;
+		min-width: 240px;
 		text-align: left;
 	}
-	#cbi-linkease fieldset.cbi-section .cbi-value-description {
+	#cbi-linkease .cbi-input-text {
+		width: 100%;
+		max-width: 280px;
+		box-sizing: border-box;
+		padding: 8px 12px;
+		border: 1px solid var(--le-border);
+		border-radius: 8px;
+		background: var(--le-soft);
+		color: var(--le-text);
+		font-size: 14px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		transition: border-color .15s ease, box-shadow .15s ease;
+	}
+	#cbi-linkease .cbi-input-text:focus {
+		border-color: var(--le-accent);
+		outline: 0;
+		box-shadow: 0 0 0 3px rgba(94, 114, 228, .15);
+	}
+	#cbi-linkease .cbi-input-checkbox {
+		accent-color: var(--le-accent);
+		width: 18px;
+		height: 18px;
+		cursor: pointer;
+		margin-top: 6px;
+	}
+	#cbi-linkease .cbi-value-description {
 		margin: 6px 0 0;
-		font-size: 12px;
+		font-size: 13px;
 		line-height: 1.6;
 		color: var(--le-muted);
 	}
+
+	/* 底部操作区统一收纳在右下方 */
+	#cbi-linkease .cbi-page-actions {
+		display: flex;
+		justify-content: flex-end;
+		align-items: center;
+		gap: 12px;
+		margin: 20px 0 0;
+		padding: 18px 0 0;
+		border-top: 1px solid var(--le-border);
+		background: none;
+		border-radius: 0;
+		box-shadow: none;
+	}
 	#cbi-linkease .cbi-page-actions .cbi-button {
-		min-width: 132px;
-		padding: 8px 18px;
+		min-width: 110px;
+		height: 36px;
+		padding: 0 18px;
 		border-radius: 8px;
-		font-size: 14px;
+		font-size: 13px;
 		font-weight: 600;
+		margin: 0;
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		transition: all .15s ease;
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button-apply,
+	#cbi-linkease .cbi-page-actions .cbi-button-save {
+		background: var(--le-accent) !important;
+		border: 1px solid var(--le-accent) !important;
+		color: #fff !important;
+		box-shadow: 0 2px 6px rgba(94, 114, 228, .25);
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button-apply:hover,
+	#cbi-linkease .cbi-page-actions .cbi-button-save:hover {
+		filter: brightness(1.08);
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button-action {
+		background: var(--le-soft) !important;
+		border: 1px solid var(--le-border) !important;
+		color: var(--le-text) !important;
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button-action:hover {
+		background: var(--le-border) !important;
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button-reset {
+		background: rgba(245, 54, 92, .08) !important;
+		border: 1px solid rgba(245, 54, 92, .2) !important;
+		color: var(--le-danger) !important;
+	}
+	#cbi-linkease .cbi-page-actions .cbi-button-reset:hover {
+		background: rgba(245, 54, 92, .18) !important;
 	}
 	</style>
 	<div class="cbi-section">
@@ -252,27 +375,56 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 (function() {
 	var wrap = function() {
 		var root = document.getElementById('cbi-linkease');
-		if (!root || root.querySelector('.linkease-head'))
+		if (!root)
 			return;
-		var h2 = null, descr = null, kids = root.children, i;
-		for (i = 0; i < kids.length; i++) {
-			if (!h2 && kids[i].tagName === 'H2')
-				h2 = kids[i];
-			else if (!descr && kids[i].classList && kids[i].classList.contains('cbi-map-descr'))
-				descr = kids[i];
+
+		// 1. 处理顶部白卡头与说明
+		if (!root.querySelector('.linkease-head')) {
+			var h2 = null, descr = null, kids = root.children, i;
+			for (i = 0; i < kids.length; i++) {
+				if (!h2 && kids[i].tagName === 'H2')
+					h2 = kids[i];
+				else if (!descr && kids[i].classList && kids[i].classList.contains('cbi-map-descr'))
+					descr = kids[i];
+			}
+			if (h2 && descr) {
+				var head = document.createElement('div');
+				head.className = 'linkease-head';
+				root.insertBefore(head, h2);
+				var left = document.createElement('div');
+				left.className = 'linkease-head-left';
+				left.appendChild(h2);
+				var right = document.createElement('div');
+				right.className = 'linkease-head-right';
+				// 若说明文字过长（多行长文），提炼简洁描述，完整原意留作 hover title
+				if (descr.textContent.trim().length > 45) {
+					descr.setAttribute('title', descr.textContent.trim());
+					descr.textContent = '<%:Micro home data service center for multi-terminal file management.%>';
+				}
+				right.appendChild(descr);
+				head.appendChild(left);
+				head.appendChild(right);
+			}
 		}
-		if (h2 && descr) {
-			var head = document.createElement('div');
-			head.className = 'linkease-head';
-			root.insertBefore(head, h2);
-			head.appendChild(h2);
-			head.appendChild(descr);
+
+		// 2. 将 Global settings 标题美化为中文并整合底部操作区进卡片
+		var section = root.querySelector('.cbi-section:not(#cbi-linkease-status), fieldset.cbi-section');
+		if (section) {
+			var legend = section.querySelector('legend, h3');
+			if (legend && (legend.textContent.indexOf('Global settings') !== -1 || legend.textContent.trim() === 'Global settings')) {
+				legend.textContent = '<%:Global settings%>';
+			}
+			var actions = root.querySelector('.cbi-page-actions');
+			if (actions && !section.contains(actions)) {
+				section.appendChild(actions);
+			}
 		}
 	};
 	if (document.readyState === 'loading')
 		document.addEventListener('DOMContentLoaded', wrap);
 	else
 		wrap();
+	setTimeout(wrap, 150);
 })();
 //]]>
 </script>

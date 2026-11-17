@@ -71,60 +71,52 @@ body[theme="dark"] #cbi-processes { --proc-border:#3a3a3d; --proc-muted:#9aa2ad;
 <div id="cbi-processes" class="cbi-map">
 	<div class="proc-head">
 		<div class="proc-head-left">
-			<h2>进程</h2>
-			<div class="cbi-map-descr">查看当前系统运行的进程及其状态。</div>
+			<h2 class="proc-title">系统进程</h2>
+			<div class="cbi-map-descr">实时查看与管理系统运行中的进程。</div>
 		</div>
 		<div class="proc-head-right">
-			<span id="proc-count" class="proc-badge-count">3 进程</span>
-			<input type="text" class="cbi-input-text proc-filter-input" placeholder="筛选...">
+			<input type="text" class="proc-filter" placeholder="搜索进程名 / 命令行 / PID..." value="">
+			<span class="proc-count-pill">活动进程: 3</span>
 		</div>
 	</div>
-	<div class="proc-card">
-		<table class="table">
-			<tr class="tr table-titles">
-				<th class="th">PID</th>
-				<th class="th">所有者</th>
-				<th class="th">命令</th>
-				<th class="th">CPU 使用率 (%)</th>
-				<th class="th">内存使用率 (%)</th>
-				<th class="th right nowrap cbi-section-actions"></th>
-			</tr>
-			<tr class="tr">
-				<td class="td"><span class="proc-badge-pid">1</span></td>
-				<td class="td"><span class="proc-user">root</span></td>
-				<td class="td"><span class="proc-cmd">/sbin/procd</span></td>
-				<td class="td"><span class="proc-pct">0%</span></td>
-				<td class="td"><span class="proc-pct">0.4%</span></td>
-				<td class="td"><div class="proc-btn-group">
-					<button class="btn cbi-button proc-btn proc-btn-hup">挂起</button>
-					<button class="btn cbi-button proc-btn proc-btn-term">终止</button>
-					<button class="btn cbi-button proc-btn proc-btn-kill">强杀</button>
-				</div></td>
-			</tr>
-			<tr class="tr">
-				<td class="td"><span class="proc-badge-pid">2841</span></td>
-				<td class="td"><span class="proc-user">root</span></td>
-				<td class="td"><span class="proc-cmd">/usr/sbin/tailscaled --state=/etc/tailscale/tailscaled.state</span></td>
-				<td class="td"><span class="proc-pct proc-high">12.5%</span></td>
-				<td class="td"><span class="proc-pct">2.1%</span></td>
-				<td class="td"><div class="proc-btn-group">
-					<button class="btn cbi-button proc-btn proc-btn-hup">挂起</button>
-					<button class="btn cbi-button proc-btn proc-btn-term">终止</button>
-					<button class="btn cbi-button proc-btn proc-btn-kill">强杀</button>
-				</div></td>
-			</tr>
-			<tr class="tr">
-				<td class="td"><span class="proc-badge-pid">3102</span></td>
-				<td class="td"><span class="proc-user">root</span></td>
-				<td class="td"><span class="proc-cmd">/usr/bin/ttyd -p 7681 login</span></td>
-				<td class="td"><span class="proc-pct">0.1%</span></td>
-				<td class="td"><span class="proc-pct">0.8%</span></td>
-				<td class="td"><div class="proc-btn-group">
-					<button class="btn cbi-button proc-btn proc-btn-hup">挂起</button>
-					<button class="btn cbi-button proc-btn proc-btn-term">终止</button>
-					<button class="btn cbi-button proc-btn proc-btn-kill">强杀</button>
-				</div></td>
-			</tr>
+	<div class="cbi-section">
+		<table class="table proc-table">
+			<thead>
+				<tr class="tr table-titles">
+					<th class="th">PID</th>
+					<th class="th">用户</th>
+					<th class="th">命令行</th>
+					<th class="th">CPU 使用率</th>
+					<th class="th">内存使用率</th>
+					<th class="th">操作</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr class="tr">
+					<td class="td"><span class="proc-pid-badge">1</span></td>
+					<td class="td">root</td>
+					<td class="td"><span class="proc-cmd-text">/sbin/procd</span></td>
+					<td class="td"><span class="proc-stat-badge">0.1%</span></td>
+					<td class="td"><span class="proc-stat-badge">0.4%</span></td>
+					<td class="td"><div class="proc-actions"><button class="proc-btn proc-btn-hup">挂起 (HUP)</button><button class="proc-btn proc-btn-term">终止 (TERM)</button><button class="proc-btn proc-btn-kill">强杀 (KILL)</button></div></td>
+				</tr>
+				<tr class="tr">
+					<td class="td"><span class="proc-pid-badge">2410</span></td>
+					<td class="td">root</td>
+					<td class="td"><span class="proc-cmd-text">/usr/sbin/tailscaled --state=/etc/tailscale/tailscaled.state</span></td>
+					<td class="td"><span class="proc-stat-badge">0.3%</span></td>
+					<td class="td"><span class="proc-stat-badge">1.2%</span></td>
+					<td class="td"><div class="proc-actions"><button class="proc-btn proc-btn-hup">挂起 (HUP)</button><button class="proc-btn proc-btn-term">终止 (TERM)</button><button class="proc-btn proc-btn-kill">强杀 (KILL)</button></div></td>
+				</tr>
+				<tr class="tr">
+					<td class="td"><span class="proc-pid-badge">3125</span></td>
+					<td class="td">root</td>
+					<td class="td"><span class="proc-cmd-text">/usr/bin/ddns-go -f 10 -c /etc/ddns-go/ddns_go.yaml</span></td>
+					<td class="td"><span class="proc-stat-badge">0.0%</span></td>
+					<td class="td"><span class="proc-stat-badge">0.8%</span></td>
+					<td class="td"><div class="proc-actions"><button class="proc-btn proc-btn-hup">挂起 (HUP)</button><button class="proc-btn proc-btn-term">终止 (TERM)</button><button class="proc-btn proc-btn-kill">强杀 (KILL)</button></div></td>
+				</tr>
+			</tbody>
 		</table>
 	</div>
 </div>

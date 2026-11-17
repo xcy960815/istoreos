@@ -1765,16 +1765,47 @@ Argon 的 `.cbi-value-title` 使用 `float:left`、`padding-top:.25rem`，并继
 | **系统 → 终端** (`luci-app-ttyd`) | 增加 `.ttyd-head` 白卡（标题 + 端口徽章 + 右侧蓝色「在新标签页打开 ↗」按钮），告别裸 iframe 灰底悬挂；外层仿现代终端控制台窗口（顶部三色小圆点控制条、居中深色标题 `root@iStoreOS ~ ttyd`），iframe 自适应视口高度（`calc(100vh - 240px)`），提供更舒适的命令行交互体验 | 端口/SSL/URL 重写/随机端口警告原样保留，自动补全中文化翻译 |
 | **系统 → 管理权 / 密码修改** (`luci-mod-system`) | 增加 `.password-head` 白卡包裹标题与说明；表单卡片全宽铺满（与头部两端右边缘对齐补齐空白），对齐 label 与输入框；密码强度提示由生硬的内联红绿文字升级为弱/中/强三种柔和圆角胶囊徽章（`--pw-ok`, `--pw-warn`, `--pw-danger`），保存按钮统一放置在右下方 | `luci.setPassword` RPC、密码一致性校验、Enter 快捷键提交行为逐字保留 |
 | **状态 → 系统进程** (`luci-mod-status`) | 增加 `.proc-head` 白卡并引入**即时搜索过滤框**（输入命令名或 PID 实时无缝过滤表格行，实时更新匹配进程数），表格卡片化；PID 等宽浅底徽章；CPU/内存占用率支持高占用红色突出；挂起/终止/强杀按钮由粗糙原生按钮重构为精致紧凑的动作按钮组（幽灵灰 / 柔橙 / 警示红） | `callLuciProcessList`、`fs.exec('/bin/kill')`、信号编号（1/15/9）与 `cbi_update_table` 排序原样保留 |
+| **服务 → 易有云文件管理器** (`luci-app-linkease`) | 白卡头长段描述自动精简为两端对齐的一句话简介（原长文留作 hover title），避免撑爆标题行；设置区域白卡全宽铺满（带标题下划线与中文化）；**将原本孤立悬挂在最底部的保存操作栏收纳进设置卡片内部底端**，居右紧凑排列，彻底消除下方大片无用空白与按钮悬空感 | `linkease_status` RPC 轮询、两个打开按钮与原生 UCI 保存逻辑原样保留 |
 
 ### 涉及文件与构建例外明细
 
 | 脚本 / 补丁 | 明细 |
 |---|---|
+| `.github/scripts/openlist-status/linkease_status.htm` | 属于第 ⑨ / ⑮ 条构建例外。重构样式与 DOM wrap 逻辑，提供标题长文提炼、卡片化修复与操作栏收纳至卡片底端 |
 | `.github/scripts/luci-mod-system-ui/apply-password.py` | 替换 `password.js` 的 `m.render()`，注入 `#cbi-password` 作用域样式与 `.password-head` 白卡，美化强度徽章与输入框 |
 | `.github/scripts/patch-luci-mod-system-ui.sh` | 增补调用 `apply-password.py`，属于第 ⑧ 条构建例外 |
 | `.github/scripts/status-logs-ui/apply-processes.py` | 替换 `processes.js` 的 `updateTable` 与 `render`，注入 `#cbi-processes` 样式、搜索筛选框、微型指标与紧凑按钮组 |
 | `.github/scripts/patch-status-logs-ui.sh` | 增补调用 `apply-processes.py`，属于第 ⑫ 条构建例外 |
 | `.github/scripts/ttyd-ui/apply-ttyd.py` + `.github/scripts/patch-ttyd-ui.sh` | 第 ⑯ 条构建例外。替换 `term.js`，包裹控制台窗口与自适应视口高度，并向 `zh_Hans/ttyd.po` 追加中文翻译 |
 | `.github/workflows/build-istoreos.yml` | 在「Patch ... UI shells」步骤中追加 `bash .github/scripts/patch-ttyd-ui.sh` |
+
+## 六十四、系统属性 / SSH 管理 / 防火墙端口转发 / DHCP 样式深度卡片化重构（2026-11-17，无 seed 变更）
+
+针对软路由高频配置页面（系统属性与时间同步、SSH 密钥与访问配置、防火墙端口转发、DHCP 与静态地址分配）进行第三轮系统性现代卡片化换皮。
+无 seed 变更，不改动任何后端 UCI / RPC / IP 规则逻辑，仅在 feeds 阶段通过构建期补丁脚本换皮。
+
+### 功能视角
+
+| 页面 / 模块 | 变更后外观与体验 | 原生行为保留 |
+|---|---|---|
+| **系统 → 系统属性** (`luci-mod-system/system.js`) | 增加 `.system-head` 白卡头；标签栏升级为胶囊/药丸切换栏（Pill Tabs）；**本地时间升级为数字时钟小部件 `.systime-widget`**（数字等宽时钟、Live 绿色呼吸小点、「与浏览器同步」蓝底主按钮与「与 NTP 同步」次按钮紧凑排列）；系统参数表单全宽卡片化，操作按钮归拢右下方 | `callSetLocaltime`、`sysntpd` 重启、时区与每秒 `poll.add` 动态刷新时钟逐字保留 |
+| **系统 → 管理权 → SSH 密钥** (`luci-mod-system/sshkeys.js`) | 增加 `.sshkeys-head` 白卡头；拖拽/粘贴区域重构为清爽的虚线卡片（`.sshkey-dropzone`）配「添加密钥」操作；**密钥列表彻底凭据卡片化**（算法徽章如 `Ed25519` / `RSA 4096 Bit`、注释标题、等宽指纹胶囊与红色垃圾桶删除按钮） | `SSHPubkeyDecoder` 解码校验、`saveKeys` 写入 `/etc/dropbear/authorized_keys` 与只读权限逻辑原样保留 |
+| **系统 → 管理权 → SSH 访问** (`luci-mod-system/dropbear.js`) | 增加 `.dropbear-head` 白卡头，端口/免密/Root 登录等选项白卡化布局，操作按钮收纳至右下方 | 原生 Dropbear UCI 配置与网络接口选择组件原样保留 |
+| **网络 → 防火墙 → 端口转发** (`luci-app-firewall/forwards.js`) | 增加 `.forwards-head` 白卡头；端口转发规则表格全卡片化；区域标记重构为圆角流向胶囊（如 `WAN:8080 ➔ LAN:192.168.1.1:80`）；修改与删除操作按钮精致化；「添加新规则」升级为醒目蓝色主按钮 | 原生 DNAT / fw4 规则构造、helper、反射与排序逻辑原样保留 |
+| **网络 → DHCP / DNS** (`luci-mod-network/dhcp.js`) | 增加 `.dhcp-head` 白卡头；药丸切换标签；**活跃 DHCP 租约表格与静态地址分配表格卡片化**，IP / MAC 地址采用等宽浅底胶囊标签，租约剩余时间突出显示 | Dnsmasq UCI 配置、DHCP 选项与活跃租约定时轮询更新逻辑原样保留 |
+
+### 涉及文件与构建例外明细
+
+| 脚本 / 补丁 | 明细 |
+|---|---|
+| `.github/scripts/luci-mod-system-ui/apply-system.py` | 替换 `system.js` 的 `CBILocalTime` 与 `m.render()`，注入 `#cbi-system` 样式、白卡头、药丸标签与数字时钟小部件（属于第 ⑧ 条构建例外） |
+| `.github/scripts/luci-mod-system-ui/apply-sshkeys.py` | 替换 `sshkeys.js` 的 `renderKeyItem` 与 `render`，卡片化凭据与拖拽添加区（属于第 ⑧ 条构建例外） |
+| `.github/scripts/luci-mod-system-ui/apply-dropbear.py` | 替换 `dropbear.js` 的 `m.render()`，卡片化 SSH 实例配置表单（属于第 ⑧ 条构建例外） |
+| `.github/scripts/luci-mod-system-ui/apply-dhcp.py` | 替换 `dhcp.js` 的 `m.render()`，卡片化活跃租约与静态分配表格（属于第 ⑧ 条构建例外） |
+| `.github/scripts/patch-luci-mod-system-ui.sh` | 增补调用 `apply-system.py`、`apply-sshkeys.py`、`apply-dropbear.py`、`apply-dhcp.py` |
+| `.github/scripts/firewall-ui/apply-forwards.py` + `.github/scripts/patch-firewall-ui.sh` | **第 ⑰ 条构建例外**。卡片化 `forwards.js` 规则表格、区域流量胶囊与动作按钮 |
+| `.github/workflows/build-istoreos.yml` | 追加执行 `bash .github/scripts/patch-firewall-ui.sh` |
+| `docs/preview-ui/generate.py` | 更新预览脚本，生成全部 8 组页面（浅色与深色共 16 个 HTML 文件）及自包含导航总览 `index.html` |
+
 
 

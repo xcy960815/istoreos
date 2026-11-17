@@ -1,0 +1,253 @@
+#!/usr/bin/env python3
+"""
+luci-mod-system system.js 页面样式卡片化换皮
+- 顶部白卡头 .system-head 统一标题与说明
+- 药丸切换标签 .cbi-tabmenu (Pill Tabs)
+- 本地时间与时钟小部件 .systime-widget (数字时钟、实时动态绿点、浏览器同步与 NTP 同步操作按钮组)
+- 表单卡片化、右下角操作栏
+"""
+
+from pathlib import Path
+import sys
+
+p = Path(sys.argv[1])
+t = p.read_text(encoding="utf-8")
+if "data-ui-skin" in t and "#cbi-system" in t:
+    print("SKIP  system.js: already skinned")
+    raise SystemExit(0)
+
+# 1. 替换 CBILocalTime 渲染小部件
+old_widget = (
+    "\trenderWidget: function(section_id, option_id, cfgvalue) {\n"
+    "\t\treturn E([], [\n"
+    "\t\t\tE('input', {\n"
+    "\t\t\t\t'id': 'localtime',\n"
+    "\t\t\t\t'type': 'text',\n"
+    "\t\t\t\t'readonly': true,\n"
+    "\t\t\t\t'value': formatTime(cfgvalue)\n"
+    "\t\t\t}),\n"
+    "\t\t\tE('br'),\n"
+    "\t\t\tE('span', { 'class': 'control-group' }, [\n"
+    "\t\t\t\tE('button', {\n"
+    "\t\t\t\t\t'class': 'cbi-button cbi-button-apply',\n"
+    "\t\t\t\t\t'click': ui.createHandlerFn(this, function() {\n"
+    "\t\t\t\t\t\treturn callSetLocaltime(Math.floor(Date.now() / 1000));\n"
+    "\t\t\t\t\t}),\n"
+    "\t\t\t\t\t'disabled': (this.readonly != null) ? this.readonly : this.map.readonly\n"
+    "\t\t\t\t}, _('Sync with browser')),\n"
+    "\t\t\t\t' ',\n"
+    "\t\t\t\tthis.ntpd_support ? E('button', {\n"
+    "\t\t\t\t\t'class': 'cbi-button cbi-button-apply',\n"
+    "\t\t\t\t\t'click': ui.createHandlerFn(this, function() {\n"
+    "\t\t\t\t\t\treturn callRcInit('sysntpd', 'restart');\n"
+    "\t\t\t\t\t}),\n"
+    "\t\t\t\t\t'disabled': (this.readonly != null) ? this.readonly : this.map.readonly\n"
+    "\t\t\t\t}, _('Sync with NTP-Server')) : ''\n"
+    "\t\t\t])\n"
+    "\t\t]);\n"
+    "\t},"
+)
+
+new_widget = (
+    "\trenderWidget: function(section_id, option_id, cfgvalue) {\n"
+    "\t\treturn E('div', { 'class': 'systime-widget' }, [\n"
+    "\t\t\tE('div', { 'class': 'systime-display' }, [\n"
+    "\t\t\t\tE('span', { 'class': 'systime-icon' }, '🕒'),\n"
+    "\t\t\t\tE('input', {\n"
+    "\t\t\t\t\t'id': 'localtime',\n"
+    "\t\t\t\t\t'type': 'text',\n"
+    "\t\t\t\t\t'class': 'systime-input',\n"
+    "\t\t\t\t\t'readonly': true,\n"
+    "\t\t\t\t\t'value': formatTime(cfgvalue)\n"
+    "\t\t\t\t}),\n"
+    "\t\t\t\tE('span', { 'class': 'systime-live-pill' }, [\n"
+    "\t\t\t\t\tE('span', { 'class': 'systime-live-dot' }),\n"
+    "\t\t\t\t\t_('Live')\n"
+    "\t\t\t\t])\n"
+    "\t\t\t]),\n"
+    "\t\t\tE('div', { 'class': 'systime-actions' }, [\n"
+    "\t\t\t\tE('button', {\n"
+    "\t\t\t\t\t'class': 'cbi-button systime-btn systime-btn-sync',\n"
+    "\t\t\t\t\t'click': ui.createHandlerFn(this, function() {\n"
+    "\t\t\t\t\t\treturn callSetLocaltime(Math.floor(Date.now() / 1000));\n"
+    "\t\t\t\t\t}),\n"
+    "\t\t\t\t\t'disabled': (this.readonly != null) ? this.readonly : this.map.readonly\n"
+    "\t\t\t\t}, _('Sync with browser')),\n"
+    "\t\t\t\tthis.ntpd_support ? E('button', {\n"
+    "\t\t\t\t\t'class': 'cbi-button systime-btn systime-btn-ntp',\n"
+    "\t\t\t\t\t'click': ui.createHandlerFn(this, function() {\n"
+    "\t\t\t\t\t\treturn callRcInit('sysntpd', 'restart');\n"
+    "\t\t\t\t\t}),\n"
+    "\t\t\t\t\t'disabled': (this.readonly != null) ? this.readonly : this.map.readonly\n"
+    "\t\t\t\t}, _('Sync with NTP-Server')) : ''\n"
+    "\t\t\t])\n"
+    "\t\t]);\n"
+    "\t},"
+)
+
+if old_widget not in t:
+    raise SystemExit("system.js: CBILocalTime renderWidget anchor not found")
+
+t = t.replace(old_widget, new_widget, 1)
+
+# 2. 注入 CSS 与外壳包装
+old_render = (
+    "\t\treturn m.render().then(function(mapEl) {\n"
+    "\t\t\tpoll.add(function() {\n"
+    "\t\t\t\treturn callGetLocaltime().then(function(t) {\n"
+    "\t\t\t\t\tmapEl.querySelector('#localtime').value = formatTime(t);\n"
+    "\t\t\t\t});\n"
+    "\t\t\t});\n"
+    "\n"
+    "\t\t\treturn mapEl;\n"
+    "\t\t});"
+)
+
+css_lines = [
+    "#cbi-system {",
+    "	--sys-accent: #5e72e4; --sys-ok: #2dce89; --sys-warn: #fb6340; --sys-danger: #f5365c; --sys-border: #e9ecef;",
+    "	--sys-muted: #8898aa; --sys-text: #32325d; --sys-card: #fff; --sys-soft: #f7f9fc;",
+    "}",
+    'body[theme="dark"] #cbi-system { --sys-border:#3a3a3d; --sys-muted:#9aa2ad; --sys-text:#d7dae0; --sys-card:#232324; --sys-soft:#2b2b2d; }',
+    '@media (prefers-color-scheme: dark) { body[theme="normal"] #cbi-system { --sys-border:#3a3a3d; --sys-muted:#9aa2ad; --sys-text:#d7dae0; --sys-card:#232324; --sys-soft:#2b2b2d; } }',
+    "#cbi-system.cbi-map, #cbi-system .cbi-map { padding: 0; margin: 0; }",
+    "#cbi-system .system-head {",
+    "	display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 20px;",
+    "	padding: 18px 24px; margin: 0 0 16px; background: var(--sys-card); border: 1px solid var(--sys-border);",
+    "	border-radius: 12px; box-shadow: 0 2px 12px rgba(50,50,93,.06);",
+    "}",
+    "#cbi-system .system-head-left h2 { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.3; color: var(--sys-text); }",
+    "#cbi-system .system-head-right .cbi-map-descr { margin: 0; font-size: 13px; line-height: 1.5; color: var(--sys-muted); max-width: 540px; text-align: right; }",
+    "@media (max-width: 768px) { #cbi-system .system-head-right .cbi-map-descr { text-align: left; } }",
+    "/* 药丸标签栏 */",
+    "#cbi-system .cbi-tabmenu {",
+    "	display: flex; gap: 8px; border: 0; padding: 0 0 14px; margin: 0 0 16px; list-style: none; overflow-x: auto;",
+    "}",
+    "#cbi-system .cbi-tabmenu > li { margin: 0; padding: 0; list-style: none; }",
+    "#cbi-system .cbi-tabmenu > li > a {",
+    "	display: inline-flex; align-items: center; padding: 7px 18px; border-radius: 999px; font-size: 13px; font-weight: 600;",
+    "	background: var(--sys-card); border: 1px solid var(--sys-border); color: var(--sys-muted); text-decoration: none;",
+    "	transition: all .15s ease;",
+    "}",
+    "#cbi-system .cbi-tabmenu > li > a:hover { color: var(--sys-text); border-color: var(--sys-accent); }",
+    "#cbi-system .cbi-tabmenu > li.cbi-tab > a, #cbi-system .cbi-tabmenu > li.active > a {",
+    "	background: var(--sys-accent) !important; border-color: var(--sys-accent) !important; color: #fff !important;",
+    "	box-shadow: 0 2px 8px rgba(94, 114, 228, .25);",
+    "}",
+    "/* 表单主体卡片化 */",
+    "#cbi-system .cbi-section {",
+    "	background: var(--sys-card); border: 1px solid var(--sys-border); border-radius: 12px;",
+    "	box-shadow: 0 2px 12px rgba(50,50,93,.06); padding: 22px 26px; margin: 0 0 16px; width: 100%; box-sizing: border-box;",
+    "}",
+    "#cbi-system .cbi-section-node { padding: 0; }",
+    "#cbi-system .cbi-value {",
+    "	display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; padding: 14px 0; margin: 0;",
+    "	border-top: 1px solid var(--sys-border);",
+    "}",
+    "#cbi-system .cbi-value:first-child { border-top: 0; padding-top: 0; }",
+    "#cbi-system .cbi-value-title { width: 170px; flex-shrink: 0; margin: 0; padding: 8px 0 0; font-size: 13px; font-weight: 600; color: var(--sys-text); text-align: left; }",
+    "#cbi-system .cbi-value-field { flex: 1; min-width: 240px; text-align: left; }",
+    "#cbi-system .cbi-input-text, #cbi-system .cbi-input-select, #cbi-system select {",
+    "	width: 100%; max-width: 380px; box-sizing: border-box; padding: 8px 12px; border: 1px solid var(--sys-border);",
+    "	border-radius: 8px; background: var(--sys-soft); color: var(--sys-text); font-size: 13px;",
+    "	transition: border-color .15s ease, box-shadow .15s ease;",
+    "}",
+    "#cbi-system .cbi-input-text:focus, #cbi-system .cbi-input-select:focus, #cbi-system select:focus {",
+    "	border-color: var(--sys-accent); outline: 0; box-shadow: 0 0 0 3px rgba(94, 114, 228, .15);",
+    "}",
+    "#cbi-system .cbi-value-description { margin: 6px 0 0; font-size: 13px; line-height: 1.6; color: var(--sys-muted); }",
+    "/* 本地时间时钟小部件 */",
+    "#cbi-system .systime-widget {",
+    "	display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;",
+    "	background: var(--sys-soft); border: 1px solid var(--sys-border); border-radius: 10px;",
+    "	padding: 10px 14px; max-width: 540px; box-sizing: border-box;",
+    "}",
+    "#cbi-system .systime-display { display: inline-flex; align-items: center; gap: 8px; font-family: monospace; }",
+    "#cbi-system .systime-icon { font-size: 16px; line-height: 1; }",
+    "#cbi-system .systime-input {",
+    "	border: 0; background: transparent; font-family: monospace; font-size: 14px; font-weight: 600;",
+    "	color: var(--sys-text); width: 170px; outline: 0; padding: 0; cursor: default;",
+    "}",
+    "#cbi-system .systime-live-pill {",
+    "	display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700;",
+    "	color: var(--sys-ok); background: rgba(45,206,137,.12); border: 1px solid rgba(45,206,137,.25);",
+    "	padding: 2px 8px; border-radius: 999px; text-transform: uppercase;",
+    "}",
+    "#cbi-system .systime-live-dot {",
+    "	width: 6px; height: 6px; border-radius: 50%; background: var(--sys-ok); box-shadow: 0 0 0 3px rgba(45,206,137,.2);",
+    "}",
+    "#cbi-system .systime-actions { display: flex; align-items: center; gap: 8px; }",
+    "#cbi-system .systime-btn {",
+    "	height: 32px; padding: 0 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;",
+    "	display: inline-flex; align-items: center; justify-content: center; transition: all .15s ease;",
+    "}",
+    "#cbi-system .systime-btn-sync {",
+    "	background: var(--sys-accent) !important; border: 1px solid var(--sys-accent) !important; color: #fff !important;",
+    "	box-shadow: 0 2px 6px rgba(94, 114, 228, .2);",
+    "}",
+    "#cbi-system .systime-btn-sync:hover { filter: brightness(1.08); }",
+    "#cbi-system .systime-btn-ntp {",
+    "	background: var(--sys-card) !important; border: 1px solid var(--sys-border) !important; color: var(--sys-text) !important;",
+    "}",
+    "#cbi-system .systime-btn-ntp:hover { background: var(--sys-border) !important; }",
+    "/* 底部操作区统一收纳在右下方 */",
+    "#cbi-system .cbi-page-actions {",
+    "	display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin: 20px 0 0; padding: 18px 0 0;",
+    "	border-top: 1px solid var(--sys-border); background: none; border-radius: 0; box-shadow: none;",
+    "}",
+    "#cbi-system .cbi-page-actions .cbi-button {",
+    "	min-width: 110px; height: 36px; padding: 0 18px; border-radius: 8px; font-size: 13px; font-weight: 600;",
+    "	margin: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all .15s ease;",
+    "}",
+    "#cbi-system .cbi-page-actions .cbi-button-apply, #cbi-system .cbi-page-actions .cbi-button-save {",
+    "	background: var(--sys-accent) !important; border: 1px solid var(--sys-accent) !important; color: #fff !important;",
+    "	box-shadow: 0 2px 6px rgba(94, 114, 228, .25);",
+    "}",
+    "#cbi-system .cbi-page-actions .cbi-button-apply:hover, #cbi-system .cbi-page-actions .cbi-button-save:hover { filter: brightness(1.08); }",
+    "#cbi-system .cbi-page-actions .cbi-button-reset {",
+    "	background: rgba(245, 54, 92, .08) !important; border: 1px solid rgba(245, 54, 92, .2) !important; color: var(--sys-danger) !important;",
+    "}",
+]
+css_js = " +\n".join("\t\t\t\t\t" + repr(line + "\n") for line in css_lines)
+
+new_render = (
+    "\t\treturn m.render().then(function(mapEl) {\n"
+    "\t\t\tmapEl.setAttribute('id', 'cbi-system');\n"
+    "\t\t\tif (!mapEl.querySelector('style[data-ui-skin=\"system\"]')) {\n"
+    "\t\t\t\tvar css = '' +\n"
+    + css_js + ";\n"
+    "\t\t\t\tmapEl.insertBefore(E('style', { 'data-ui-skin': 'system' }, [ css ]), mapEl.firstChild);\n"
+    "\t\t\t}\n"
+    "\t\t\tvar h2 = mapEl.querySelector(':scope > h2');\n"
+    "\t\t\tvar descr = mapEl.querySelector(':scope > .cbi-map-descr');\n"
+    "\t\t\tif (h2 && descr && !mapEl.querySelector('.system-head')) {\n"
+    "\t\t\t\tvar head = E('div', { 'class': 'system-head' }, [\n"
+    "\t\t\t\t\tE('div', { 'class': 'system-head-left' }, [ h2.cloneNode(true) ]),\n"
+    "\t\t\t\t\tE('div', { 'class': 'system-head-right' }, [ descr.cloneNode(true) ])\n"
+    "\t\t\t\t]);\n"
+    "\t\t\t\th2.remove();\n"
+    "\t\t\t\tdescr.remove();\n"
+    "\t\t\t\tmapEl.insertBefore(head, mapEl.firstChild.nextSibling);\n"
+    "\t\t\t}\n"
+    "\t\t\tpoll.add(function() {\n"
+    "\t\t\t\treturn callGetLocaltime().then(function(t) {\n"
+    "\t\t\t\t\tvar el = mapEl.querySelector('#localtime');\n"
+    "\t\t\t\t\tif (el) el.value = formatTime(t);\n"
+    "\t\t\t\t});\n"
+    "\t\t\t});\n"
+    "\n"
+    "\t\t\treturn mapEl;\n"
+    "\t\t});"
+)
+
+if old_render not in t:
+    raise SystemExit("system.js: return m.render() anchor not found")
+
+t = t.replace(old_render, new_render, 1)
+
+for must in ("callSetLocaltime", "formatTime", "systime-widget", "system-head", "data-ui-skin", "#cbi-system"):
+    if must not in t:
+        raise SystemExit(f"system.js missing {must}")
+
+p.write_text(t, encoding="utf-8")
+print(f"OK    system.js skinned ({p})")
