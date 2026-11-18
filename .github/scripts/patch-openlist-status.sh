@@ -27,7 +27,7 @@ cat > "$d/root/etc/uci-defaults/99-istoreos-gowebdav-skin" <<'EOFUCI'
 #!/bin/sh
 SRC="/usr/share/istoreos-ui/gowebdav_status.htm"
 DST="/usr/lib/lua/luci/view/gowebdav/gowebdav_status.htm"
-if [ -f "$SRC" ] && [ -f "$DST" ] && ! grep -q 'data-ui-skin="gowebdav"' "$DST" 2>/dev/null; then
+if [ -f "$SRC" ] && [ -f "$DST" ] && ! cmp -s "$SRC" "$DST" 2>/dev/null; then
 	cp -a "$SRC" "$DST"
 	rm -rf /tmp/luci-indexcache /tmp/luci-modulecache 2>/dev/null || true
 fi
@@ -38,7 +38,7 @@ cat > "$d/root/etc/uci-defaults/99-istoreos-linkease-skin" <<'EOFUCI'
 #!/bin/sh
 SRC="/usr/share/istoreos-ui/linkease_status.htm"
 DST="/usr/lib/lua/luci/view/linkease_status.htm"
-if [ -f "$SRC" ] && [ -f "$DST" ] && ! grep -q 'data-ui-skin="linkease"' "$DST" 2>/dev/null; then
+if [ -f "$SRC" ] && [ -f "$DST" ] && ! cmp -s "$SRC" "$DST" 2>/dev/null; then
 	cp -a "$SRC" "$DST"
 	rm -rf /tmp/luci-indexcache /tmp/luci-modulecache 2>/dev/null || true
 fi

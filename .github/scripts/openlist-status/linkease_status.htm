@@ -32,7 +32,8 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 <div id="cbi-linkease-status">
 	<style data-ui-skin="linkease">
 	#cbi-linkease,
-	#cbi-linkease-status {
+	#cbi-linkease-status,
+	form[action*="linkease"] {
 		--le-accent: #5e72e4;
 		--le-ok: #2dce89;
 		--le-warn: #fb6340;
@@ -44,7 +45,8 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 		--le-soft: #f7f9fc;
 	}
 	body[theme="dark"] #cbi-linkease,
-	body[theme="dark"] #cbi-linkease-status {
+	body[theme="dark"] #cbi-linkease-status,
+	body[theme="dark"] form[action*="linkease"] {
 		--le-border: #3a3a3d;
 		--le-muted: #9aa2ad;
 		--le-text: #d7dae0;
@@ -53,7 +55,8 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 	}
 	@media (prefers-color-scheme: dark) {
 		body[theme="normal"] #cbi-linkease,
-		body[theme="normal"] #cbi-linkease-status {
+		body[theme="normal"] #cbi-linkease-status,
+		body[theme="normal"] form[action*="linkease"] {
 			--le-border: #3a3a3d;
 			--le-muted: #9aa2ad;
 			--le-text: #d7dae0;
@@ -66,19 +69,8 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 		padding: 0;
 		margin: 0;
 	}
-	#cbi-linkease > h2 {
-		margin: 0 0 6px;
-		font-size: 18px;
-		font-weight: 600;
-		line-height: 1.3;
-		color: var(--le-text);
-	}
-	#cbi-linkease .cbi-map-descr {
-		margin: 0 0 16px;
-		font-size: 13px;
-		line-height: 1.6;
-		color: var(--le-muted);
-	}
+
+	/* 顶部白卡头 */
 	#cbi-linkease .linkease-head {
 		display: flex;
 		align-items: center;
@@ -112,12 +104,15 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 			text-align: left;
 		}
 	}
-	#cbi-linkease-status.cbi-section,
-	#cbi-linkease-status .cbi-section {
+
+	/* 状态区域去底色 */
+	#cbi-linkease-status,
+	#cbi-linkease-status .cbi-section,
+	#cbi-linkease-status fieldset.cbi-section {
 		padding: 0;
 		border: 0;
-		background: none;
-		box-shadow: none;
+		background: none !important;
+		box-shadow: none !important;
 		margin: 0 0 16px;
 	}
 	#cbi-linkease-status .linkease-card {
@@ -169,30 +164,29 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 		box-shadow: 0 0 0 4px rgba(251, 99, 64, .15);
 	}
 	#cbi-linkease-status .linkease-btn {
-		min-width: 120px;
 		height: 34px;
 		padding: 0 16px;
 		border-radius: 8px;
 		font-size: 13px;
 		font-weight: 600;
-		margin: 0;
 		cursor: pointer;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		margin: 0;
 		transition: all .15s ease;
 	}
 	#cbi-linkease-status .linkease-btn-primary {
 		background: var(--le-accent) !important;
 		border: 1px solid var(--le-accent) !important;
 		color: #fff !important;
-		box-shadow: 0 2px 6px rgba(94, 114, 228, .25);
+		box-shadow: 0 2px 6px rgba(94, 114, 228, .2);
 	}
 	#cbi-linkease-status .linkease-btn-primary:hover {
 		filter: brightness(1.08);
 	}
 	#cbi-linkease-status .linkease-btn-secondary {
-		background: var(--le-soft) !important;
+		background: var(--le-card) !important;
 		border: 1px solid var(--le-border) !important;
 		color: var(--le-text) !important;
 	}
@@ -214,34 +208,31 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 		font-size: 13px;
 	}
 
-	/* 设置卡片白卡化与内联操作底栏 */
-	#cbi-linkease .cbi-section:not(#cbi-linkease-status),
+	/* 全局设置卡片化 (直接精准锁定 #cbi-linkease-linkease，兼容 div 与 fieldset) */
+	#cbi-linkease #cbi-linkease-linkease,
+	#cbi-linkease .cbi-section:not([id*="status"]),
 	#cbi-linkease fieldset.cbi-section {
 		background: var(--le-card);
 		border: 1px solid var(--le-border);
 		border-radius: 12px;
 		box-shadow: 0 2px 12px rgba(50, 50, 93, .06);
-		padding: 24px 26px;
+		padding: 22px 26px;
 		margin: 0 0 16px;
-		width: 100%;
 		box-sizing: border-box;
 	}
-	#cbi-linkease fieldset.cbi-section > legend,
-	#cbi-linkease .cbi-section:not(#cbi-linkease-status) > h3,
-	#cbi-linkease .cbi-section-title {
-		padding: 0 0 12px;
+	#cbi-linkease #cbi-linkease-linkease > legend,
+	#cbi-linkease #cbi-linkease-linkease > h3,
+	#cbi-linkease .cbi-section:not([id*="status"]) > legend,
+	#cbi-linkease .cbi-section:not([id*="status"]) > h3 {
+		padding: 0;
 		margin: 0 0 16px;
 		font-size: 16px;
 		font-weight: 600;
 		color: var(--le-text);
 		background: none;
 		border: 0;
-		border-bottom: 1px solid var(--le-border);
-		display: block;
-		width: 100%;
 	}
-	#cbi-linkease .cbi-section:not(#cbi-linkease-status) .cbi-value,
-	#cbi-linkease fieldset.cbi-section .cbi-value {
+	#cbi-linkease .cbi-value {
 		display: flex;
 		align-items: flex-start;
 		gap: 16px;
@@ -251,23 +242,20 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 		border-bottom: 0;
 		flex-wrap: wrap;
 	}
-	#cbi-linkease .cbi-section:not(#cbi-linkease-status) .cbi-value:first-of-type,
-	#cbi-linkease fieldset.cbi-section .cbi-value:first-of-type {
+	#cbi-linkease .cbi-value:first-of-type {
 		border-top: 0;
-		padding-top: 2px;
+		padding-top: 4px;
 	}
-	#cbi-linkease .cbi-section:not(#cbi-linkease-status) .cbi-value-title,
-	#cbi-linkease fieldset.cbi-section .cbi-value-title {
-		width: 140px;
+	#cbi-linkease .cbi-value-title {
+		width: 170px;
 		flex-shrink: 0;
-		padding: 6px 0 0;
+		padding: 8px 0 0;
 		font-size: 13px;
 		font-weight: 600;
 		color: var(--le-text);
 		text-align: left;
 	}
-	#cbi-linkease .cbi-section:not(#cbi-linkease-status) .cbi-value-field,
-	#cbi-linkease fieldset.cbi-section .cbi-value-field {
+	#cbi-linkease .cbi-value-field {
 		flex: 1;
 		min-width: 240px;
 		text-align: left;
@@ -304,58 +292,56 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 		color: var(--le-muted);
 	}
 
-	/* 底部操作区统一收纳在右下方 */
-	#cbi-linkease .cbi-page-actions {
-		display: flex;
-		justify-content: flex-end;
-		align-items: center;
-		gap: 12px;
-		margin: 20px 0 0;
-		padding: 18px 0 0;
-		border-top: 1px solid var(--le-border);
-		background: none;
-		border-radius: 0;
-		box-shadow: none;
+	/* 底部操作区：统一定位与样式（无论是在 section 卡片内还是紧跟在后） */
+	.cbi-page-actions {
+		display: flex !important;
+		justify-content: flex-end !important;
+		align-items: center !important;
+		gap: 12px !important;
+		margin: 20px 0 0 !important;
+		padding: 18px 0 0 !important;
+		border-top: 1px solid var(--le-border) !important;
+		background: none !important;
+		border-radius: 0 !important;
+		box-shadow: none !important;
 	}
-	#cbi-linkease .cbi-page-actions .cbi-button {
-		min-width: 110px;
-		height: 36px;
-		padding: 0 18px;
-		border-radius: 8px;
-		font-size: 13px;
-		font-weight: 600;
-		margin: 0;
-		cursor: pointer;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		transition: all .15s ease;
+	.cbi-page-actions .cbi-button,
+	.cbi-page-actions .btn {
+		min-width: 110px !important;
+		height: 36px !important;
+		padding: 0 18px !important;
+		border-radius: 8px !important;
+		font-size: 13px !important;
+		font-weight: 600 !important;
+		margin: 0 !important;
+		cursor: pointer !important;
+		display: inline-flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+		transition: all .15s ease !important;
 	}
-	#cbi-linkease .cbi-page-actions .cbi-button-apply,
-	#cbi-linkease .cbi-page-actions .cbi-button-save {
+	.cbi-page-actions .cbi-button-apply,
+	.cbi-page-actions .cbi-button-save {
 		background: var(--le-accent) !important;
 		border: 1px solid var(--le-accent) !important;
 		color: #fff !important;
-		box-shadow: 0 2px 6px rgba(94, 114, 228, .25);
+		box-shadow: 0 2px 6px rgba(94, 114, 228, .25) !important;
 	}
-	#cbi-linkease .cbi-page-actions .cbi-button-apply:hover,
-	#cbi-linkease .cbi-page-actions .cbi-button-save:hover {
-		filter: brightness(1.08);
+	.cbi-page-actions .cbi-button-apply:hover,
+	.cbi-page-actions .cbi-button-save:hover {
+		filter: brightness(1.08) !important;
 	}
-	#cbi-linkease .cbi-page-actions .cbi-button-action {
+	.cbi-page-actions .cbi-button-action {
 		background: var(--le-soft) !important;
 		border: 1px solid var(--le-border) !important;
 		color: var(--le-text) !important;
 	}
-	#cbi-linkease .cbi-page-actions .cbi-button-action:hover {
-		background: var(--le-border) !important;
-	}
-	#cbi-linkease .cbi-page-actions .cbi-button-reset {
+	.cbi-page-actions .cbi-button-reset {
 		background: rgba(245, 54, 92, .08) !important;
 		border: 1px solid rgba(245, 54, 92, .2) !important;
 		color: var(--le-danger) !important;
 	}
-	#cbi-linkease .cbi-page-actions .cbi-button-reset:hover {
+	.cbi-page-actions .cbi-button-reset:hover {
 		background: rgba(245, 54, 92, .18) !important;
 	}
 	</style>
@@ -374,47 +360,42 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 <script type="text/javascript">//<![CDATA[
 (function() {
 	var wrap = function() {
-		var root = document.getElementById('cbi-linkease');
+		var root = document.getElementById('cbi-linkease') || document.querySelector('.cbi-map');
 		if (!root)
 			return;
 
 		// 1. 处理顶部白卡头与说明
 		if (!root.querySelector('.linkease-head')) {
-			var h2 = null, descr = null, kids = root.children, i;
-			for (i = 0; i < kids.length; i++) {
-				if (!h2 && kids[i].tagName === 'H2')
-					h2 = kids[i];
-				else if (!descr && kids[i].classList && kids[i].classList.contains('cbi-map-descr'))
-					descr = kids[i];
-			}
-			if (h2 && descr) {
+			var h2 = root.querySelector(':scope > h2') || root.querySelector('h2');
+			var descr = root.querySelector(':scope > .cbi-map-descr') || root.querySelector('.cbi-map-descr');
+			if (h2) {
 				var head = document.createElement('div');
 				head.className = 'linkease-head';
 				root.insertBefore(head, h2);
 				var left = document.createElement('div');
 				left.className = 'linkease-head-left';
 				left.appendChild(h2);
-				var right = document.createElement('div');
-				right.className = 'linkease-head-right';
-				// 若说明文字过长（多行长文），提炼简洁描述，完整原意留作 hover title
-				if (descr.textContent.trim().length > 45) {
-					descr.setAttribute('title', descr.textContent.trim());
-					descr.textContent = '<%:Micro home data service center for multi-terminal file management.%>';
-				}
-				right.appendChild(descr);
 				head.appendChild(left);
-				head.appendChild(right);
+				if (descr) {
+					var right = document.createElement('div');
+					right.className = 'linkease-head-right';
+					descr.setAttribute('title', descr.textContent.trim());
+					descr.textContent = '微型家庭私有数据服务中心，支持多终端集中存储与文件管理。';
+					right.appendChild(descr);
+					head.appendChild(right);
+				}
 			}
 		}
 
 		// 2. 将 Global settings 标题美化为中文并整合底部操作区进卡片
-		var section = root.querySelector('.cbi-section:not(#cbi-linkease-status), fieldset.cbi-section');
+		var section = document.getElementById('cbi-linkease-linkease') || root.querySelector('.cbi-section:not(#cbi-linkease-status):not([id*="status"])');
 		if (section) {
 			var legend = section.querySelector('legend, h3');
 			if (legend && (legend.textContent.indexOf('Global settings') !== -1 || legend.textContent.trim() === 'Global settings')) {
-				legend.textContent = '<%:Global settings%>';
+				legend.textContent = '全局设置';
 			}
-			var actions = root.querySelector('.cbi-page-actions');
+			// 从整个 document 中精准抓取 .cbi-page-actions 并收纳进 section 卡片内部底端
+			var actions = document.querySelector('.cbi-page-actions');
 			if (actions && !section.contains(actions)) {
 				section.appendChild(actions);
 			}
@@ -424,7 +405,9 @@ XHR.poll(5, '<%=url("admin/services/linkease_status")%>', null,
 		document.addEventListener('DOMContentLoaded', wrap);
 	else
 		wrap();
-	setTimeout(wrap, 150);
+	setTimeout(wrap, 100);
+	setTimeout(wrap, 400);
+	setTimeout(wrap, 1000);
 })();
 //]]>
 </script>

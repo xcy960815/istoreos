@@ -112,14 +112,14 @@ restore_addr_script \
 	"tailscale hotplug"
 
 if [ -f /usr/share/istoreos-ui/gowebdav_status.htm ] && [ -f /usr/lib/lua/luci/view/gowebdav/gowebdav_status.htm ]; then
-	if ! grep -q 'data-ui-skin="gowebdav"' /usr/lib/lua/luci/view/gowebdav/gowebdav_status.htm 2>/dev/null; then
+	if ! cmp -s /usr/share/istoreos-ui/gowebdav_status.htm /usr/lib/lua/luci/view/gowebdav/gowebdav_status.htm 2>/dev/null; then
 		cp -a /usr/share/istoreos-ui/gowebdav_status.htm /usr/lib/lua/luci/view/gowebdav/gowebdav_status.htm
 		log "applied gowebdav status skin"
 	fi
 fi
 
 if [ -f /usr/share/istoreos-ui/linkease_status.htm ] && [ -f /usr/lib/lua/luci/view/linkease_status.htm ]; then
-	if ! grep -q 'data-ui-skin="linkease"' /usr/lib/lua/luci/view/linkease_status.htm 2>/dev/null; then
+	if ! cmp -s /usr/share/istoreos-ui/linkease_status.htm /usr/lib/lua/luci/view/linkease_status.htm 2>/dev/null; then
 		cp -a /usr/share/istoreos-ui/linkease_status.htm /usr/lib/lua/luci/view/linkease_status.htm
 		log "applied linkease status skin"
 	fi

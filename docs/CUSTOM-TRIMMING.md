@@ -1807,5 +1807,29 @@ Argon 的 `.cbi-value-title` 使用 `float:left`、`padding-top:.25rem`，并继
 | `.github/workflows/build-istoreos.yml` | 追加执行 `bash .github/scripts/patch-firewall-ui.sh` |
 | `docs/preview-ui/generate.py` | 更新预览脚本，生成全部 8 组页面（浅色与深色共 16 个 HTML 文件）及自包含导航总览 `index.html` |
 
+## 六十五、易有云操作栏跨容器吸纳与选择器兼容修复（2026-11-18，无 seed 变更）
+
+针对 r64 真机上易有云（LinkEase）操作栏悬空脱靶、大块空白、设置项样式未命中与长文本未收敛问题进行专项修复。
+无 seed 变更，不改动任何后端逻辑与 RPC 接口，仅在 feeds 皮肤注入阶段重构 `linkease_status.htm` 与启动更新同步逻辑。
+
+### 功能视角
+
+| 问题点 | 修复后体验与效果 | 底层原因与修复方式 |
+|---|---|---|
+| **底部按钮悬空与空白大坑** | 保存并应用/保存/复位按钮紧密收纳进「全局设置」卡片右下角，彻底消除卡片与底栏之间的大片空白 | LuCI 的 `cbi-page-actions` 在最外层 `footer.htm` 中，原作用域只在 `#cbi-linkease` 查找导致为 `null`；改为全局 `document.querySelector` 并在加载后挂入卡片，并注入全局兜底 CSS |
+| **设置项样式与英文标题** | 标题汉化为「全局设置」，设置项表单外壳呈现精致白卡、圆角与阴影 | 原 CSS 针对 `fieldset.cbi-section` 编写，而 `tsection.htm` 输出的是 `div.cbi-section`；选择器精准锚定 `#cbi-linkease-linkease` 彻底兼容两者 |
+| **90 字冗长介绍横亘** | 顶部生成白卡行，右侧精简提炼核心介绍，原 90 字长文保留为鼠标 hover 提示 | 避免依赖不存在的 po 翻译 key，直接内联提炼短语并设置 DOM title |
+| **升级/开机皮肤同步** | 只要固件升级或开机，检测到文件内容不一致（`cmp -s`）立即强制覆盖并清理 LuCI 模板缓存 | 原 `grep` 判断存在误判，改为 `cmp -s` 保证最新皮肤 100% 刷新到运行时目录 |
+
+### 涉及文件明细
+
+| 脚本 / 补丁 | 明细 |
+|---|---|
+| `.github/scripts/openlist-status/linkease_status.htm` | 属于第 ⑨ / ⑮ 条构建例外。重构样式、div 选择器、标题汉化与跨容器按钮吸纳逻辑 |
+| `.github/scripts/patch-openlist-status.sh` | 将 uci-defaults 替换判断升级为 `cmp -s` |
+| `.github/scripts/tailscale-durable/ensure-helper-fix.sh` | 将开机自愈检查替换判断升级为 `cmp -s` |
+| `docs/preview-ui/generate.py` | 重新生成包含修复的 LinkEase 浅深色预览 |
+
+
 
 
